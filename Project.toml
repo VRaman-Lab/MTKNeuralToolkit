@@ -1,9 +1,19 @@
 name = "MTKNeuralToolkit"
 uuid = "88376828-b154-4662-bcd7-a3562b4741f6"
 authors = ["Dhruva V. Raman", "Elouan Simonneau"]
-version = "1.0.0-DEV"
+version = "0.0.1-DEV"
+
+[deps]
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
+ModelingToolkitStandardLibrary = "16a59e39-deab-5bd0-87e4-056b12336739"
+OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 
 [compat]
+Distributions = "0.25.120"
+ModelingToolkit = "9.75.0"
+ModelingToolkitStandardLibrary = "2.21.1"
+OrdinaryDiffEq = "6.97.0"
 julia = "1.11"
 
 [extras]
