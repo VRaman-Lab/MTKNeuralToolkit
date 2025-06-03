@@ -46,7 +46,7 @@ end
  #     return connected_system
  # end
 
-function build_neuron(neuron; channels, input)
+function build_neuron(neuron, input; channels)
      channel_connections = [[
          connect(channel.p, neuron.p),
          connect(neuron.ground.g, neuron.n, channel.n)
@@ -54,8 +54,8 @@ function build_neuron(neuron; channels, input)
 
      input_connection = connect(input.output, neuron.I)
      calcium_connection = [[
-                        connect(channel.reversal.ca.p, neuron.ca.p),
-                        connect(neuron.ca.n,  channel.reversal.ca.n)
+                        connect(channel.reversal.ca.p, neuron.ca.p),            #Gates implementation of port or terminal
+                        connect(neuron.ca.n,  channel.reversal.ca.n)            #Defines what they listen and push to -> Pretty nifty
                     ] for channel in channels if hasproperty(channel.reversal, :ca) ] # IF HAS CALCIUM NEED TO ADD TODO
 
     calcium_flux_connections = [[
@@ -68,18 +68,37 @@ function build_neuron(neuron; channels, input)
      return connected_system
  end
 
-function build_synapse(channel, pre_n, post_n)
-    channel_connection = [
-        connect(channel.p, post_n.p),
-        connect(channel.n, post_n.n),
-        connect(pre_n.V, channel.v),
-        connect(post_n.V, channel.v_post)
-        ]
+function build_neuron(neuron; channels)
+    channel_connections = [[
+         connect(channel.p, neuron.p),
+         connect(neuron.ground.g, neuron.n, channel.n)
+     ] for channel in channels]
 
-    connected_system = compose(ODESystem(channel_connection, t, name=nameof(channel)), 
-                              [channel, pre_n, post_n])
+     input_connection = neuron.I.u ~ 0
+     calcium_connection = [[
+                        connect(channel.reversal.ca.p, neuron.ca.p),            #Gates implementation of port or terminal
+                        connect(neuron.ca.n,  channel.reversal.ca.n)            #Defines what they listen and push to -> Pretty nifty
+                    ] for channel in channels if hasproperty(channel.reversal, :ca) ] # IF HAS CALCIUM NEED TO ADD TODO
+
+    calcium_flux_connections = [[
+            connect(channel.conductance.ca.p, neuron.ca.p),
+            # connect(neuron.ca.n, channel.conductance.ca.p),
+     ] for channel in channels if hasproperty(channel.conductance, :ca) ]
+
+     connections = vcat(channel_connections..., input_connection, calcium_connection..., calcium_flux_connections...)
+     connected_system = compose(ODESystem(connections, t, name=nameof(neuron)), [channels..., neuron])
+     return connected_system
+ end
+
+function add_synapse(channel, pre_neuron, post_neuron)
+    channel_connection = [
+        connect(channel.pre, pre_neuron.soma.p),
+        connect(channel.post, post_neuron.soma.p),
+        #connect(channel.ground, pre_neuron.soma.n),
+        #connect(channel.ground, post_neuron.soma.n)
+    ]
+    connected_system = compose(ODESystem(channel_connection, t, name=nameof(channel)),
+        [channel, pre_neuron, post_neuron])
     return connected_system
 end
-
-
 

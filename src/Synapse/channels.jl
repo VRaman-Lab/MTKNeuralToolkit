@@ -1,5 +1,5 @@
 @mtkmodel E_syn_gates begin
-    @extend v,i = oneport = OnePort()
+    @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()
     @parameters begin
         g, [description = "Conductance"]
         E = 0.0
@@ -11,18 +11,17 @@
         s_hat(t)
         tau_s(t)
         s(t)
-        v_post(t)
     end
     @equations begin
-        s_hat(v) ~ 1.0 / (1.0 + exp((Vth - v) / sigma))
-        tau_s(v) ~ (1.0 - s_hat(v)) / k_
-        D(s) ~ (1/tau_s(v)) * (s_hat(v) - s)
-        i ~ g * s * (v_post - E)
+        s_hat ~ 1.0 / (1.0 + exp((Vth - v_pre) / sigma))
+        tau_s ~ (1.0 - s_hat) / k_
+        D(s) ~ (1/tau_s) * (s_hat - s)
+        i_post ~ g * s * (v_post - E)
     end
 end
 
 @mtkmodel I_syn_gates begin
-    @extend v,i = oneport = OnePort()
+    @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()
     @parameters begin
         g, [description = "Conductance"]
         E = -70.0
@@ -34,12 +33,11 @@ end
         s_hat(t)
         tau_s(t)
         s(t)
-        v_post(t)
     end
     @equations begin
-        s_hat(v) ~ 1.0 / (1.0 + exp((Vth - v) / sigma))
-        tau_s(v) ~ (1.0 - s_hat(v)) / k_
-        D(s) ~ (1/tau_s(v)) * (s_hat(v) - s)
-        i ~ g * s * (v_post - E)
+        s_hat ~ 1.0 / (1.0 + exp((Vth - v_pre) / sigma))
+        tau_s ~ (1.0 - s_hat) / k_
+        D(s) ~ (1/tau_s) * (s_hat - s)
+        i_post ~ g * s * (v_post - E)
     end
 end

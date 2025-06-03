@@ -1,5 +1,6 @@
 module Synapse
-import ..MTKNeuralToolkit
+import ..MTKNeuralToolkit: DirectionalTwoPort
+
 
 using ModelingToolkit
 using ModelingToolkitStandardLibrary.Electrical

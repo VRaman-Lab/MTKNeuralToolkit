@@ -16,7 +16,6 @@
 #     end
 # end
 
-
 @mtkmodel calciumreversal begin
     @extend v, i = oneport = OnePort()
     @variables begin
@@ -87,7 +86,7 @@ end
 end
 
 @mtkmodel kcagates begin
-    @extend v, i = oneport = OnePort()
+    @extend v, i = oneport = OnePort()          #For listening to 
     @parameters begin
         g, [description = "Conductance"]
         E, [description = "Reversal"]

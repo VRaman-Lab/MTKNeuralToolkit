@@ -5,6 +5,7 @@
 #
 #
 #
+#=
 1. If channel reversal has a Ca Subsystem, then hook up to calcium concentration
 
 2. If channel gate has a ca subsystem, then hook up to calcium flux 
@@ -86,3 +87,4 @@ end
 
 
 
+=#
