@@ -13,10 +13,4 @@ using ModelingToolkit: t_nounits as t, D_nounits as D
 include("soma.jl")
 include("channels.jl")
 
-
-function tester()
-    println("Liu")
-    return IonicPort
-end
-
 end
