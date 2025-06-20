@@ -35,6 +35,18 @@ function build_channel(conductance, reversal;name)
      return compose(ODESystem(connections, t; name), [p,n,conductance,reversal])
 end
 
+function build_channel_ann(conductance, reversal;name)
+
+    @named p = Pin()
+    @named n = Pin()
+    connections = [
+        connect(conductance.oneport.p, reversal.n)
+        connect(conductance.oneport.n, n)
+        connect(reversal.p, p)
+    ]
+     return compose(ODESystem(connections, t; name), [p,n,conductance,reversal])
+end
+
  # function build_neuron(neuron; channels, input)
  #     channel_connections = [[
  #         connect(channel.p, neuron.p),

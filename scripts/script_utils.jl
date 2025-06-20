@@ -97,17 +97,18 @@ function build_Liu(input=nothing; name=:soma)
     if input === nothing
         neur = build_neuron(fn;  channels = [KCa, Na, CaS, CaT, K, DRK, H, Leak])
     else
-        neur = build_neuron(fn, inp;  channels = [KCa, Na, CaS, CaT, K, DRK, H, Leak])
+        neur = build_neuron(fn, input;  channels = [KCa, Na, CaS, CaT, K, DRK, H, Leak])
     end
     return(neur)
 end
 
-function put_synapse(pre, post, syn_type::SynapseType, weight::Float64; name=:syn, custom_synapse::Union{CustomSynapseParams, Nothing}=nothing)
-    if syn_type == Exc
+function put_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:syn, custom_synapse::Union{CustomSynapseParams, Nothing}=nothing)
+    synapse_type in SYNAPSE_TYPES || throw(ArgumentError("Invalid synapse type"))
+    if synapse_type == :Exc
         @named syn_channel = Synapse.E_syn_gate_preset(;g=weight, name =name)
-    elseif syn_type == Inh
+    elseif synapse_type == :Inh
         @named syn_channel = Synapse.I_syn_gate_preset(;g=weight, name =name)
-    elseif syn_type == Custom
+    elseif synapse_type == :Custom
         if custom_synapse === nothing
             throw(ArgumentError("If you want a custom synapse, you need to give a custom synapse, smartypants"))
         end
@@ -158,4 +159,62 @@ function parse_sol_for_membrane_voltages(sol::ODESolution)
     state_vars = unknowns(sol.prob.f.sys)
     voltage_states = parse_sol_for_voltage(state_vars)
     return voltage_states
+end
+
+function make_dense_layer(num_neurons::Int, neuron_type::Symbol, synapse_type::Symbol, weight = 0.1, pre_neuron=nothing, post_neuron=nothing,  custom_neuron::Union{CustomNeuronParams, Nothing}=nothing)
+    neuron_type in NEURON_TYPES || throw(ArgumentError("Invalid neuron type"))
+    synapse_type in SYNAPSE_TYPES || throw(ArgumentError("Invalid synapse type"))
+    if post_neuron === pre_neuron === nothing
+        throw(ArgumentError("One of pre_neuron or post_neuron must be provided. These can be a single neuron or an array of neurons."))
+    end
+    neurons = make_neurons_for_dense_layer(num_neurons, neuron_type)
+    network = connect_neurons_for_dense_layer(pre_neuron, post_neuron, neurons, synapse_type, weight)
+    return network
+end
+
+function make_neurons_for_dense_layer(num_neurons, neuron_type)
+    neurons = []
+    iterator = 0
+    if neuron_type == :IF
+        println("todo my bad lol")
+    elseif neuron_type == :LIF
+        println("todo my bad lol")
+    elseif neuron_type == :HH
+        for iterator in iterator:num_neurons
+            push!(neurons, build_HH(;name=Symbol("d$iterator")))
+        end
+    elseif neuron_type == :Liu
+        for iterator in iterator:num_neurons
+            push!(neurons, build_Liu(;name=Symbol("d$iterator")))
+        end    
+    elseif neuron_type == :Custom
+        if custom_neuron === nothing
+            throw(ArgumentError("If you want a custom neuron, you need to give arguments for a custom neuron, smartypants"))
+        end
+        println("todo my bad lol")
+    end
+    return neurons
+end
+
+function connect_neurons_for_dense_layer(pre_neuron=nothing, post_neuron=nothing, neurons, synapse_type, weight)
+    synterator = 0
+    network = []
+    if !isnothing(pre_neuron)
+        for target in pre_neuron'
+
+            
+            for neuron in neurons
+                push!(network, put_synapse(target, neuron, synapse_type, weight, name =Symbol("ds$synterator")))
+                synterator+=1
+            end
+        end
+    else
+        for target in post_neuron
+            for neuron in neurons
+                push!(network, put_synapse(target, neuron, synapse_type, weight, name =Symbol("ds$synterator")))
+                synterator+=1
+            end
+        end
+    end
+    return network
 end

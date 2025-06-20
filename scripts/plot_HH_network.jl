@@ -9,6 +9,7 @@ using ModelingToolkit: t_nounits as t, D_nounits as D
 import MTKNeuralToolkit.Synapse as Synapse
 import MTKNeuralToolkit.HodgkinHuxley as HH
 import MTKNeuralToolkit.Liu as Liu
+import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
 using MTKNeuralToolkit
 include("script_utils.jl")
 #include("script_types.jl")
@@ -22,18 +23,18 @@ using Plots
 @named inp = TimeVaryingFunction(f=t -> min(log(t,10), 1.0))
 @named inp2 = TimeVaryingFunction(f=t -> exp(sin(t)))
 #--Workflow 1
-network = build_network([inp, inp2], [], [], 5, 0, 0, [["n0","n2",Exc,0.6],["n0","n3",Exc,0.6],["n0","n4",Exc,1.0], ["n2","n5",Exc,10.0],["n3","n5",Exc,10.0],["n4","n5",Inh,0.2],["n5","n4",Inh,0.2],["n5","n1",Exc,1.0],["n5","n1",Exc,1.0],["n1","n4",Inh,1.0],["n1","n5",Inh,1.0]])
+#connections = [["n0","n2",:Exc,0.6],["n0","n3",:Exc,0.6],["n0","n4",:Exc,1.0], ["n2","n5",:Exc,10.0],["n3","n5",:Exc,10.0],["n4","n5",:Inh,0.2],["n5","n4",:Inh,0.2],["n5","n1",:Exc,1.0],["n5","n1",:Exc,1.0],["n1","n4",:Inh,1.0],["n1","n5",:Inh,1.0]]
+#network = build_network([inp, inp2], [], [], 5, 0, 0, connections)
 
 #--Workflow 2
-#=
+
 @named n1 = build_Liu(inp; name=:n1)
 @named n2 = build_HH(;name=:n2)
-s1 = put_synapse(n1,n2,true,0.1; name=:s1)
+s1 = put_synapse(n1,n2,:Exc,0.1; name=:s1)
 network = compose(ODESystem([], t; name=:network), [s1])
-network = structural_simplify(network)=#
+network = structural_simplify(network)
 #If using Liu neurons change solver from Tsit5 -> TRBDF2. 
 #Might need to manually give more maxiters as well through solve(x,y, maxiters=[more lol])
-
 
 prob = ODEProblem(network, Pair[], (0.0, 500.0) )
 sol = solve(prob, TRBDF2());

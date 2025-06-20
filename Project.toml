@@ -5,17 +5,23 @@ version = "0.0.1-DEV"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
+ModelingToolkitNeuralNets = "f162e290-f571-43a6-83d9-22ecc16da15f"
 ModelingToolkitStandardLibrary = "16a59e39-deab-5bd0-87e4-056b12336739"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+SciMLStructures = "53ae85a6-f571-4167-b2af-e1d143709226"
 
 [compat]
 Distributions = "0.25.120"
+Lux = "1.13.4"
 ModelingToolkit = "9.69.0"
+ModelingToolkitNeuralNets = "1.7.0"
 ModelingToolkitStandardLibrary = "2.19.1"
 OrdinaryDiffEq = "6.97.0"
 Pkg = "1.11.0"
+SciMLStructures = "1.7.0"
 julia = "1.11"
 
 [extras]
