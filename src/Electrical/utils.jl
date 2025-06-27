@@ -32,7 +32,7 @@ function build_channel(conductance, reversal;name)
         connect(conductance.n, n)
         connect(reversal.p, p)
     ]
-     return compose(ODESystem(connections, t; name), [p,n,conductance,reversal])
+    return compose(ODESystem(connections, t; name), [p,n,conductance,reversal])
 end
 
 function build_channel_ann(conductance, reversal;name)
@@ -77,13 +77,13 @@ function build_neuron(neuron, input; channels)
     #=println("__________________")
     println("channel_connections")
     println(channel_connections)
-    println("__________________")=#
-
+    println("__________________")
+    =#
      input_connection = connect(input.output, neuron.I)
      calcium_connection = [[
-                        connect(channel.reversal.ca.p, neuron.ca.p),            #Gates implementation of port or terminal
-                        connect(neuron.ca.n,  channel.reversal.ca.n)            #Defines what they listen and push to -> Pretty nifty
-                    ] for channel in channels if hasproperty(channel.reversal, :ca) ] # IF HAS CALCIUM NEED TO ADD TODO
+                        connect(channel.reversal.ca.p, neuron.ca.p),            
+                        connect(neuron.ca.n,  channel.reversal.ca.n)            
+                    ] for channel in channels if hasproperty(channel.reversal, :ca) ]
 
     calcium_flux_connections = [[
             connect(channel.conductance.ca.p, neuron.ca.p),
