@@ -1,21 +1,3 @@
-# @mtkmodel LiuCalciumDynamics begin
-#     @structural_parameters begin
-#         flux_multiplier =  0.939488
-#         Ca∞ = 0.5
-#     end
-#     @variables begin
-#         Ca(t) = 0.5, [description = "calcium concentration"]
-#         E(t), [description = "calcium reversal"]
-#     end
-#     @parameters begin
-#         C, [description = "neuron capacitance"]
-#         τ = 10.0, [description = "calcium time constant"] 
-#     end
-#     @equations begin
-#         D(Ca) ~ (1 / τCa) * (-Ca + Ca∞ + (flux_multiplier * currents / C))
-#     end
-# end
-
 @mtkmodel calciumreversal begin
     @extend v, i = oneport = OnePort()
     @variables begin
@@ -215,7 +197,6 @@ end
 
 # connect(Kca.a.p, soma.ca.n )
 # connect(Kca.)
-
 
 NaGates(  ;name=:conductance , kwargs...) = nagates( ;name , kwargs...)
 KCaGates( ;name=:conductance , kwargs...) = kcagates( ;name, kwargs...)

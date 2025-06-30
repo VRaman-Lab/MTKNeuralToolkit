@@ -23,7 +23,6 @@
     end
 end
 
-
 """
 Leak Channel is just a conductance
 """
