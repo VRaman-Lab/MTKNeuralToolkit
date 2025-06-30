@@ -1,52 +1,68 @@
 #include("script_types.jl")
 
-
-function build_network(inpHH::Vector, inpLiu::Vector, inpIF::Vector, noinpHH::Int, noinpLiu::Int, noinpIF::Int,connections::Vector)
-    iterator = 0
-    synterator = 0
+function build_network(connections::Dict; custom_neurons::Vector=[],
+    inpHH::Vector=[], inpLiu::Vector=[], inpIF::Vector=[], 
+    noinpHH::Int=0, noinpLiu::Int=0, noinpIF::Int=0, allowCreateIndependentNeurons::Bool=false)
+    if isempty(connections)
+        error("Connections must be provided.")
+    end
+    iterator = 1
     neurons = Dict{String, Any}()
     network = []
-
+    for _ in custom_neurons
+        neurons["n$iterator"] = custom_neurons
+        iterator+=1
+    end
     for inp in inpHH
         x = build_HH(inp; name=Symbol("n$iterator"))
         neurons["n$iterator"] = x
-        #push!(network, x)
+        if allowCreateIndependentNeurons
+            push!(network, x)
+        end
         iterator+=1
     end
     for inp in inpLiu
         x = build_Liu(inp; name=Symbol("n$iterator"))
         neurons["n$iterator"] = x
-        #push!(network, x)
+        if allowCreateIndependentNeurons
+            push!(network, x)
+        end
         iterator+=1
     end
     for inp in inpIF
         x = build_IF(inp; name=Symbol("n$iterator"))
         neurons["n$iterator"] = x
-        #push!(network, x)
+        if allowCreateIndependentNeurons
+            push!(network, x)
+        end
         iterator+=1
     end
     for h in 1:noinpHH
         x = build_HH(name=Symbol("n$iterator"))
         neurons["n$iterator"] = x
-        #push!(network, x)
+        if allowCreateIndependentNeurons
+            push!(network, x)
+        end
         iterator+=1
     end
     for h in 1:noinpLiu
         x = build_Liu(name=Symbol("n$iterator"))
         neurons["n$iterator"] = x
-        #push!(network, x)
+        if allowCreateIndependentNeurons
+            push!(network, x)
+        end
         iterator+=1
     end
     for h in 1:noinpIF
         x = build_IF(name=Symbol("n$iterator"))
         neurons["n$iterator"] = x
-        #push!(network, x)
+        if allowCreateIndependentNeurons
+            push!(network, x)
+        end
         iterator+=1
     end
-    for (pre,post,type,weight) in connections
-        #push!(network, put_synapse(neurons[pre], neurons[post], type, weight))
-        x = put_synapse(neurons[pre], neurons[post], type, weight; name=Symbol("s$synterator"))
-        synterator+=1
+    for ((pre, post), (conn_params)) in connections
+        x = put_synapse(neurons[pre], neurons[post], conn_params.type, conn_params.weight; name=Symbol("s_$(pre)$(post)"))
         push!(network, x)
     end
     final_system = compose(ODESystem([], t; name=:network), network)
@@ -60,8 +76,7 @@ function build_IF(input=nothing; name=:IF)
     println("3")
     println("2")
     println("1")
-    println("Never gonna give you up")
-    return string
+    error("Never gonna give you up")
     #TODO Everything lol
 end
 
@@ -161,7 +176,7 @@ function parse_sol_for_membrane_voltages(sol::ODESolution)
     return voltage_states
 end
 
-function make_dense_layer(num_neurons::Int, neuron_type::Symbol, synapse_type::Symbol, weight = 0.1, pre_neuron=nothing, post_neuron=nothing,  custom_neuron::Union{CustomNeuronParams, Nothing}=nothing)
+#=function make_dense_layer(num_neurons::Int, neuron_type::Symbol, synapse_type::Symbol, weight = 0.1, pre_neuron=nothing, post_neuron=nothing,  custom_neuron::Union{CustomNeuronParams, Nothing}=nothing)
     neuron_type in NEURON_TYPES || throw(ArgumentError("Invalid neuron type"))
     synapse_type in SYNAPSE_TYPES || throw(ArgumentError("Invalid synapse type"))
     if post_neuron === pre_neuron === nothing
@@ -217,4 +232,60 @@ function connect_neurons_for_dense_layer(pre_neuron=nothing, post_neuron=nothing
         end
     end
     return network
+end
+=#
+
+function inspect_network(prob::Union{ODEProblem,ODESystem})
+    sys = if prob isa ODEProblem
+        prob.f.sys
+    else
+        prob 
+    end
+    
+    states = unknowns(sys)
+    
+    neurons = Dict{String, Vector{Any}}()
+    for state in states
+        state_str = string(state)
+        if occursin(r"₊v\(t\)$", state_str)
+            parts = split(replace(state_str, r"₊v\(t\)$" => ""), "₊")
+            neuron_name = parts[end]
+            
+            if !haskey(neurons, neuron_name)
+                neurons[neuron_name] = Any[]
+            end
+            push!(neurons[neuron_name], state)
+        end
+    end
+    
+    neuron_synapses = Dict{String, Vector{String}}()
+    for state in states
+        state_str = string(state)
+        for (neuron_name, _) in neurons
+            if occursin(neuron_name, state_str) && occursin(r"s\d+", state_str)
+                match_obj = match(r"(s\d+)", state_str)
+                if match_obj !== nothing
+                    syn_name = match_obj[1]
+                    if !haskey(neuron_synapses, neuron_name)
+                        neuron_synapses[neuron_name] = String[]
+                    end
+                    if !(syn_name in neuron_synapses[neuron_name])
+                        push!(neuron_synapses[neuron_name], syn_name)
+                    end
+                end
+            end
+        end
+    end
+
+    println("=== Network Inspection ===")
+    println("\nNeurons ($(length(neurons))):")
+    for (name, states) in sort(neurons)
+        println("  $name: $(length(states)) state(s)")
+        if haskey(neuron_synapses, name)
+            println("    Connected synapses: ", join(sort(neuron_synapses[name]), ", "))
+        end
+    end
+    println("__________________________")
+    
+    return (neurons=neurons, neuron_synapses=neuron_synapses, all_states=states)
 end
