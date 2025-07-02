@@ -70,11 +70,10 @@ end
         ICa.u ~ i
         D(m) ~  (1/τm)*(m∞ - m) 
         D(h) ~ (1/τh)*(h∞ - h)
-        #Ca ~ E # TODO CHECK CONSISTENCY!!!
         E ~ (500.0) * (8.6174e-5) * (283.15) * log(max((3000.0 / Ca), 0.001))
 
         #i ~ g * m^3*h * v 
-        i ~ g * m^3*h * (v - E)
+        i ~ g * m^3*h * (v)
     end
 end
 
@@ -107,11 +106,10 @@ end
         ICa.u ~ i
         D(m) ~  (1/τm)*(m∞ - m) 
         D(h) ~ (1/τh)*(h∞ - h)
-        #Ca ~ E # TODO CHECK CONSISTENCY!!!
         E ~ (500.0) * (8.6174e-5) * (283.15) * log(max((3000.0 / Ca), 0.001))
 
         #i ~ g * m^3*h * v 
-        i ~ g * m^3*h * (v - E)
+        i ~ g * m^3*h * (v)
     end
 end
 
