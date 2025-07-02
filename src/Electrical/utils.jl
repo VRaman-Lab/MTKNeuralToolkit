@@ -22,7 +22,6 @@ function build_channel_old(gate, Reversal)
     end
 end
 
-
 function build_channel(conductance, reversal;name)
 
     @named p = Pin()
@@ -56,7 +55,7 @@ function build_neuron(neuron, input; channels)
      connections = vcat(channel_connections..., input_connection, calcium_flux_connections...)
      connected_system = compose(ODESystem(connections, t, name=nameof(neuron)), [channels..., neuron,input])
      return connected_system
- end
+end
 
 function build_neuron(neuron; channels)
     channel_connections = [[
@@ -78,7 +77,7 @@ function build_neuron(neuron; channels)
      connections = vcat(channel_connections..., input_connection, calcium_flux_connections...)
      connected_system = compose(ODESystem(connections, t, name=nameof(neuron)), [channels..., neuron])
      return connected_system
- end
+end
 
 function add_synapse_nu(channel, pre_neuron, post_neuron)
     pre_name = nameof(pre_neuron) 
