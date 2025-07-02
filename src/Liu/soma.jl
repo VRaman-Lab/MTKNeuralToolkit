@@ -13,18 +13,16 @@
     @components begin
         I = RealInput()
         ground = Ground()
-        # CaGround = IonicGround()
-        ca = IonicTerminal()
+        CaGround = IonicGround()
+        ca = IonicPort()
     end
     @equations begin
         D(v) ~ (i + I.u) / C
         connect(ground.g, oneport.n)
-        # connect(CaGround.g, ca.n)
+        connect(CaGround.g, ca.n)
         V ~ v
         D(Ca) ~ (1 / τ) * (-Ca + Ca∞ + (flux_multiplier * ca.i / C))
         Ca ~ ca.q
     end
 end
-
-
 

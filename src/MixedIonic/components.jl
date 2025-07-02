@@ -25,7 +25,7 @@ end
         n = IonicPin()
     end
     @variables begin
-        q(t)                    #Unidirectional, only for listening to calcium qs
+        q(t)                    #Monodirectional, only for listening to calcium qs
         i(t)
     end
     @equations begin
@@ -33,6 +33,7 @@ end
         n.q ~ 0
         n.i ~ 0
         i ~ p.i
+        p.i ~ 0
     end
 end
 
