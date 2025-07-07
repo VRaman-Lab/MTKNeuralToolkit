@@ -1,4 +1,4 @@
-#include("script_types.jl")
+import MTKNeuralToolkit.Config as config
 
 function build_network_quick(connections::Dict; custom_neurons::Vector=[],
     inpHH::Vector=[], inpLiu::Vector=[], inpIF::Vector=[], 
@@ -74,8 +74,7 @@ function build_network(connections::Dict, neurons::Dict)
     if isempty(neurons)
         error("Neurons must be provided.")
     end
-    network = []
-    network = create_network_from_connections(connections, neurons, network)
+    network = create_network_from_connections(connections, neurons, [])
     final_system = compose(ODESystem([], t; name=:network), network)
     return structural_simplify(final_system)
 end
@@ -117,13 +116,13 @@ end
 function put_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:syn, custom_synapse::Union{CustomSynapseParams, Nothing}=nothing)
     synapse_type in SYNAPSE_TYPES || throw(ArgumentError("Invalid synapse type"))
     if synapse_type == :Exc
-        @named syn_channel = Synapse.E_syn_gate_preset(;g=weight, name =:E_Syn)
+        @named syn_channel = Synapse.E_syn_gate_preset(;g=weight, name =name)
     elseif synapse_type == :Inh
-        @named syn_channel = Synapse.I_syn_gate_preset(;g=weight, name =:I_syn)
+        @named syn_channel = Synapse.I_syn_gate_preset(;g=weight, name =name)
     elseif synapse_type == :Chol
-        @named syn_channel = Synapse.CholinergicSynapse(;g=weight, name =:Chol_syn)
+        @named syn_channel = Synapse.CholinergicSynapse(;g=weight, name =name)
     elseif synapse_type == :Glut
-        @named syn_channel = Synapse.GlutamatergicSynapse(;g=weight, name =:Glut_syn)
+        @named syn_channel = Synapse.GlutamatergicSynapse(;g=weight, name =name)
     elseif synapse_type == :Custom
         if custom_synapse === nothing
             throw(ArgumentError("If you want a custom synapse, you need to give a custom synapse, smartypants"))
@@ -180,7 +179,7 @@ function build_Liu(input=nothing; name=:soma)
     return(neur)
 end
 
-function build_Prinz(input=nothing; name=:soma, config=PrinzConfig())
+function build_Prinz(input=nothing; name=:soma, config=config.PrinzConfig())
 
     Na =   build_channel(Prinz.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)
     KCa =  build_channel(Prinz.KCaGates(;g=config.KCa_g, E=config.KCa_E), FixedReversal(;E=config.KCa_E); name = :KCa)

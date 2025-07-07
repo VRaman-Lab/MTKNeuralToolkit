@@ -13,5 +13,5 @@ using Random
 using OrdinaryDiffEq
 
 include("channels.jl")
-
+include("rmm_utils.jl")
 end

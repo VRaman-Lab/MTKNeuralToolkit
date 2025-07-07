@@ -19,20 +19,16 @@ import MTKNeuralToolkit
 using Plots
 using LinearAlgebra
 
-A_Mat = [0.6065, 0.8465, 0.9048, 0.9310, 0.9512, 0.9834, 0.9900, 0.9929]
-B_Vec = [0.3935, 0.1535, 0.0952, 0.0690, 0.0488, 0.0166, 0.0100, 0.0071]
 Na =    build_channel(HH.NaGates(;g=40, E = 55), FixedReversal(;E=55); name = :Na)      
 K =     build_channel(HH.KGates( ;g=35, E = -77), FixedReversal(;E=-77); name = :K)
 Leak =  build_channel(HH.LGates( ;g=0.3, E = -65), FixedReversal(;E=-65); name = :Leak)
-rmm_channel = build_channel(RMM.RMMVecf(g=0.1, E=-65,  A_Mat=A_Mat, B_Vec=B_Vec;name=:conductance), FixedReversal(E=-77); name =:RMM)
+rmm_channel = build_channel_explicit(RMM.RMMVecf_v3(;τ=[0.1, 0.3, 0.5, 0.7, 1.0, 3.0, 5.0, 7.0]), FixedReversal(E=-77); name =:RMM)
 
 @named inp = TimeVaryingFunction(f=t -> sin(t))
 fn = BasicSoma(; C=1, name = :soma)
 println("________________")
 neur = build_neuron(fn, inp; channels = [rmm_channel, Na, K, Leak])
 neur_c = structural_simplify(neur) 
-
-
 
 prob = ODEProblem(neur_c, Pair[], (0.0, 200.0) )
 @time sol = solve(prob, Rodas5());

@@ -23,20 +23,20 @@ using Plots
 
 
 #s1() = Synpase(bla)
-#=
-@named inp2 = TimeVaryingFunction(f=t -> exp(sin(t)))
+
+@named inp2 = TimeVaryingFunction(f=t -> (sin(t)))
 neurons = Dict(
-    "AB" => build_Liu(inp2;name=:AB),
-    "PD" => build_Liu(;name=:PD),
-    "LP" => build_Liu(;name=:LP)
+    "AB" => build_Prinz(inp2;name=:AB),
+    "PD" => build_Prinz(;name=:PD),
+    "LP" => build_Prinz(;name=:LP)
 ) 
 connections = Dict(
-    ("AB", "LP") => (type=:Inh, weight=1.0),
-    ("PD", "LP") => (type=:Inh, weight=1.0),
+    ("AB", "LP") => (type=:Chol, weight=1.0),
+    ("PD", "LP") => (type=:Glut, weight=1.0),
     ("LP", "PD") => (type=:Inh, weight=1.0)
 )
-network = build_network(connections, neurons)=#
-@named inp = TimeVaryingFunction(f=t -> min(log(t,10), 1.0))
+network = build_network(connections, neurons)
+#=@named inp = TimeVaryingFunction(f=t -> min(log(t,10), 1.0))
 @named inp2 = TimeVaryingFunction(f=t -> exp(sin(t)))
 #--Workflow 1
 connections = Dict(
@@ -51,7 +51,8 @@ connections = Dict(
     ("n2", "n5") => (type=:Inh, weight=1.0),
     ("n2", "n6") => (type=:Inh, weight=1.0)
 )
-network2 = build_network_quick(connections; inpHH=[inp, inp2], noinpHH=5)=#
+network = build_network_quick(connections; inpHH=[inp, inp2], noinpHH=5)
+=#
 #network = build_networkv2(connections, neurons)
 #--Workflow 2
 #=
@@ -64,7 +65,7 @@ network = structural_simplify(network)=#
 #If using Liu neurons change solver from Tsit5 -> TRBDF2. 
 #Might need to manually give more maxiters as well through solve(x,y, maxiters=[more lol])
 
-prob = ODEProblem(network2, Pair[], (0.0, 500.0))
+prob = ODEProblem(network, Pair[], (0.0, 500.0))
 #inspect_network(network)
 sol = solve(prob, TRBDF2());
 

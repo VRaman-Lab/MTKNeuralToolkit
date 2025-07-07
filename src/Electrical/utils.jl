@@ -14,6 +14,18 @@ function build_channel(conductance, reversal;name)
     return compose(ODESystem(connections, t; name), [p,n,conductance,reversal])
 end
 
+function build_channel_explicit(conductance, reversal;name)
+
+    @named p = Pin()
+    @named n = Pin()
+    connections = [
+        connect(conductance.oneport.p, reversal.n)
+        connect(conductance.oneport.n, n)
+        connect(reversal.p, p)
+    ]
+    return compose(ODESystem(connections, t; name), [p,n,conductance,reversal])
+end
+
 function build_neuron(neuron, input; channels)
      channel_connections = [[
          connect(channel.p, neuron.p),
@@ -74,7 +86,7 @@ end
 function add_synapse(channel, pre_neuron, post_neuron)
     pre_name = nameof(pre_neuron) 
     post_name = nameof(post_neuron)
-    println("Names", pre_name, "__", post_name)
+    println("Names:  ", pre_name, "__", post_name)
     
     channel_connection = [
         connect(channel.pre, getproperty(pre_neuron, pre_name).p),
