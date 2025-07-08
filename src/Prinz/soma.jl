@@ -3,7 +3,7 @@
         C, [description = "Capacitance"]
         flux_multiplier =  0.939488
         Ca∞ = 0.5
-        τ = 10.0, [description = "calcium time constant"] 
+        τ = 200.0, [description = "calcium time constant"] 
     end
     @extend v, i = oneport = OnePort(; v)
     @variables begin

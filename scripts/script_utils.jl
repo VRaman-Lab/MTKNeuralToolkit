@@ -104,6 +104,17 @@ function create_network_from_connections(connections::Dict{Tuple{String, String}
     return network
 end
 
+function create_network_from_connections(connections::Dict{Tuple{String, String}, Vector{@NamedTuple{type::Symbol, weight::Float64}}}, neurons::Dict, network::Vector)
+    for ((pre, post), synapses) in connections
+        for (i, synapse_params) in enumerate(synapses)
+            x = put_synapse(neurons[pre], neurons[post], synapse_params.type, synapse_params.weight; 
+                          name=Symbol("s_$(pre)$(post)_$(synapse_params.type)_$i"))
+            push!(network, x)
+        end
+    end
+    return network
+end
+
 function create_network_from_connections(connections::Dict{Tuple{String, String}, Function}, neurons::Dict, network::Vector)
     for ((pre, post), (synapse_func)) in connections
         @named x = synapse_func()
