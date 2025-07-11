@@ -7,6 +7,7 @@ using OrdinaryDiffEq
 using ModelingToolkitStandardLibrary.Blocks: Constant, TimeVaryingFunction 
 using MTKNeuralToolkit 
 import MTKNeuralToolkit.Liu as Liu
+#using script_utils.jl
 using Plots
 
 Na =  build_channel(Liu.NaGates(;g=100, E = 50.0), FixedReversal(;E=50.0); name = :Na)
@@ -27,6 +28,10 @@ neur = structural_simplify(neur)
 prob = ODEProblem(neur, Pair[], (0.0, 400.0) )
 sol = solve(prob, TRBDF2(), maxiters=1e9);
 
+
+#p = plot(sol,idxs=[neur.Na.conductance.m_gate,neur.Na.conductance.h_gate], layout=(4,1), subplot=1)
+#plot!(p, sol, idxs=[neur.Kca.conductance.n_gate], subplot=2)
+#plot!(p, sol, idxs=[neur.soma.v], subplot=3)
 p = plot(layout=(11,1), size=(1200,2000))
 plot!(p, sol, idxs=[neur.Na.conductance.m, neur.Na.conductance.h], subplot=2)
 plot!(p, sol, idxs=[neur.KCa.conductance.m], subplot=3)
@@ -39,3 +44,7 @@ plot!(p, sol, idxs=[neur.soma.v], subplot=9)
 plot!(p, sol, idxs=[neur.soma.Ca], subplot=10)
 plot!(p, sol, idxs=[neur.soma.ca.i], subplot=11)
 gui(p)
+#savefig(p, "neuron_channels.png")
+#plot(sol, idxs=[neur.CaS.conductance.E])
+#plot(sol, idxs=[neur.soma.Ca])
+#plot(sol, idxs=[neur.soma.Ca, neur.soma.v], layout=(2,1))

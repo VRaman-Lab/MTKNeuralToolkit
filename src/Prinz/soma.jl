@@ -21,7 +21,7 @@
         connect(ground.g, oneport.n)
         connect(CaGround.g, ca.n)
         V ~ v
-        D(Ca) ~ (1 / τ) * (-Ca + Ca∞ - (flux_multiplier * ca.i / C))
+        D(Ca) ~ (1 / τ) * (-Ca + Ca∞ + (flux_multiplier * ca.i / C))
         Ca ~ ca.q
     end
 end

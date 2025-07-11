@@ -1,13 +1,5 @@
 import MTKNeuralToolkit.Config as config
 
-"""
-    build_network_quick(connections::Dict; kwargs...)
-
-Automatically generate neurons and build a network from connection specifications.
-Creates HH, Liu, and IF neurons as specified, with automatic naming (n1, n2, ...).
-Use for rapid prototyping when you don't need custom neuron configurations.
-"""
-
 function build_network_quick(connections::Dict; custom_neurons::Vector=[],
     inpHH::Vector=[], inpLiu::Vector=[], inpIF::Vector=[], 
     noinpHH::Int=0, noinpLiu::Int=0, noinpIF::Int=0, allowCreateIndependentNeurons::Bool=false)
@@ -69,21 +61,12 @@ function build_network_quick(connections::Dict; custom_neurons::Vector=[],
         end
         iterator+=1
     end
-    validate_neuron_existence(connections, neurons)
-    validate_no_self_connections(connections)
     create_network_from_connections(connections, neurons, network)
     final_system = compose(ODESystem([], t; name=:network), network)
     return structural_simplify(final_system)
 end
 
-"""
-    build_network(connections::Dict, neurons::Dict, check_connections=true)
-
-Build a network from pre-defined neurons and connection specifications.
-Validates neuron existence and optionally checks for self-connections.
-"""
-
-function build_network(connections::Dict, neurons::Dict, check_connections=true)
+function build_network(connections::Dict, neurons::Dict)
     #To be used for custom neuron-synapse naming schemes
     if isempty(connections)
         error("Connections must be provided.")
@@ -91,21 +74,12 @@ function build_network(connections::Dict, neurons::Dict, check_connections=true)
     if isempty(neurons)
         error("Neurons must be provided.")
     end
-    validate_neuron_existence(connections, neurons)
-    if check_connections validate_no_self_connections(connections) end
     network = create_network_from_connections(connections, neurons, [])
     final_system = compose(ODESystem([], t; name=:network), network)
     return structural_simplify(final_system)
 end
 
-"""
-    build_network(connections::Dict, neurons::Vector, check_connections=true)
-
-Build a network from a vector of neurons, automatically naming them n1, n2, etc.
-Note: neuron names in connections must match the generated names.
-"""
-
-function build_network(connections::Dict, neurons::Vector, check_connections=true)
+function build_network(connections::Dict, neurons::Vector)
     #To be used for programmatic neuron naming
     #Beware that neurons will not have the same name when declaring connections as they will have symbolically within the system
     if isempty(connections)
@@ -114,8 +88,6 @@ function build_network(connections::Dict, neurons::Vector, check_connections=tru
     if isempty(neurons)
         error("Neurons must be provided.")
     end
-    validate_neuron_existence(connections, neurons)
-    if check_connections validate_no_self_connections(connections) end
     neurons_dict = Dict("n$i" => neuron for (i, neuron) in enumerate(neurons))
     network = []
     network = create_network_from_connections(connections, neurons, neurons_dict)
@@ -123,9 +95,6 @@ function build_network(connections::Dict, neurons::Vector, check_connections=tru
     return structural_simplify(final_system)
 end
 
-"""
-Internal: Wire synapses between neurons based on connection specifications.
-"""
 
 function create_network_from_connections(connections::Dict{Tuple{String, String}, @NamedTuple{type::Symbol, weight::Float64}}, neurons::Dict, network::Vector)
     for ((pre, post), (conn_params)) in connections
@@ -155,13 +124,6 @@ function create_network_from_connections(connections::Dict{Tuple{String, String}
     return network
 end
 
-"""
-    put_synapse(pre, post, synapse_type::Symbol, weight::Float64; kwargs...)
-
-Create and connect a synapse between two neurons.
-Supports :Exc, :Inh, :Chol, :Glut, and :Custom synapse types.
-"""
-
 function put_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:syn, custom_synapse::Union{CustomSynapseParams, Nothing}=nothing)
     synapse_type in SYNAPSE_TYPES || throw(ArgumentError("Invalid synapse type"))
     if synapse_type == :Exc
@@ -180,11 +142,6 @@ function put_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:syn
     end
     return add_synapse(syn_channel, pre, post)
 end
-
-"""
-Placeholder for integrate-and-fire neuron implementation.
-"""
-
 function build_IF(input=nothing; name=:IF)
     string = ("Not implemented yet :(")
     println(string)
@@ -196,18 +153,11 @@ function build_IF(input=nothing; name=:IF)
     #TODO Everything lol
 end
 
-"""
-    build_HH(input=nothing; name=:soma, config=HHConfig())
+function build_HH(input=nothing; name=:soma)
 
-Build a Hodgkin-Huxley neuron with Na, K, and leak channels.
-Optional input stimulus and customizable parameters via config.
-"""
-
-function build_HH(input=nothing; name=:soma, config=config.HHConfig())
-
-    Na = build_channel(HH.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)      
-    K = build_channel(HH.KGates(;g=config.K_g, E=config.K_E), FixedReversal(;E=config.K_E); name = :K)
-    Leak = build_channel(HH.LGates(;g=config.Leak_g, E=config.Leak_E), FixedReversal(;E=config.Leak_E); name = :Leak)
+    Na = build_channel(HH.NaGates(;g=40, E = 55), FixedReversal(;E=55); name = :Na)      
+    K = build_channel(HH.KGates( ;g=35, E = -77), FixedReversal(;E=-77); name = :K)
+    Leak = build_channel(HH.LGates( ;g=0.3, E = -65), FixedReversal(;E=-65); name = :Leak)
 
     fn=BasicSoma(; C=1, name = name)
 
@@ -219,23 +169,16 @@ function build_HH(input=nothing; name=:soma, config=config.HHConfig())
     return(neur)
 end
 
-"""
-    build_Prinz(input=nothing; name=:soma, config=PrinzConfig())
+function build_Liu(input=nothing; name=:soma)
 
-Build a Prinz STG neuron model with calcium dynamics.
-Commonly used for central pattern generator networks.
-"""
-
-function build_Liu(input=nothing; name=:soma, config=config.LiuConfig())
-
-    Na =   build_channel(Liu.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)
-    KCa =  build_channel(Liu.KCaGates(;g=config.KCa_g, E=config.KCa_E), FixedReversal(;E=config.KCa_E); name = :KCa)
-    CaS =  build_ca_channel(Liu.CaSGates(;g=config.CaS_g); name = :CaS)
-    CaT =  build_ca_channel(Liu.CaTGates(;g=config.CaT_g); name = :CaT)
-    K =    build_channel(Liu.KGates(;g=config.K_g, E=config.K_E), FixedReversal(;E=config.K_E); name = :K)
-    DRK =  build_channel(Liu.DRKGates(;g=config.DRK_g, E=config.DRK_E), FixedReversal(;E=config.DRK_E); name = :KDR)
-    H  = build_channel(Liu.HGates(;g=config.H_g, E=config.H_E), FixedReversal(;E=config.H_E); name = :H )
-    Leak = build_channel(Liu.LeakGates(;g=config.Leak_g, E=config.Leak_E), FixedReversal(;E=config.Leak_E); name = :Leak)
+    Na =   build_channel(Liu.NaGates(;g=100, E = 50.0), FixedReversal(;E=50.0); name = :Na)
+    KCa =  build_channel(Liu.KCaGates(;g=10.0, E = -80.0), FixedReversal(;E=-80.0); name = :KCa)
+    CaS =  build_channel(Liu.CaSGates(;g=1.3), FixedReversal(;E=0.0); name = :CaS)
+    CaT =  build_channel(Liu.CaTGates(;g=3.0), FixedReversal(;E=0.0); name = :CaT)
+    K =    build_channel(Liu.KGates(;g=5.0, E = -80.0), FixedReversal(;E=-80.0); name = :K)
+    DRK =  build_channel(Liu.DRKGates(;g=20.0, E = -80.0), FixedReversal(;E=-80.0); name = :KDR)
+    H =    build_channel(Liu.HGates(;g=0.5, E = -20.0), FixedReversal(;E=-20.0); name = :H)
+    Leak = build_channel(Liu.LeakGates(;g=0.1, E = -50.0), FixedReversal(;E=-50.0); name = :Leak)
 
     fn = Liu.CalciumSensitiveNeuron(; C=1, name = name)
 
@@ -247,16 +190,12 @@ function build_Liu(input=nothing; name=:soma, config=config.LiuConfig())
     return(neur)
 end
 
-"""
-Internal: Extract voltage states from system unknowns, handling duplicates.
-"""
-
 function build_Prinz(input=nothing; name=:soma, config=config.PrinzConfig())
 
     Na =   build_channel(Prinz.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)
     KCa =  build_channel(Prinz.KCaGates(;g=config.KCa_g, E=config.KCa_E), FixedReversal(;E=config.KCa_E); name = :KCa)
-    CaS =  build_ca_channel(Prinz.CaSGates(;g=config.CaS_g); name = :CaS)
-    CaT =  build_ca_channel(Prinz.CaTGates(;g=config.CaT_g); name = :CaT)
+    CaS =  build_channel(Prinz.CaSGates(;g=config.CaS_g), FixedReversal(;E=config.CaS_E); name = :CaS)
+    CaT =  build_channel(Prinz.CaTGates(;g=config.CaT_g), FixedReversal(;E=config.CaT_E); name = :CaT)
     K =    build_channel(Prinz.KGates(;g=config.K_g, E=config.K_E), FixedReversal(;E=config.K_E); name = :K)
     DRK =  build_channel(Prinz.DRKGates(;g=config.DRK_g, E=config.DRK_E), FixedReversal(;E=config.DRK_E); name = :KDR)
     H  = build_channel(Prinz.HGates(;g=config.H_g, E=config.H_E), FixedReversal(;E=config.H_E); name = :H )
@@ -271,13 +210,6 @@ function build_Prinz(input=nothing; name=:soma, config=config.PrinzConfig())
     end
     return(neur)
 end
-
-"""
-    parse_sol_for_membrane_voltages(sol::ODESolution)
-
-Extract unique membrane voltage traces from ODE solution.
-Returns one voltage per neuron, avoiding duplicates from multiple connections.
-"""
 
 function parse_sol_for_voltage(state_vars)
     neuron_to_states = Dict{String, Vector{Any}}()
@@ -381,13 +313,6 @@ function connect_neurons_for_dense_layer(pre_neuron=nothing, post_neuron=nothing
     return network
 end
 =#
-
-"""
-    inspect_network(prob::Union{ODEProblem,ODESystem})
-
-Display network structure including neurons and their synaptic connections.
-Useful for debugging and verifying network topology.
-"""
 
 function inspect_network(prob::Union{ODEProblem,ODESystem})
     sys = if prob isa ODEProblem
