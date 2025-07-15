@@ -5,17 +5,16 @@ function lti_min_max_norm(lti::Vector)
     return [2 * (x - lti_min) / range - 1 for x in lti]
 end
 
-function lti_min_max_norm(lti::Float64)
-    #Maybe this can be useful?
+#=function lti_min_max_norm(lti::Float64)
     if lti>0
         return sqrt(lti)
     end
     return -(sqrt(-lti))
-end
+end=#
 
 
 function make_lti_vecs(τ; δ=0.01)
-    # Handles a vector input or vector of vectors.
+    # Handle both input formats - flatten if nested
     τ_flat = τ isa Vector{Vector{Float64}} ? vcat(τ...) : τ
     
     # Compute eigenvalues using zero-order-hold transformation  

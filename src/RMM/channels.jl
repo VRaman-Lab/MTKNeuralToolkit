@@ -1,4 +1,4 @@
-#=function rmmvecf(; name=:conductance, n_inputs=8, n_outputs=8, width=16, depth=1, 
+function rmmvecf(; name=:conductance, n_inputs=8, n_outputs=8, width=16, depth=1, 
                 activation=tanh, default_ltiv=-70, kwargs...)
     
     @mtkmodel rmmvec_instance begin
@@ -47,14 +47,13 @@
     end
     
     return rmmvec_instance(; name, kwargs...)
-end=#
+end
 
-function rmmvecf(;τ::Vector, name=:conductance, tf=0.01, n_outputs=8, width=16, depth=1, 
-                   activation=tanh, default_ltiv=-70, seed=57, kwargs...)
+function rmmvecf_v3(;τ::Vector, name=:conductance, tf=0.01, n_outputs=8, width=16, depth=1, 
+                   activation=tanh, default_ltiv=-70, kwargs...)
 
     A_Mat, B_Vec = make_lti_vecs(τ;δ=tf)
     n_inputs = length(B_Vec)
-    rng_seed = seed
 
     @named oneport = OnePort()
     @parameters begin
@@ -73,16 +72,19 @@ function rmmvecf(;τ::Vector, name=:conductance, tf=0.01, n_outputs=8, width=16,
     
     D = Differential(t)
     
+    # Create neural network components directly
     @named nn_in = RealInputArray(nin = n_inputs)  
     @named nn_out = RealOutputArray(nout = n_outputs)
     @named nn = NeuralNetworkBlock(n_input = n_inputs, n_output = n_outputs; 
                                    chain = multi_layer_feed_forward(n_inputs, n_outputs, 
                                                                    width=width, depth=depth, 
                                                                    activation=activation), 
-                                   rng=Xoshiro(rng_seed))
+                                   rng=Xoshiro(57))
     
+    # LTI differential equations
     lti_eqs = [D(lti_v[i]) ~ A_Mat[i] * lti_v[i] + B_Vec[i] * v for i in 1:n_inputs]
     
+    # System equations
     sys_eqs = [
         v ~ oneport.v
         i ~ oneport.i
@@ -102,4 +104,8 @@ function rmmvecf(;τ::Vector, name=:conductance, tf=0.01, n_outputs=8, width=16,
     return sys
 end
 
+RMMVec(;name=:conductance, kwargs...) = rmmvec(;name, kwargs...)
 RMMVecf(;name=:conductance, kwargs...) = rmmvecf(;name, kwargs...)
+RMMScal(;name=:conductance, kwargs...) = rmmscal(;name, kwargs...)
+RMMVecf_v2(;name=:conductance, kwargs...) = rmmvecf_v2(;name, kwargs...)
+RMMVecf_v3(;name=:conductance, kwargs...) = rmmvecf_v3(;name, kwargs...)

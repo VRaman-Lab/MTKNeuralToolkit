@@ -24,6 +24,7 @@
     end
 end
 
+
 @mtkmodel casgates begin
     @extend v, i = oneport = OnePort()
     @parameters begin
@@ -55,6 +56,7 @@ end
         D(h) ~ (1/τh)*(h∞ - h)
         E ~ (500.0) * (8.6174e-5) * (283.15) * log(max((3000.0 / Ca), 0.001))
 
+        #i ~ g * m^3*h * v 
         i ~ g * m^3*h * (v)
     end
 end
@@ -90,12 +92,13 @@ end
         D(h) ~ (1/τh)*(h∞ - h)
         E ~ (500.0) * (8.6174e-5) * (283.15) * log(max((3000.0 / Ca), 0.001))
 
+        #i ~ g * m^3*h * v 
         i ~ g * m^3*h * (v)
     end
 end
 
 @mtkmodel kcagates begin
-    @extend v, i = oneport = OnePort()
+    @extend v, i = oneport = OnePort()          #For listening to 
     @parameters begin
         g, [description = "Conductance"]
         E, [description = "Reversal"]

@@ -12,9 +12,18 @@ import MTKNeuralToolkit.Liu as Liu
 import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
 using MTKNeuralToolkit
 include("script_utils.jl")
+#include("script_types.jl")
 using Plots
 
-#--Workflow 1
+#Create your inputs here. Different options include inbuilt Julia functions ->Sin, cos, exp, log, etc. For log you need to specify base.
+#Not every neuron needs an input; create prebuilt input neurons by specifying their input functions, other prebuilt neurons through an int param.
+#Neurons are added to a dict depending on when they were created, which depends on their location within the build_network args.
+#If 3 input HHs and 1 input Liu, the first non-input HH will be n4, the first non-input LIF will be n$(all_previously_made_neurons+1)
+
+
+
+#s1() = Synpase(bla)
+
 @named inp2 = TimeVaryingFunction(f=t -> (sin(t)))
 neurons = Dict(
     "AB" => build_Prinz(inp2;name=:AB),
@@ -27,15 +36,9 @@ connections = Dict(
     ("LP", "PD") => (type=:Inh, weight=1.0)
 )
 network = build_network(connections, neurons)
-
-#--Workflow 2
-#Create your inputs here. Different options include inbuilt Julia functions ->Sin, cos, exp, log, etc. For log you need to specify base.
-#Not every neuron needs an input; create prebuilt input neurons by specifying their input functions, other prebuilt neurons through an int param.
-#Neurons are added to a dict depending on when they were created, which depends on their location within the build_network args.
-#If 3 input HHs and 1 input Liu, the first non-input HH will be n4, the first non-input LIF will be n$(all_previously_made_neurons+1)
-
 #=@named inp = TimeVaryingFunction(f=t -> min(log(t,10), 1.0))
 @named inp2 = TimeVaryingFunction(f=t -> exp(sin(t)))
+#--Workflow 1
 connections = Dict(
     ("n1", "n3") => (type=:Exc, weight=0.6),
     ("n1", "n4") => (type=:Exc, weight=0.6),
@@ -50,16 +53,15 @@ connections = Dict(
 )
 network = build_network_quick(connections; inpHH=[inp, inp2], noinpHH=5)
 =#
-#--Workflow 3
-#=@named inp = TimeVaryingFunction(f=t -> min(log(t,10), 1.0))
-@named inp2 = TimeVaryingFunction(f=t -> exp(sin(t)))
+#network = build_networkv2(connections, neurons)
+#--Workflow 2
+#=
 @named n1 = build_Liu(inp; name=:n1)
 @named n2 = build_HH(;name=:n2)
 
 s1 = put_synapse(n1,n2,:Exc,0.1; name=:s1)
 network = compose(ODESystem([], t; name=:network), [s1])
 network = structural_simplify(network)=#
-
 #If using Liu neurons change solver from Tsit5 -> TRBDF2. 
 #Might need to manually give more maxiters as well through solve(x,y, maxiters=[more lol])
 

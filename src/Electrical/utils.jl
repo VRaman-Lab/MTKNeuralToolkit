@@ -26,22 +26,6 @@ function build_channel_explicit(conductance, reversal;name)
     return compose(ODESystem(connections, t; name), [p,n,conductance,reversal])
 end
 
-"""
-    build_ca_channel(conductance; name)
-
-Build a calcium channel with internal dynamic reversal potential.
-The channel must have an internal Nernst equation for reversal calculation.
-"""
-function build_ca_channel(conductance; name)
-    @named p = Pin()
-    @named n = Pin()
-    connections = [
-        connect(conductance.p, p)
-        connect(conductance.n, n)
-    ]
-    return compose(ODESystem(connections, t; name), [p, n, conductance])
-end
-
 function build_neuron(neuron, input; channels)
      channel_connections = [[
          connect(channel.p, neuron.p),
@@ -49,6 +33,12 @@ function build_neuron(neuron, input; channels)
      ] for channel in channels]
 
      input_connection = connect(input.output, neuron.I)
+     #calcium_connection = [[
+     #                   connect(channel.reversal.ca.p, neuron.ca.p),            
+     #                   connect(neuron.ca.n,  channel.reversal.ca.n),
+     #                   #println("Triggered")            
+     #] for channel in channels if hasproperty(channel.reversal, :ca) ]
+
     calcium_flux_connections = [[
             connect(channel.conductance.ca.p, neuron.ca.p),
             connect(neuron.ca.n, channel.conductance.ca.n),          
@@ -66,6 +56,11 @@ function build_neuron(neuron; channels)
      ] for channel in channels]
 
      input_connection = neuron.I.u ~ 0
+     #calcium_connection = [[
+     #                   connect(channel.reversal.ca.p, neuron.ca.p),            
+     #                   connect(neuron.ca.n,  channel.reversal.ca.n)            
+     #               ] for channel in channels if hasproperty(channel.reversal, :ca) ] 
+
     calcium_flux_connections = [[
             connect(channel.conductance.ca.p, neuron.ca.p),
             connect(neuron.ca.n, channel.conductance.ca.n),
@@ -101,21 +96,4 @@ function add_synapse(channel, pre_neuron, post_neuron)
     connected_system = compose(ODESystem(channel_connection, t, name=nameof(channel)),
         [channel, pre_neuron, post_neuron])
     return connected_system
-end
-
-function validate_no_self_connections(connections::Dict)
-    for (source, target) in keys(connections)
-        if source == target
-            error("Self-connection detected: neuron '$source' cannot connect to itself")
-        end
-    end
-end
-
-function validate_neuron_existence(connections::Dict, neurons)
-    neuron_names = isa(neurons, Dict) ? keys(neurons) : ["n$i" for i in 1:length(neurons)]
-    
-    for (source, target) in keys(connections)
-        source ∉ neuron_names && error("Neuron '$source' not found in neurons collection")
-        target ∉ neuron_names && error("Neuron '$target' not found in neurons collection")
-    end
 end
