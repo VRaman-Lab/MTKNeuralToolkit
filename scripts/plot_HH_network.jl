@@ -38,20 +38,6 @@ connections = Dict(
 network = build_network(connections, neurons)
 #=@named inp = TimeVaryingFunction(f=t -> min(log(t,10), 1.0))
 @named inp2 = TimeVaryingFunction(f=t -> exp(sin(t)))
-#--Workflow 1
-connections = Dict(
-    ("n1", "n3") => (type=:Exc, weight=0.6),
-    ("n1", "n4") => (type=:Exc, weight=0.6),
-    ("n1", "n5") => (type=:Exc, weight=1.0),
-    ("n3", "n6") => (type=:Exc, weight=10.0),
-    ("n4", "n6") => (type=:Exc, weight=10.0),
-    ("n5", "n6") => (type=:Inh, weight=0.2),
-    ("n6", "n5") => (type=:Inh, weight=0.2),
-    ("n6", "n2") => (type=:Exc, weight=1.0),
-    ("n2", "n5") => (type=:Inh, weight=1.0),
-    ("n2", "n6") => (type=:Inh, weight=1.0)
-)
-network = build_network_quick(connections; inpHH=[inp, inp2], noinpHH=5)
 =#
 #network = build_networkv2(connections, neurons)
 #--Workflow 2

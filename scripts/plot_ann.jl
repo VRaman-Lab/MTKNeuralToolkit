@@ -22,7 +22,7 @@ using LinearAlgebra
 Na =    build_channel(HH.NaGates(;g=40, E = 55), FixedReversal(;E=55); name = :Na)      
 K =     build_channel(HH.KGates( ;g=35, E = -77), FixedReversal(;E=-77); name = :K)
 Leak =  build_channel(HH.LGates( ;g=0.3, E = -65), FixedReversal(;E=-65); name = :Leak)
-rmm_channel = build_channel_explicit(RMM.RMMVecf_v3(;τ=[0.1, 0.3, 0.5, 0.7, 1.0, 3.0, 5.0, 7.0]), FixedReversal(E=-77); name =:RMM)
+rmm_channel = build_channel(RMM.RMMVecf(;τ=[0.1, 0.3, 0.5, 0.7, 1.0, 3.0, 5.0, 7.0]), FixedReversal(E=-77); name =:RMM)
 
 @named inp = TimeVaryingFunction(f=t -> sin(t))
 fn = BasicSoma(; C=1, name = :soma)
