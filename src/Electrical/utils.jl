@@ -42,6 +42,16 @@ function build_ca_channel(conductance; name)
     return compose(ODESystem(connections, t; name), [p, n, conductance])
 end
 
+function build_IF_channel(conductance ;name)
+    @named p = Pin()
+    @named n = Pin()
+    connections = [
+        connect(conductance.p, p)
+        connect(conductance.n, n)
+    ]
+     return compose(ODESystem(connections, t; name), [p,n,conductance])
+end
+
 function build_neuron(neuron, input; channels)
      channel_connections = [[
          connect(channel.p, neuron.p),

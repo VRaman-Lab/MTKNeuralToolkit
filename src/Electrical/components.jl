@@ -7,6 +7,7 @@
         V(t) = -65.0, [description = "membrane voltage"]
     end
     @components begin
+        oneport=OnePort()
         I = RealInput()
         ground = Ground()
     end

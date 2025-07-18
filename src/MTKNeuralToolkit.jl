@@ -9,7 +9,7 @@ using Random
 
 include("Electrical/utils.jl")
 
-export build_channel, build_ca_channel, build_channel_explicit, build_RMM, build_neuron, build_calcium_neuron, build_minimal_channel, build_calcium_channel, build_full_channel, add_synapse, add_synapse_nu, validate_no_self_connections, validate_neuron_existence
+export build_channel, build_IF_channel, build_ca_channel, build_channel_explicit, build_RMM, build_neuron, build_calcium_neuron, build_minimal_channel, build_calcium_channel, build_full_channel, add_synapse, add_synapse_nu, validate_no_self_connections, validate_neuron_existence
 
 include("Electrical/components.jl")
 
@@ -19,6 +19,8 @@ include("MixedIonic/components.jl")
 export IonicPin, IonicPort, IonicTerminal, CalciumSensitiveNeuron
 
 include("HodgkinHuxley/HodgkinHuxley.jl")
+include("IntegrateAndFire/IntegrateAndFire.jl")
+export IF
 include("Liu/Liu.jl")
 
 include("Synapse/Synapse.jl")
