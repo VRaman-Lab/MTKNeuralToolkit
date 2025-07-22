@@ -64,6 +64,26 @@ end
     end
 end
 
+@mtkmodel LifSynapse begin
+    @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()
+    @parameters begin
+        g_max = 1.0 
+        τ_s = 5.0 
+        V_th = 10.0 
+        A = 1.0
+    end
+    @variables begin
+        s(t) 
+    end
+    @equations begin
+        D(s) ~ -s / τ_s
+        i_post ~ g_max * s * (v_pre - v_post)
+    end
+    @continuous_events begin
+        [v_pre ~ V_th] => [s ~ s + A]
+    end
+end
+
 E_syn_gate_preset(; g, E=0.0, Vth=-35.0, k_=0.025, sigma=5.0, name=:E_syn) = 
     BaseSynapse(; g=g, E=E, Vth=Vth, k_=k_, sigma=sigma, name=name)
 

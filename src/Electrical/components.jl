@@ -24,7 +24,7 @@ A battery: generates a constant potential difference across its terminals
 @mtkmodel fixed_reversal begin
     @extend v, i = oneport = OnePort()
     @parameters begin
-        E = 0.0
+        E
     end
     @equations begin
         v ~ E

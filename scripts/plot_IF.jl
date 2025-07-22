@@ -15,10 +15,9 @@ import MTKNeuralToolkit
 #using script_utils.jl
 using Plots
 
+IF = build_channel(IaF.IF_channel(; E=-65, name = :conductance), FixedReversal(; E=-65); name =:IF)
 
-IF = build_IF_channel(IaF.IF_channel(; name = :conductance); name = :IF)
-
-@named inp = TimeVaryingFunction(f = t -> ifelse((t > 10) & (t < 20), 120.0, 0.0))
+@named inp = TimeVaryingFunction(f = t -> ifelse((t > 10) & (t < 20), 100.0, 0.0))
 @named inp2 = TimeVaryingFunction(f = t -> sin(3*t))
 fn = BasicSoma(; C=10, name = :soma)
 

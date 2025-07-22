@@ -32,25 +32,6 @@ end
 Build a calcium channel with internal dynamic reversal potential.
 The channel must have an internal Nernst equation for reversal calculation.
 """
-function build_ca_channel(conductance; name)
-    @named p = Pin()
-    @named n = Pin()
-    connections = [
-        connect(conductance.p, p)
-        connect(conductance.n, n)
-    ]
-    return compose(ODESystem(connections, t; name), [p, n, conductance])
-end
-
-function build_IF_channel(conductance ;name)
-    @named p = Pin()
-    @named n = Pin()
-    connections = [
-        connect(conductance.p, p)
-        connect(conductance.n, n)
-    ]
-     return compose(ODESystem(connections, t; name), [p,n,conductance])
-end
 
 function build_neuron(neuron, input; channels)
      channel_connections = [[
@@ -113,6 +94,16 @@ function add_synapse(channel, pre_neuron, post_neuron)
     return connected_system
 end
 
+
+function make_lif_synapse(pre_neuron, post_neuron, synapse; name)
+    eqs = [
+        synapse.v_pre ~ pre_neuron.soma.v
+        connect(synapse.pre, pre_neuron.IF.conductance.p)
+        connect(synapse.post, post_neuron.IF.conductance.p)
+    ]
+
+    return compose(ODESystem(eqs, t; name), [pre_neuron, post_neuron, synapse])
+end
 function validate_no_self_connections(connections::Dict)
     for (source, target) in keys(connections)
         if source == target
