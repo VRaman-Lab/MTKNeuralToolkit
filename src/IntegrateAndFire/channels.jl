@@ -12,7 +12,7 @@
         i ~ (v - E - 65)/R + C*D(v)
     end 
     @continuous_events begin
-        [v ~ V_th] => [v ~ V_reset]
+        [v ~ V_th+1] => [v ~ V_reset]
     end
 end
 

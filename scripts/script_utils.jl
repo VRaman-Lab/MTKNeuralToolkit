@@ -94,7 +94,7 @@ function build_network(connections::Dict, neurons::Dict, check_connections=true)
     validate_neuron_existence(connections, neurons)
     if check_connections validate_no_self_connections(connections) end
     network = create_network_from_connections(connections, neurons, [])
-    final_system = compose(ODESystem([], t; name=:network), network)
+    final_system = compose(ODESystem([], t; name=:network), network...)
     return structural_simplify(final_system)
 end
 
@@ -119,7 +119,7 @@ function build_network(connections::Dict, neurons::Vector, check_connections=tru
     neurons_dict = Dict("n$i" => neuron for (i, neuron) in enumerate(neurons))
     network = []
     network = create_network_from_connections(connections, neurons, neurons_dict)
-    final_system = compose(ODESystem([], t; name=:network), network)
+    final_system = compose(ODESystem([], t; name=:network), network...)
     return structural_simplify(final_system)
 end
 
@@ -172,6 +172,8 @@ function put_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:syn
         @named syn_channel = Synapse.CholinergicSynapse(;g=weight, name =name)
     elseif synapse_type == :Glut
         @named syn_channel = Synapse.GlutamatergicSynapse(;g=weight, name =name)
+    elseif synapse_type == :LIF
+        @named syn_channel = Synapse.LifSynapse(;g_max=weight, name =name)
     elseif synapse_type == :Custom
         if custom_synapse === nothing
             throw(ArgumentError("If you want a custom synapse, you need to give a custom synapse, smartypants"))
@@ -185,15 +187,15 @@ end
 Placeholder for integrate-and-fire neuron implementation.
 """
 
-function build_IF(input=nothing; name=:IF)
-    string = ("Not implemented yet :(")
-    println(string)
-    println("Your code will crash in:")
-    println("3")
-    println("2")
-    println("1")
-    error("Never gonna give you up")
-    #TODO Everything lol
+function build_IF(input=nothing; name = :soma)
+    IF = build_channel(IaF.IF_channel(; E=-65, name = :conductance), FixedReversal(; E=-65); name =:IF)
+    fn = BasicSoma(; C=10, name = name)
+    if input === nothing
+        neur = build_neuron(fn; channels = [IF])
+    else
+        neur = build_neuron(fn, input; channels = [IF])
+    end
+    return neur
 end
 
 """

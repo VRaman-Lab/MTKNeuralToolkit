@@ -96,10 +96,13 @@ end
 
 
 function make_lif_synapse(pre_neuron, post_neuron, synapse; name)
+    pre_name = nameof(pre_neuron) 
+    post_name = nameof(post_neuron)
+    println("Names:  ", pre_name, "__", post_name)
+    
     eqs = [
-        synapse.v_pre ~ pre_neuron.soma.v
-        connect(synapse.pre, pre_neuron.IF.conductance.p)
-        connect(synapse.post, post_neuron.IF.conductance.p)
+        connect(synapse.pre, getproperty(pre_neuron, pre_name).p)
+        connect(synapse.post, getproperty(post_neuron, post_name).p)
     ]
 
     return compose(ODESystem(eqs, t; name), [pre_neuron, post_neuron, synapse])
