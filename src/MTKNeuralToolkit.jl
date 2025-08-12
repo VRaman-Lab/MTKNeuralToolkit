@@ -9,7 +9,7 @@ using Random
 
 include("Electrical/utils.jl")
 
-export build_channel, build_channel_explicit, build_RMM, build_neuron, build_calcium_neuron, build_minimal_channel, build_calcium_channel, build_full_channel, add_synapse, add_synapse_nu, validate_no_self_connections, validate_neuron_existence, make_lif_synapse
+export build_channel, build_channel_explicit, build_RMM, build_neuron, build_calcium_neuron, build_minimal_channel, build_calcium_channel, build_full_channel, add_synapse, add_synapse_nu, validate_no_self_connections, validate_neuron_existence, make_lif_synapse, build_LIF_network
 
 include("Electrical/components.jl")
 

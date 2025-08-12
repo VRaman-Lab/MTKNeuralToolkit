@@ -122,7 +122,6 @@ function build_network(connections::Dict, neurons::Vector, check_connections=tru
     final_system = compose(ODESystem([], t; name=:network), network...)
     return structural_simplify(final_system)
 end
-
 """
 Internal: Wire synapses between neurons based on connection specifications.
 """

@@ -21,7 +21,7 @@ include("script_utils.jl")
 n1 = build_IF(inp; name = :n1)
 n2 = build_IF(; name =:n2)
 
-IF_synapse = Syn.LifSynapse(;g_max=10, name = :IF_synapse)
+IF_synapse = Syn.LifSynapseComplex(;g_max=6, name = :IF_synapse)
 
 network = make_lif_synapse(n1, n2, IF_synapse; name = :system)
 simple_network = structural_simplify(network)
