@@ -14,17 +14,6 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SciMLStructures = "53ae85a6-f571-4167-b2af-e1d143709226"
 
-[compat]
-Distributions = "0.25.120"
-Lux = "1.13.4"
-ModelingToolkit = "9.69.0"
-ModelingToolkitNeuralNets = "1.7.0"
-ModelingToolkitStandardLibrary = "2.19.1"
-OrdinaryDiffEq = "6.97.0"
-Pkg = "1.11.0"
-Random = "1.11.0"
-SciMLStructures = "1.7.0"
-julia = "1.11"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

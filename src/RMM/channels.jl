@@ -51,7 +51,7 @@ function rmmvecf(;τ::Vector, name=:conductance, tf=0.01, n_outputs=8, width=16,
     
     sys = ODESystem(eqs, t, name=name,[v, i, lti_v..., lti_v_plotter], 
                           [g, E, A_Mat..., B_Vec...]; 
-                          systems=[nn_in, nn_out, nn, oneport])
+                          systems=[nn_in, nn_out, nn, oneport, p, n])
     
     return sys
 end

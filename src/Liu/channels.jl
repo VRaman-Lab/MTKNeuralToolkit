@@ -42,7 +42,7 @@ end=#
 end
 
 
-@mtkmodel casgates begin
+@mtkmodel caschannel begin
     @extend v, i = oneport = OnePort()
     @parameters begin
         g, [description = "Conductance"]
@@ -59,7 +59,6 @@ end
     end
     @components begin
         ca = IonicPort()
-        ICa = RealInput()
     end
     @equations begin
         m∞ ~ 1.0 / (1.0 + exp((v+E + 33.0) / -8.1))
@@ -68,17 +67,15 @@ end
         τh ~ 60.0 + 150.0 / (exp((v+E + 55.0) / 9.0) + exp((v+E + 65.0) / -16.0))
         ca.i ~ i
         Ca ~ ca.q
-        ICa.u ~ i
         D(m) ~  (1/τm)*(m∞ - m) 
         D(h) ~ (1/τh)*(h∞ - h)
         E ~ (500.0) * (8.6174e-5) * (283.15) * log(max((3000.0 / Ca), 0.001))
 
-        #i ~ g * m^3*h * v 
-        i ~ g * m^3*h * (v)
+        i ~ g * m^3*h * v
     end
 end
 
-@mtkmodel catgates begin
+@mtkmodel catchannel begin
     @extend v, i = oneport = OnePort()
     @parameters begin
         g, [description = "Conductance"]
@@ -95,7 +92,6 @@ end
     end
     @components begin
         ca = IonicPort()
-        ICa = RealInput()
     end
     @equations begin
         m∞ ~ 1.0 / (1.0 + exp((v+E + 27.1) / -7.2))
@@ -104,12 +100,10 @@ end
         τh ~ 105.0 - 89.8 / (1.0 + exp((v+E + 55.0) / 16.9))
         ca.i ~ i
         Ca ~ ca.q
-        ICa.u ~ i
         D(m) ~  (1/τm)*(m∞ - m) 
         D(h) ~ (1/τh)*(h∞ - h)
         E ~ (500.0) * (8.6174e-5) * (283.15) * log(max((3000.0 / Ca), 0.001))
 
-        #i ~ g * m^3*h * v 
         i ~ g * m^3*h * (v)
     end
 end
@@ -218,9 +212,9 @@ end
 
 NaGates(  ;name=:conductance , kwargs...) = nagates( ;name , kwargs...)
 KCaGates( ;name=:conductance , kwargs...) = kcagates( ;name, kwargs...)
-CaSGates( ;name=:conductance , kwargs...) = casgates(;name , kwargs...)
+CaSChannel( ;name=:conductance , kwargs...) = caschannel(;name , kwargs...)
 CalciumReversal( ;name=:reversal , kwargs...)  = calciumreversal(;name , kwargs...)
-CaTGates( ;name=:conductance , kwargs...) = catgates(;name , kwargs...)
+CaTChannel( ;name=:conductance , kwargs...) = catchannel(;name , kwargs...)
 KGates( ;name=:conductance , kwargs...) = kgates(;name, kwargs...)
 DRKGates( ;name=:conductance , kwargs...) = drkgates(;name , kwargs...)
 HGates( ;name=:conductance , kwargs...) = hgates(;name , kwargs...)

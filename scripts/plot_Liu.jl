@@ -12,8 +12,8 @@ using Plots
 
 Na =  build_channel(Liu.NaGates(;g=100, E = 50.0), FixedReversal(;E=50.0); name = :Na)
 KCa =  build_channel(Liu.KCaGates(;g=10.0, E = -80.0), FixedReversal(;E=-80.0); name = :KCa)
-CaS =  build_channel(Liu.CaSGates(;g=1.3), FixedReversal(;E=0.0); name = :CaS)
-CaT =  build_channel(Liu.CaTGates(;g=3.0), FixedReversal(;E=0.0); name = :CaT)
+CaS =  build_channel(Liu.CaS(;g=1.3), FixedReversal(;E=0.0); name = :CaS)
+CaT =  build_channel(Liu.CaT(;g=3.0), FixedReversal(;E=0.0); name = :CaT)
 K =  build_channel(Liu.KGates(;g=5.0, E = -80.0), FixedReversal(;E=-80.0); name = :K)
 DRK =  build_channel(Liu.DRKGates(;g=20.0, E = -80.0), FixedReversal(;E=-80.0); name = :KDR)
 H =  build_channel(Liu.HGates(;g=0.5, E = -20.0), FixedReversal(;E=-20.0); name = :H)
