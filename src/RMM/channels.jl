@@ -54,4 +54,4 @@ function rmmvecf(;τ::Vector, name=:conductance, tf=0.01, n_outputs=8, width=16,
     return sys
 end
 
-Full_RMM(;name=:conductance, kwargs...) = full_RMM(;name, kwargs...)
+Full_RMM(;name=:conductance, kwargs...) = rmmvecf(;name, kwargs...)

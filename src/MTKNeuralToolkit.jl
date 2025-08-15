@@ -30,26 +30,16 @@ export SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
 
 include("RMM/RMM.jl")
 
-<<<<<<< Updated upstream
-export RMMVecf
-=======
-export full_RMM
->>>>>>> Stashed changes
+export Full_RMM
 
 include("Prinz/Prinz.jl")
 
 include("Config/Config.jl")
 
-<<<<<<< Updated upstream
 include("network_assembly/network_assembly.jl")
 
 export build_network, build_network_split, put_synapse, build_IF, build_HH, build_Liu, build_Prinz, parse_sol_for_voltage, parse_sol_for_membrane_voltages, inspect_network
 #export PrinzConfig
-=======
-include("API/API.jl")
-
-export build_network, build_HH, build_Prinz, parse_sol_for_membrane_voltages, inspect_network
->>>>>>> Stashed changes
 
 end
 
