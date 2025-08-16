@@ -59,22 +59,17 @@ println("Mean solve time: ", mean(bench_solve.times) / 1e9, " seconds")
 @named e3 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e4 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e5 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i1 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i2 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i3 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i4 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i5 = TimeVaryingFunction(f = t -> exp(sin(t)))
 neurons = [
     build_HH(e1; name = :E1),
     build_HH(e2; name = :E2),
     build_HH(e3; name = :E3),
     build_HH(e4; name = :E4),
     build_HH(e5; name = :E5),
-    build_HH(i1; name = :I1),
-    build_HH(i2; name = :I2),
-    build_HH(i3; name = :I3),
-    build_HH(i4; name = :I4),
-    build_HH(i5; name = :I5),
+    build_HH(; name = :I1),
+    build_HH(; name = :I2),
+    build_HH(; name = :I3),
+    build_HH(; name = :I4),
+    build_HH(; name = :I5),
 ]
 connections = Dict(
     (1,6) => [(type = :Exc, weight = 3rand())],
@@ -123,15 +118,15 @@ println("\n--- ODE Solve (5 Exc, 5 Inh) ---")
 println(bench_solve)
 println("Mean solve time: ", mean(bench_solve.times) / 1e9, " seconds")
 
+# ---------------- Case 2 Exc, 2 Inh ----------------
+
 @named e1 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e2 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i1 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i2 = TimeVaryingFunction(f = t -> exp(sin(t)))
 neurons = [
     build_HH(e1; name = :E1),
     build_HH(e2; name = :E2),
-    build_HH(i1; name = :I1),
-    build_HH(i2; name = :I2),
+    build_HH(; name = :I1),
+    build_HH(; name = :I2),
 ]
 connections = Dict(
     (1,3) => [(type = :Exc, weight = 3rand())],
@@ -159,6 +154,8 @@ println("\n--- ODE Solve (2 Exc, 2 Inh) ---")
 println(bench_solve)
 println("Mean solve time: ", mean(bench_solve.times) / 1e9, " seconds")
 
+# ---------------- Case 7 Exc, 7 Inh ----------------
+
 @named e1 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e2 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e3 = TimeVaryingFunction(f = t -> exp(sin(t)))
@@ -166,13 +163,6 @@ println("Mean solve time: ", mean(bench_solve.times) / 1e9, " seconds")
 @named e5 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e6 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e7 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i1 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i2 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i3 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i4 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i5 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i6 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i7 = TimeVaryingFunction(f = t -> exp(sin(t)))
 neurons = [
     build_HH(e1; name = :E1),
     build_HH(e2; name = :E2),
@@ -181,13 +171,13 @@ neurons = [
     build_HH(e5; name = :E5),
     build_HH(e6; name = :E6),
     build_HH(e7; name = :E7),
-    build_HH(i1; name = :I1),
-    build_HH(i2; name = :I2),
-    build_HH(i3; name = :I3),
-    build_HH(i4; name = :I4),
-    build_HH(i5; name = :I5),
-    build_HH(i6; name = :I6),
-    build_HH(i7; name = :I7),
+    build_HH(; name = :I1),
+    build_HH(; name = :I2),
+    build_HH(; name = :I3),
+    build_HH(; name = :I4),
+    build_HH(; name = :I5),
+    build_HH(; name = :I6),
+    build_HH(; name = :I7),
 ]
 connections = Dict(
     (1,8) => [(type = :Exc, weight = 3rand())],
@@ -260,6 +250,8 @@ println("\n--- ODE Solve (7 Exc, 7 Inh) ---")
 println(bench_solve)
 println("Mean solve time: ", mean(bench_solve.times) / 1e9, " seconds")
 
+# ---------------- Case 6 Exc, 6 Inh ----------------
+
 @named e1 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e2 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e3 = TimeVaryingFunction(f = t -> exp(sin(t)))
@@ -268,12 +260,6 @@ println("Mean solve time: ", mean(bench_solve.times) / 1e9, " seconds")
 @named e6 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e7 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named e8 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i1 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i2 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i3 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i4 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i5 = TimeVaryingFunction(f = t -> exp(sin(t)))
-@named i6 = TimeVaryingFunction(f = t -> exp(sin(t)))
 neurons = [
     build_HH(e1; name = :E1),
     build_HH(e2; name = :E2),
@@ -281,12 +267,12 @@ neurons = [
     build_HH(e4; name = :E4),
     build_HH(e5; name = :E5),
     build_HH(e6; name = :E6),
-    build_HH(i1; name = :I1),
-    build_HH(i2; name = :I2),
-    build_HH(i3; name = :I3),
-    build_HH(i4; name = :I4),
-    build_HH(i5; name = :I5),
-    build_HH(i6; name = :I6)
+    build_HH(; name = :I1),
+    build_HH(; name = :I2),
+    build_HH(; name = :I3),
+    build_HH(; name = :I4),
+    build_HH(; name = :I5),
+    build_HH(; name = :I6)
 ]
 connections = Dict(
     (1,7) => [(type = :Exc, weight = 3rand())],

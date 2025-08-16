@@ -7,9 +7,7 @@ using OrdinaryDiffEq
 using ModelingToolkitStandardLibrary.Blocks: Constant, TimeVaryingFunction 
 using ModelingToolkit: t_nounits as t, D_nounits as D
 import MTKNeuralToolkit.Synapse as Synapse
-import MTKNeuralToolkit.HodgkinHuxley as HH
-import MTKNeuralToolkit.Liu as Liu
-import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
+import MTKNeuralToolkit.Types: SYNAPSE_TYPES
 using MTKNeuralToolkit
 
 @named inp1 = TimeVaryingFunction(f=t -> (exp(sin(t))))

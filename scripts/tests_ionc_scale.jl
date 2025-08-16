@@ -68,12 +68,12 @@ end
 
 # Run scaling benchmarks
 configs = [
-    (1, 1),   # ~12 equations
-    (3, 3),   # ~34 equations  
-    (9, 9),   # ~100 equations
-    (27, 27),  # ~298 equations
-    (71, 71),  # ~298 equations
-    (213, 213),  # ~298 equations
+    (1, 1), 
+    (3, 3), 
+    (9, 9),
+    (27, 27),
+    (71, 71), 
+    (213, 213),
     (426, 426)
 ]
 

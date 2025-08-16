@@ -14,11 +14,12 @@ connections = Dict(
     (1, 2) => [(type=:Exc, weight=1.0)],
     (2, 1) => [(type=:Inh, weight=100.0)]
 )
-print("build_network")
+println("building_network")
 network = build_network(connections, neurons)
 
-print("ODE_Problem")
+println("building ODE_Problem")
 prob = ODEProblem(network, Pair[], (0.0, 10.0) )
+println("solvering")
 sol = solve(prob, Tsit5());
 
 p = plot(sol, idxs=[network.Liu.Liu.V, network.HH.HH.V])
