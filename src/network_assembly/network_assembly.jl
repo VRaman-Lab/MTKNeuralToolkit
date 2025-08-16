@@ -1,7 +1,7 @@
 import ..Config as config
-import ..HodgkinHuxley as HH
-import ..Liu as Liu
-import ..Prinz as Prinz
+import ..HodgkinHuxley as HH_module
+import ..Liu as Liu_module
+import ..Prinz as Prinz_module
 import ..Synapse as Synapse
 import ..Types
 using ModelingToolkit
@@ -55,18 +55,23 @@ function build_network_split(connections::Dict{<:Tuple, Vector{@NamedTuple{type:
     return ss
 end
 
-function build_network(connections::Dict{<:Tuple, Vector{@NamedTuple{type::Symbol, weight::Float64}}}, neurons::Union{Vector,Dict})
+function build_network2(connections::Dict{<:Tuple, Vector{@NamedTuple{type::Symbol, weight::Float64}}}, neurons::Union{Vector,Dict})
     synapses = mapreduce(vcat, connections) do ((pre, post), synapse_list)
         map(enumerate(synapse_list)) do (i, synapse_params)
             put_synapse(neurons[pre], neurons[post], synapse_params.type, synapse_params.weight; 
-                       name=Symbol("s_$(pre)$(post)_$(synapse_params.type)_$i"))
+                       name=Symbol("s$(pre)$(post)_$(synapse_params.type)$i"))
         end
     end
     
     network_components = vcat(collect(values(neurons)), synapses)
-    final_system = compose(ODESystem([], t; name=:network), network_components)
+    #final_system = compose(synapses, t; name=:network)
+    #final_system = System(Equation[], t; systems=synapses, name=:network)
+    #inal_system = compose(System([], t; name=:network), synapses)
+    #return structural_simplify(final_system)
+    final_system = System(Equation[], t; systems=network_components, name=:network)
     return structural_simplify(final_system)
 end
+
 
 function build_network(connections::Dict, neurons)
     synapses = mapreduce(vcat, connections) do ((pre_idx, post_idx), synapse_funcs)
@@ -76,29 +81,34 @@ function build_network(connections::Dict, neurons)
         end
     end
     
-    network_components = vcat(neurons, synapses)
-    final_system = compose(ODESystem([], t; name=:network), network_components)
+    #network_components = vcat(neurons, synapses)
+    final_system = compose(ODESystem([], t; name=:network), synapses)
     return structural_simplify(final_system)
 end
 
-function create_network_from_connections(connections::Dict{Tuple{String, String}, Function}, neurons::Dict, network::Vector)
-    for ((pre, post), (synapse_func)) in connections
-        @named x = synapse_func()
-        y = add_synapse(x, neurons[pre], neurons[post])
-        push!(network, y)
+function build_network(connections::Dict{<:Tuple, Vector{@NamedTuple{type::Symbol, weight::Float64}}}, neurons::Union{Vector,Dict})
+    s_connections::Vector{Equation} = []
+    synapses = []
+    
+    for ((pre, post), synapse_list) in connections
+        for (i, synapse_params) in enumerate(synapse_list)
+            data = put_synapse(neurons[pre], neurons[post], synapse_params.type, synapse_params.weight; 
+                       name=Symbol("s$(pre)$(post)_$(synapse_params.type)$i"))
+
+            append!(s_connections, data[1])
+            push!(synapses, data[2])
+        end
     end
-    for (_,neuron) in neurons
-        push!(network, neuron)
-    end
-    return network
+    neuron_systems = neurons isa Dict ? collect(values(neurons)) : neurons
+    network_system = System(Equation[], t; 
+                           systems=[neuron_systems..., synapses...], 
+                           name=:network)
+    
+    # Then add connections using extend
+    final_system = extend(network_system, System(s_connections, t, name=:connections))
+    
+    return structural_simplify(final_system)
 end
-
-"""
-    put_synapse(pre, post, synapse_type::Symbol, weight::Float64; kwargs...)
-
-Create and connect a synapse between two neurons.
-Supports :Exc, :Inh, :Chol, :Glut, and :Custom synapse types.
-"""
 
 function put_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:Custom, E=nothing, Vth=nothing, k_=nothing,sigma=nothing)
     synapse_type in Types.SYNAPSE_TYPES || throw(ArgumentError("Invalid synapse type"))
@@ -111,9 +121,6 @@ function put_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:Cus
     elseif synapse_type == :Glut
         @named syn_channel = Synapse.GlutamatergicSynapse(;g=weight, name =name)
     elseif synapse_type == :Custom
-        if custom_synapse === nothing
-            throw(ArgumentError("If you want a custom synapse, you need to give a custom synapse, smartypants"))
-        end
         @named syn_channel = custom_synapse(;g=weight, E, Vth, k_, sigma, name=name)
     end
     return add_synapse(syn_channel, pre, post)
@@ -143,9 +150,9 @@ Optional input stimulus and customizable parameters via config.
 
 function build_HH(input=nothing; name=:soma, config=config.HHConfig())
 
-    Na = build_channel(HH.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)      
-    K = build_channel(HH.KGates(;g=config.K_g, E=config.K_E), FixedReversal(;E=config.K_E); name = :K)
-    Leak = build_channel(HH.LGates(;g=config.Leak_g, E=config.Leak_E), FixedReversal(;E=config.Leak_E); name = :Leak)
+    Na = build_channel(HH_module.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)      
+    K = build_channel(HH_module.KGates(;g=config.K_g, E=config.K_E), FixedReversal(;E=config.K_E); name = :K)
+    Leak = build_channel(HH_module.LGates(;g=config.Leak_g, E=config.Leak_E), FixedReversal(;E=config.Leak_E); name = :Leak)
 
     fn=BasicSoma(; C=1, name = name)
 
@@ -166,16 +173,16 @@ Commonly used for central pattern generator networks.
 
 function build_Liu(input=nothing; name=:soma, config=config.LiuConfig())
 
-    Na =   build_channel(Liu.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)
-    KCa =  build_channel(Liu.KCaGates(;g=config.KCa_g, E=config.KCa_E), FixedReversal(;E=config.KCa_E); name = :KCa)
-    CaS =  build_channel(Liu.CaSChannel(;g=config.CaS_g); name = :CaS)
-    CaT =  build_channel(Liu.CaTChannel(;g=config.CaT_g); name = :CaT)
-    K =    build_channel(Liu.KGates(;g=config.K_g, E=config.K_E), FixedReversal(;E=config.K_E); name = :K)
-    DRK =  build_channel(Liu.DRKGates(;g=config.DRK_g, E=config.DRK_E), FixedReversal(;E=config.DRK_E); name = :KDR)
-    H  = build_channel(Liu.HGates(;g=config.H_g, E=config.H_E), FixedReversal(;E=config.H_E); name = :H )
-    Leak = build_channel(Liu.LeakGates(;g=config.Leak_g, E=config.Leak_E), FixedReversal(;E=config.Leak_E); name = :Leak)
+    Na =   build_channel(Liu_module.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)
+    KCa =  build_channel(Liu_module.KCaGates(;g=config.KCa_g, E=config.KCa_E), FixedReversal(;E=config.KCa_E); name = :KCa)
+    CaS =  build_channel(Liu_module.CaSChannel(;g=config.CaS_g); name = :CaS)
+    CaT =  build_channel(Liu_module.CaTChannel(;g=config.CaT_g); name = :CaT)
+    K =    build_channel(Liu_module.KGates(;g=config.K_g, E=config.K_E), FixedReversal(;E=config.K_E); name = :K)
+    DRK =  build_channel(Liu_module.DRKGates(;g=config.DRK_g, E=config.DRK_E), FixedReversal(;E=config.DRK_E); name = :KDR)
+    H  = build_channel(Liu_module.HGates(;g=config.H_g, E=config.H_E), FixedReversal(;E=config.H_E); name = :H )
+    Leak = build_channel(Liu_module.LeakGates(;g=config.Leak_g, E=config.Leak_E), FixedReversal(;E=config.Leak_E); name = :Leak)
 
-    fn = Liu.CalciumSensitiveNeuron(; C=1, name = name)
+    fn = Liu_module.CalciumSensitiveNeuron(; C=1, name = name)
 
     if input === nothing
         neur = build_neuron(fn;  channels = [KCa, Na, CaS, CaT, K, DRK, H, Leak])
@@ -191,16 +198,16 @@ Internal: Extract voltage states from system unknowns, handling duplicates.
 
 function build_Prinz(input=nothing; name=:soma, config=config.PrinzConfig())
 
-    Na =   build_channel(Prinz.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)
-    KCa =  build_channel(Prinz.KCaGates(;g=config.KCa_g, E=config.KCa_E), FixedReversal(;E=config.KCa_E); name = :KCa)
-    CaS =  build_channel(Prinz.CaS(;g=config.CaS_g); name = :CaS)
-    CaT =  build_channel(Prinz.CaT(;g=config.CaT_g); name = :CaT)
-    K =    build_channel(Prinz.KGates(;g=config.K_g, E=config.K_E), FixedReversal(;E=config.K_E); name = :K)
-    DRK =  build_channel(Prinz.DRKGates(;g=config.DRK_g, E=config.DRK_E), FixedReversal(;E=config.DRK_E); name = :KDR)
-    H  = build_channel(Prinz.HGates(;g=config.H_g, E=config.H_E), FixedReversal(;E=config.H_E); name = :H )
-    Leak = build_channel(Prinz.LeakGates(;g=config.Leak_g, E=config.Leak_E), FixedReversal(;E=config.Leak_E); name = :Leak)
+    Na =   build_channel(Prinz_module.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)
+    KCa =  build_channel(Prinz_module.KCaGates(;g=config.KCa_g, E=config.KCa_E), FixedReversal(;E=config.KCa_E); name = :KCa)
+    CaS =  build_channel(Prinz_module.CaS(;g=config.CaS_g); name = :CaS)
+    CaT =  build_channel(Prinz_module.CaT(;g=config.CaT_g); name = :CaT)
+    K =    build_channel(Prinz_module.KGates(;g=config.K_g, E=config.K_E), FixedReversal(;E=config.K_E); name = :K)
+    DRK =  build_channel(Prinz_module.DRKGates(;g=config.DRK_g, E=config.DRK_E), FixedReversal(;E=config.DRK_E); name = :KDR)
+    H  = build_channel(Prinz_module.HGates(;g=config.H_g, E=config.H_E), FixedReversal(;E=config.H_E); name = :H )
+    Leak = build_channel(Prinz_module.LeakGates(;g=config.Leak_g, E=config.Leak_E), FixedReversal(;E=config.Leak_E); name = :Leak)
 
-    fn = Prinz.CalciumSensitiveNeuron(; C=config.C, Ca=config.Ca0, V=config.V0, name = name)
+    fn = Prinz_module.CalciumSensitiveNeuron(; C=config.C, Ca=config.Ca0, V=config.V0, name = name)
 
     if input === nothing
         neur = build_neuron(fn;  channels = [KCa, Na, CaS, CaT, K, DRK, H, Leak])

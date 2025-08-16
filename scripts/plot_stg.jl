@@ -14,15 +14,8 @@ import MTKNeuralToolkit.Config as cfg
 import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
 using MTKNeuralToolkit
 using Plots
-<<<<<<< Updated upstream
-
-@named inp = TimeVaryingFunction(f=t -> 1)
-
-
-=======
 #@btime
 @named inp2 = TimeVaryingFunction(f=t -> sin(t))
->>>>>>> Stashed changes
 syn_cf = 0.254
 prinz_cf = 159.2
 neurons = Dict(

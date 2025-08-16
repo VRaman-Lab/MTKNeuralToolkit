@@ -44,7 +44,7 @@ plot!(p, sol, idxs=[neur.H.conductance.m], subplot=8)
 plot!(p, sol, idxs=[neur.soma.v], subplot=9)
 plot!(p, sol, idxs=[neur.soma.Ca], subplot=10)
 plot!(p, sol, idxs=[neur.soma.ca.i], subplot=11)=#
-plot!(p, sol, idxs=[neur.soma.v], subplot=1)
+plot!(p, sol, idxs=[neur.soma.V], subplot=1)
 plot!(p, sol, idxs=[neur.soma.Ca, neur.soma.ca.i], subplot=2)
 gui(p)
 #savefig(p, "neuron_channels.png")

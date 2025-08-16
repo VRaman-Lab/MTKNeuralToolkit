@@ -1,5 +1,5 @@
 @mtkmodel BaseSynapse begin
-    @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()
+    @extend v_pre, v_post, i_post = oneport = DirectionalTwoPort()
     @parameters begin
         g, [description = "Conductance"]
         E, [description = "Reversal potential"]
@@ -21,7 +21,7 @@
 end
 
 @mtkmodel CholinergicSynapse begin
-    @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()
+    @extend v_pre, v_post, i_post = oneport = DirectionalTwoPort()
     @parameters begin
         g, [description = "Conductance"]
         E = -80.0, [description = "Reversal potential"]
@@ -43,7 +43,7 @@ end
 end
 
 @mtkmodel GlutamatergicSynapse begin
-    @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()
+    @extend v_pre, v_post, i_post = oneport = DirectionalTwoPort()
     @parameters begin
         g, [description = "Conductance"]
         E = -70.0, [description = "Reversal potential"]
