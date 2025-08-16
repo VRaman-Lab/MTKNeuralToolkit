@@ -7,82 +7,28 @@ import ..Types
 using ModelingToolkit
 using ModelingToolkit: t_nounits as t
 using OrdinaryDiffEq
-#
-
-#=function build_network(connections::Dict{Tuple{Int,Int}, Vector{@NamedTuple{type::Symbol, weight::Float64}}}, neurons::Vector)
-    synapses = mapreduce(vcat, connections) do ((pre_idx, post_idx), synapse_list)
-        map(enumerate(synapse_list)) do (i, synapse_params)
-            put_synapse(neurons[pre_idx], neurons[post_idx], synapse_params.type, synapse_params.weight; 
-                       name=Symbol("s_$(pre_idx)$(post_idx)_$(synapse_params.type)_$i"))
-        end
-    end
-    
-    network_components = vcat(collect(values(neurons)), synapses)
-    final_system = compose(ODESystem([], t; name=:network), network_components)
-    return structural_simplify(final_system)
-end=#
-
-function build_network_split(connections::Dict{<:Tuple, Vector{@NamedTuple{type::Symbol, weight::Float64}}}, neurons::Union{Vector,Dict})
-    # First, structural_simplify all neurons
-    println("Simplifying neurons...")
-    simplified_neurons = Dict{Any,Any}()
-    for (key, neuron) in pairs(neurons)
-        simplified_neurons[key] = structural_simplify(neuron)
-    end
-    
-    # Create synapses using simplified neurons
-    println("Creating synapses...")
-    synapses = mapreduce(vcat, connections) do ((pre, post), synapse_list)
-        map(enumerate(synapse_list)) do (i, synapse_params)
-            put_synapse(simplified_neurons[pre], simplified_neurons[post], synapse_params.type, synapse_params.weight; 
-                       name=Symbol("s_$(pre)$(post)_$(synapse_params.type)_$i"))
-        end
-    end
-    
-    # Simplify each synapse individually
-    println("Simplifying synapses...")
-    simplified_synapses = map(synapses) do synapse
-        structural_simplify(synapse)
-    end
-    
-    # Compose simplified components
-    network_components = vcat(collect(values(simplified_neurons)), simplified_synapses)
-    final_system = compose(ODESystem([], t; name=:network), network_components)
-    
-    # Final network-level simplification
-    #println("Final network structural_simplify...")
-    ss = structural_simplify(final_system)
-    return ss
-end
-
-function build_network2(connections::Dict{<:Tuple, Vector{@NamedTuple{type::Symbol, weight::Float64}}}, neurons::Union{Vector,Dict})
-    synapses = mapreduce(vcat, connections) do ((pre, post), synapse_list)
-        map(enumerate(synapse_list)) do (i, synapse_params)
-            put_synapse(neurons[pre], neurons[post], synapse_params.type, synapse_params.weight; 
-                       name=Symbol("s$(pre)$(post)_$(synapse_params.type)$i"))
-        end
-    end
-    
-    network_components = vcat(collect(values(neurons)), synapses)
-    #final_system = compose(synapses, t; name=:network)
-    #final_system = System(Equation[], t; systems=synapses, name=:network)
-    #inal_system = compose(System([], t; name=:network), synapses)
-    #return structural_simplify(final_system)
-    final_system = System(Equation[], t; systems=network_components, name=:network)
-    return structural_simplify(final_system)
-end
-
 
 function build_network(connections::Dict, neurons)
-    synapses = mapreduce(vcat, connections) do ((pre_idx, post_idx), synapse_funcs)
-        map(enumerate(synapse_funcs)) do (i, synapse_func)
+    s_connections::Vector{Equation} = []
+    synapses = []
+    
+    for ((pre_idx, post_idx), synapse_funcs) in connections
+        for (i, synapse_func) in enumerate(synapse_funcs)
             syn_instance = synapse_func()
-            add_synapse(syn_instance, neurons[pre_idx], neurons[post_idx])
+            conn_eqs, syn = add_synapse(syn_instance, neurons[pre_idx], neurons[post_idx])
+            
+            append!(s_connections, conn_eqs)
+            push!(synapses, syn)
         end
     end
     
-    #network_components = vcat(neurons, synapses)
-    final_system = compose(ODESystem([], t; name=:network), synapses)
+    neuron_systems = neurons isa Dict ? collect(values(neurons)) : neurons
+    network_system = System(Equation[], t; 
+                           systems=[neuron_systems..., synapses...], 
+                           name=:network)
+    
+    final_system = extend(network_system, System(s_connections, t, name=:connections))
+    
     return structural_simplify(final_system)
 end
 
@@ -104,7 +50,6 @@ function build_network(connections::Dict{<:Tuple, Vector{@NamedTuple{type::Symbo
                            systems=[neuron_systems..., synapses...], 
                            name=:network)
     
-    # Then add connections using extend
     final_system = extend(network_system, System(s_connections, t, name=:connections))
     
     return structural_simplify(final_system)
@@ -215,117 +160,4 @@ function build_Prinz(input=nothing; name=:soma, config=config.PrinzConfig())
         neur = build_neuron(fn, input;  channels = [KCa, Na, CaS, CaT, K, DRK, H, Leak])
     end
     return(neur)
-end
-
-"""
-    parse_sol_for_membrane_voltages(sol::ODESolution)
-
-Extract unique membrane voltage traces from ODE solution.
-Returns one voltage per neuron, avoiding duplicates from multiple connections.
-"""
-
-function parse_sol_for_voltage(state_vars)
-    neuron_to_states = Dict{String, Vector{Any}}()
-    
-    for state in state_vars
-        state_str = string(state)
-        
-        if occursin(r"₊v\(t\)$", state_str)
-            # Extract pattern: s0₊n0₊n0₊v(t)
-            component_path = replace(state_str, r"₊v\(t\)$" => "")
-            parts = split(component_path, "₊")
-            
-            if length(parts) >= 3
-                # Get the final neuron identifier (n0, n1, n2, etc.)
-                final_neuron = parts[end]
-                
-                if !haskey(neuron_to_states, final_neuron)
-                    neuron_to_states[final_neuron] = Any[]
-                end
-                push!(neuron_to_states[final_neuron], state)
-            end
-        end
-    end
-    
-    # Get first state for each neuron (sorted by string representation)
-    first_states = Any[]
-    for neuron_id in sort(collect(keys(neuron_to_states)))
-        states_for_neuron = neuron_to_states[neuron_id]
-        
-        sorted_states = sort(states_for_neuron, by=string)
-        push!(first_states, sorted_states[1])
-    end
-    
-    return first_states
-end
-
-function parse_sol_for_membrane_voltages(sol::ODESolution)
-    #ODESolution as input. Due to construction methodology, neurons might appear multiple times under different synapses if connected to differnet synapses.
-    #These are just references to the same neuron though.
-    #This function outputs an array consisting of all different neuron voltages in the system, only once for each.
-    state_vars = unknowns(sol.prob.f.sys)
-    voltage_states = parse_sol_for_voltage(state_vars)
-    return voltage_states
-end
-
-"""
-    inspect_network(prob::Union{ODEProblem,ODESystem})
-
-Display network structure including neurons and their synaptic connections.
-Useful for debugging and verifying network topology.
-"""
-
-function inspect_network(prob::Union{ODEProblem,ODESystem})
-    sys = if prob isa ODEProblem
-        prob.f.sys
-    else
-        prob 
-    end
-    
-    states = unknowns(sys)
-    
-    neurons = Dict{String, Vector{Any}}()
-    for state in states
-        state_str = string(state)
-        if occursin(r"₊v\(t\)$", state_str)
-            parts = split(replace(state_str, r"₊v\(t\)$" => ""), "₊")
-            neuron_name = parts[end]
-            
-            if !haskey(neurons, neuron_name)
-                neurons[neuron_name] = Any[]
-            end
-            push!(neurons[neuron_name], state)
-        end
-    end
-    
-    neuron_synapses = Dict{String, Vector{String}}()
-    for state in states
-        state_str = string(state)
-        for (neuron_name, _) in neurons
-            if occursin(neuron_name, state_str) && occursin(r"s\d+", state_str)
-                match_obj = match(r"(s\d+)", state_str)
-                if match_obj !== nothing
-                    syn_name = match_obj[1]
-                    if !haskey(neuron_synapses, neuron_name)
-                        neuron_synapses[neuron_name] = String[]
-                    end
-                    if !(syn_name in neuron_synapses[neuron_name])
-                        push!(neuron_synapses[neuron_name], syn_name)
-                    end
-                end
-            end
-        end
-    end
-
-    println("=== Network Inspection ===")
-    println("\nNeurons ($(length(neurons))):")
-    for (name, states) in sort(neurons)
-        println("  $name: $(length(states)) state(s)")
-        if haskey(neuron_synapses, name)
-            println("    Connected synapses: ", join(sort(neuron_synapses[name]), ", "))
-        end
-    end
-    println("__________________________")
-    
-    return (neurons=neurons, neuron_synapses=neuron_synapses, all_states=states)
 end

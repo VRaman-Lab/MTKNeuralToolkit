@@ -14,8 +14,8 @@ import MTKNeuralToolkit.Config as cfg
 import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
 using MTKNeuralToolkit
 using Plots
-#@btime
-@named inp2 = TimeVaryingFunction(f=t -> sin(t))
+
+@named inp = TimeVaryingFunction(f=t -> sin(t))
 syn_cf = 0.254
 prinz_cf = 159.2
 neurons = Dict(
@@ -44,9 +44,8 @@ println("Building ODEProblem")
 @time prob = ODEProblem(network, Pair[], (0.0, 100.0) )
 println("Equations: ", length(equations(network)))
 
-#@time inspect_network(network)
 println("Solving")
 @time sol = solve(prob, TRBDF2());
 
-p = plot(sol, idxs=parse_sol_for_membrane_voltages(sol), size=(1000, 800))
+p = plot(sol, idxs=[network.AB.AB.V, network.PY.PY.V, network.LP.LP.V], size=(1000, 800))
 gui(p)

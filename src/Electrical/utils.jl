@@ -43,23 +43,6 @@ function build_channel_explicit(conductance; name, reversal=nothing)
     return compose(ODESystem(connections, t; name=name), reversal === nothing ? [p, n, conductance] : [p, n, conductance, reversal])
 end
 
-function build_neuron2(neuron, input; channels)
-     channel_connections = [[
-         connect(channel.p, neuron.p),
-         connect(neuron.ground.g, neuron.n, channel.n)
-     ] for channel in channels]
-    input_connection = connect(input.output, neuron.I)
-
-    calcium_flux_connections = [[
-            connect(channel.conductance.ca.p, neuron.ca.p),
-            connect(neuron.ca.n, channel.conductance.ca.n),          
-     ] for channel in channels if hasproperty(channel.conductance, :ca) ]
-
-     connections = vcat(channel_connections..., input_connection, calcium_flux_connections...)
-     connected_system = compose(ODESystem(connections, t, name=nameof(neuron)), [channels..., neuron,input])
-     return connected_system
-end
-
 function build_neuron(neuron, input; channels)
     channel_connections = [[
          connect(channel.p, neuron.oneport.p),
@@ -81,18 +64,6 @@ function build_neuron(neuron; channels)
     build_neuron(neuron, Constant(; name=:input, k=0.0); channels)
 end
 
-function add_synapse1(channel, pre_neuron, post_neuron;)
-    pre_name = nameof(pre_neuron) 
-    post_name = nameof(post_neuron)
-    channel_connection = [
-        connect(channel.pre, getproperty(pre_neuron, pre_name).p),
-        connect(channel.post, getproperty(post_neuron, post_name).p),
-    ]
-
-    connected_system = compose(ODESystem(channel_connection, t, name=nameof(channel)),
-        [channel, pre_neuron, post_neuron])
-    return connected_system
-end
 function add_synapse(channel, pre_neuron, post_neuron;)
     pre_name = nameof(pre_neuron) 
     post_name = nameof(post_neuron)

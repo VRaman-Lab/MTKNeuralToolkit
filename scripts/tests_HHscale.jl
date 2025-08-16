@@ -10,7 +10,6 @@ import MTKNeuralToolkit.Liu as Liu
 import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
 using MTKNeuralToolkit
 
-# Inputs
 @named inp1 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named inp2 = TimeVaryingFunction(f = t -> exp(sin(t)))
 @named inp3 = TimeVaryingFunction(f = t -> exp(sin(t)))
@@ -36,33 +35,27 @@ connections = Dict(
     (6,2) => [(type = :Inh, weight = 20.0)],
 )
 
-# Warm-up compilation
 network = build_network(connections, neurons)
 prob = ODEProblem(network, Pair[], (0.0, 500.0))
 println(equations(prob))
 solve(prob, TRBDF2())
 
-# Benchmark Part 1: Network build time
 bench_build = @benchmark build_network($connections, $neurons) samples=15
 println("\n--- Network Build ---")
 println(bench_build)
 println("Mean build time: ", mean(bench_build.times) / 1e9, " seconds")
 
-# Prepare a network once for solving benchmark
 network = build_network(connections, neurons)
 
-# Benchmark Part 2: ODEProblem build time
 bench_ODE = @benchmark ODEProblem(network, Pair[], (0.0, 500.0)) samples=15
 println("\n--- ODEProblem build ---")
 println(bench_ODE)
 println("Mean build time: ", mean(bench_ODE.times) / 1e9, " seconds")
 prob = ODEProblem(network, Pair[], (0.0, 500.0))
 
-# Prepare a network once for solving benchmark
 network = build_network(connections, neurons)
 prob = ODEProblem(network, Pair[], (0.0, 500.0))
 
-# Benchmark Part 3: Solve time
 bench_solve = @benchmark solve($prob, TRBDF2()) samples=15
 println("\n--- ODE Solve ---")
 println(bench_solve)

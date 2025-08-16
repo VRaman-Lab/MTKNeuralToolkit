@@ -11,8 +11,6 @@ import MTKNeuralToolkit.HodgkinHuxley as HH
 import MTKNeuralToolkit.Liu as Liu
 import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
 using MTKNeuralToolkit
-#using Plots
-
 
 @named inp1 = TimeVaryingFunction(f=t -> (exp(sin(t))))
 @named inp2 = TimeVaryingFunction(f=t -> (exp(sin(t))))
@@ -43,6 +41,3 @@ connections = Dict(
 
 @time prob = ODEProblem(network, Pair[], (0.0, 500.0))
 @time sol = solve(prob, TRBDF2());
-
-#p = plot(sol, idxs=parse_sol_for_membrane_voltages(sol), size=(1000, 800))
-#gui(p)

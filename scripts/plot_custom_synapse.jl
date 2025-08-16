@@ -36,8 +36,8 @@ connections = Dict(
 @time network = build_network(connections, neurons)
 
 @time prob = ODEProblem(network, Pair[], (0.0, 500.0))
-#inspect_network(network)
+
 @time sol = solve(prob, TRBDF2());
 
-p = plot(sol, idxs=parse_sol_for_membrane_voltages(sol), size=(1000, 800))
+p = plot(sol, idxs=[network.x1.x1.V, network.x2.x2.V], size=(1000, 800))
 gui(p)
