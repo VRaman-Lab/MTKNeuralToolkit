@@ -60,7 +60,6 @@ end
        v_pre ~ pre.v
        v_post ~ post.v
        i_post ~ post.i
-       
        # Directional constraint
        pre.i ~ 0  # No current drawn from presynaptic
    end

@@ -134,7 +134,6 @@ end
         D(m) ~  (1/τm)*(m∞ - m) 
         D(h) ~ (1/τh)*(h∞ - h)
         E ~ (500.0) * (8.6174e-5) * (283.15) * log(max((3000.0 / Ca), 0.001))
-        #i ~ g * m^3*h * v 
         i ~ g * m^3*h * (v)
     end
 end
@@ -162,13 +161,12 @@ end
         D(h) ~ (1/(210. - 179.6 / (1.0 + exp((v+E + 55.0) / 16.9))))*(1.0 / (1.0 + exp((v+E + 32.1) / 5.5)) - h)
         E ~ (500.0) * (8.6174e-5) * (283.15) * log(max((3000.0 / Ca), 0.001))
 
-        #i ~ g * m^3*h * v 
         i ~ g * m^3*h * (v)
     end
 end
 
 @mtkmodel kcagates begin
-    @extend v, i = oneport = OnePort()          #For listening to 
+    @extend v, i = oneport = OnePort()
     @parameters begin
         g, [description = "Conductance"]
         E, [description = "Reversal"]
@@ -195,7 +193,7 @@ end
 end
 
 @mtkmodel kcagates_opt begin
-    @extend v, i = oneport = OnePort()          #For listening to 
+    @extend v, i = oneport = OnePort()
     @parameters begin
         g, [description = "Conductance"]
         E, [description = "Reversal"]

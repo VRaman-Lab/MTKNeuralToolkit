@@ -1,4 +1,3 @@
-#Liu Channels
 #=@mtkmodel calciumreversal begin
     @extend v, i = oneport = OnePort()
     @variables begin
