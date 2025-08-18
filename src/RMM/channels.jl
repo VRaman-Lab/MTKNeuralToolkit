@@ -1,61 +1,10 @@
-#=function rmmvecf(; name=:conductance, n_inputs=8, n_outputs=8, width=16, depth=1, 
-                activation=tanh, default_ltiv=-70, kwargs...)
-    
-    @mtkmodel rmmvec_instance begin
-        @extend v, i = oneport = OnePort()
-        @variables begin
-            lti_v₁(t) = default_ltiv
-            lti_v₂(t) = default_ltiv
-            lti_v₃(t) = default_ltiv
-            lti_v₄(t) = default_ltiv
-            lti_v₅(t) = default_ltiv
-            lti_v₆(t) = default_ltiv
-            lti_v₇(t) = default_ltiv
-            lti_v₈(t) = default_ltiv
-            lti_v_plotter(t)
-        end
-        @parameters begin
-            g = 0.01, [description = "Conductance"]
-            E = -65.0
-            A_Mat[1:8]::Float64
-            B_Vec[1:8]::Float64
-        end
-        @components begin
-            nn_in = RealInputArray(nin = n_inputs)  
-            nn_out = RealOutputArray(nout = n_outputs)
-            nn = NeuralNetworkBlock(n_input = n_inputs, n_output = n_outputs; 
-                                    chain = multi_layer_feed_forward(n_inputs, n_outputs, 
-                                                                    width=width, depth=depth, 
-                                                                    activation=activation), 
-                                    rng=Xoshiro(57))
-        end
-        @equations begin        
-            D(lti_v₁) ~ A_Mat[1] * lti_v₁ + B_Vec[1] * v
-            D(lti_v₂) ~ A_Mat[2] * lti_v₂ + B_Vec[2] * v
-            D(lti_v₃) ~ A_Mat[3] * lti_v₃ + B_Vec[3] * v  
-            D(lti_v₄) ~ A_Mat[4] * lti_v₄ + B_Vec[4] * v
-            D(lti_v₅) ~ A_Mat[5] * lti_v₅ + B_Vec[5] * v
-            D(lti_v₆) ~ A_Mat[6] * lti_v₆ + B_Vec[6] * v
-            D(lti_v₇) ~ A_Mat[7] * lti_v₇ + B_Vec[7] * v
-            D(lti_v₈) ~ A_Mat[8] * lti_v₈ + B_Vec[8] * v
-            nn_in.u ~ lti_min_max_norm([lti_v₁, lti_v₂, lti_v₃, lti_v₄, lti_v₅, lti_v₆, lti_v₇, lti_v₈])
-            lti_v_plotter ~ sum([lti_v₁, lti_v₂, lti_v₃, lti_v₄, lti_v₅, lti_v₆, lti_v₇, lti_v₈])
-            connect(nn_in, nn.input)
-            connect(nn_out, nn.output)
-            i ~ g * sum(nn.output.u) * (v-E)
-        end   
-    end
-    
-    return rmmvec_instance(; name, kwargs...)
-end=#
-
-function rmmvecf(;τ::Vector, name=:conductance, tf=0.01, n_outputs=8, width=16, depth=1, 
-                   activation=tanh, default_ltiv=-70, seed=57, kwargs...)
+function full_RMM(;τ::Vector, name=:conductance, tf=0.01, n_outputs=8, width=16, depth=1, 
+                   activation=tanh, default_ltiv=-70, kwargs...)
 
     A_Mat, B_Vec = make_lti_vecs(τ;δ=tf)
     n_inputs = length(B_Vec)
-    rng_seed = seed
-
+    @named p = Pin()
+    @named n = Pin()
     @named oneport = OnePort()
     @parameters begin
         t
@@ -73,33 +22,28 @@ function rmmvecf(;τ::Vector, name=:conductance, tf=0.01, n_outputs=8, width=16,
     
     D = Differential(t)
     
-    @named nn_in = RealInputArray(nin = n_inputs)  
-    @named nn_out = RealOutputArray(nout = n_outputs)
-    @named nn = NeuralNetworkBlock(n_input = n_inputs, n_output = n_outputs; 
-                                   chain = multi_layer_feed_forward(n_inputs, n_outputs, 
-                                                                   width=width, depth=depth, 
-                                                                   activation=activation), 
-                                   rng=Xoshiro(rng_seed))
+    chain = multi_layer_feed_forward(n_inputs, n_outputs, width=width, depth=depth, activation=activation)
+    @named nn = NeuralNetworkBlock(n_inputs, n_outputs; chain=chain, rng=Xoshiro(57))
     
     lti_eqs = [D(lti_v[i]) ~ A_Mat[i] * lti_v[i] + B_Vec[i] * v for i in 1:n_inputs]
     
+    input_connections = [nn.inputs[i] ~ lti_min_max_norm(collect(lti_v))[i] for i in 1:n_inputs]
     sys_eqs = [
         v ~ oneport.v
         i ~ oneport.i
         lti_v_plotter ~ sum(lti_v)
-        nn_in.u ~ lti_min_max_norm(collect(lti_v))
-        connect(nn_in, nn.input)
-        connect(nn_out, nn.output)
-        i ~ g * sum(nn.output.u) * (v - E)
+        connect(oneport.p, p)
+        connect(oneport.n, n)
+        i ~ g * sum([nn.outputs[i] for i in 1:n_outputs]) * (v - E)
     ]
     
-    eqs = vcat(lti_eqs, sys_eqs)
+    eqs = vcat(lti_eqs, input_connections, sys_eqs)
     
-    sys = ODESystem(eqs, t, name=name,[v, i, lti_v..., lti_v_plotter], 
-                          [g, E, A_Mat..., B_Vec...]; 
-                          systems=[nn_in, nn_out, nn, oneport])
+    sys = ODESystem(eqs, t, name=name, [v, i, lti_v..., lti_v_plotter], 
+                    [g, E, A_Mat..., B_Vec...]; 
+                    systems=[nn, oneport, p, n])
     
     return sys
 end
 
-RMMVecf(;name=:conductance, kwargs...) = rmmvecf(;name, kwargs...)
+Full_RMM(;name=:conductance, kwargs...) = full_RMM(;name, kwargs...)

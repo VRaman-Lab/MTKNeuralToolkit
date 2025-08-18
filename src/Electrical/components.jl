@@ -2,19 +2,18 @@
     @parameters begin
         C, [description = "Capacitance"]
     end
-    @extend v, i = oneport = OnePort(; v)
     @variables begin
         V(t) = -65.0, [description = "membrane voltage"]
     end
     @components begin
-        oneport=OnePort()
+        oneport = OnePort()
         I = RealInput()
         ground = Ground()
     end
     @equations begin
-        D(v) ~ (i + I.u) / C
+        D(oneport.v) ~ (oneport.i + I.u) / C
         connect(ground.g, oneport.n)
-        V ~ v
+        V ~ oneport.v
     end
 end
 

@@ -1,5 +1,5 @@
 @mtkmodel BaseSynapse begin
-    @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()
+    @extend v_pre, v_post, i_post = oneport = DirectionalTwoPort()
     @parameters begin
         g, [description = "Conductance"]
         E, [description = "Reversal potential"]
@@ -20,49 +20,11 @@
     end
 end
 
-@mtkmodel CholinergicSynapse begin
-    @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()
-    @parameters begin
-        g, [description = "Conductance"]
-        E = -80.0, [description = "Reversal potential"]
-        Vth = -35.0, [description = "Threshold voltage"]
-        k_ = 0.01, [description = "Kinetic parameter"]
-        sigma = 5.0, [description = "Sigmoid steepness"]
-    end
-    @variables begin
-        s_hat(t)
-        tau_s(t)
-        s(t) = 0.0
-    end
-    @equations begin
-        s_hat ~ 1.0 / (1.0 + exp((Vth - v_pre) / sigma))
-        tau_s ~ (1.0 - s_hat) / k_
-        D(s) ~ (1/tau_s) * (s_hat - s)
-        i_post ~ g * s * (v_post - E)
-    end
-end
+CholinergicSynapse(; g, E=-80.0, Vth=-35.0, k_=0.01, sigma=5.0, name=:cholinergic_syn) = 
+    BaseSynapse(; g=g, E=E, Vth=Vth, k_=k_, sigma=sigma, name=name)
 
-@mtkmodel GlutamatergicSynapse begin
-    @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()
-    @parameters begin
-        g, [description = "Conductance"]
-        E = -70.0, [description = "Reversal potential"]
-        k_ = 0.025, [description = "Kinetic parameter"]
-        Vth = -35.0, [description = "Threshold voltage"]
-        sigma = 5.0, [description = "Sigmoid steepness"]
-    end
-    @variables begin
-        s(t) = 0.0
-        s_hat(t)
-        tau_s(t)
-    end
-    @equations begin
-        s_hat ~ 1.0 / (1.0 + exp((Vth - v_pre) / sigma))
-        tau_s ~ (1.0 - s_hat) / k_
-        D(s) ~ (1/tau_s) * (s_hat - s)
-        i_post ~ g * s * (v_post - E)
-    end
-end
+GlutamatergicSynapse(; g, E=-70.0, Vth=-35.0, k_=0.025, sigma=5.0, name=:glutamatergic_syn) = 
+    BaseSynapse(; g=g, E=E, Vth=Vth, k_=k_, sigma=sigma, name=name)
 
 @mtkmodel LifSynapseComplex begin
     @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()

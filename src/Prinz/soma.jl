@@ -5,23 +5,23 @@
         Ca∞ = 0.5
         τ = 200.0, [description = "calcium time constant"] 
     end
-    @extend v, i = oneport = OnePort(; v)
     @variables begin
         Ca(t) = 0.5, [description = "calcium concentration"]
         V(t) = -65.0, [description = "membrane voltage"]
     end
     @components begin
+        oneport = OnePort()
         I = RealInput()
         ground = Ground()
         CaGround = IonicGround()
         ca = IonicPort()
     end
     @equations begin
-        D(v) ~ (i + I.u) / C
+        D(oneport.v) ~ (oneport.i + I.u) / C
         connect(ground.g, oneport.n)
         connect(CaGround.g, ca.n)
-        V ~ v
-        D(Ca) ~ (1 / τ) * (-Ca + Ca∞ - (flux_multiplier * ca.i / C))
+        V ~ oneport.v
+        D(Ca) ~ (1 / τ) * (-Ca + Ca∞ + (flux_multiplier * ca.i / C))
         Ca ~ ca.q
     end
 end

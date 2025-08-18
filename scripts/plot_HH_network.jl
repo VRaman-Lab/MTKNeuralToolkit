@@ -7,66 +7,35 @@ using OrdinaryDiffEq
 using ModelingToolkitStandardLibrary.Blocks: Constant, TimeVaryingFunction 
 using ModelingToolkit: t_nounits as t, D_nounits as D
 import MTKNeuralToolkit.Synapse as Synapse
-import MTKNeuralToolkit.HodgkinHuxley as HH
-import MTKNeuralToolkit.Prinz as Prinz
-import MTKNeuralToolkit.Liu as Liu
-import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
+import MTKNeuralToolkit.Types: SYNAPSE_TYPES
 using MTKNeuralToolkit
-include("script_utils.jl")
-using Plots
 
-#--Workflow 1
-@named inp2 = TimeVaryingFunction(f=t -> (sin(t)))
-neurons = Dict(
-    "AB" => build_Prinz(inp2;name=:AB),
-    "PD" => build_Prinz(;name=:PD),
-    "LP" => build_Prinz(;name=:LP)
-) 
+@named inp1 = TimeVaryingFunction(f=t -> (exp(sin(t))))
+@named inp2 = TimeVaryingFunction(f=t -> (exp(sin(t))))
+@named inp3 = TimeVaryingFunction(f=t -> (exp(sin(t))))
+neurons = [
+    build_HH(inp1; name=:HH1),
+    build_HH(inp2; name=:HH2),
+    build_HH(inp3; name=:HH3),
+    build_HH(;name=:IHH1),
+    build_HH(;name=:IHH2),
+    build_HH(;name=:IHH3),
+]
 connections = Dict(
-    ("AB", "LP") => (type=:Chol, weight=1.0),
-    ("PD", "LP") => (type=:Glut, weight=1.0),
-    ("LP", "PD") => (type=:Inh, weight=1.0)
+    (1,4) => [(type=:Exc, weight=3*(rand()))],
+    (2,5) => [(type=:Exc, weight=3*(rand()))],
+    (3,6) => [(type=:Exc, weight=3*(rand()))],
+
+    (4,2) => [(type=:Inh, weight=20.0)],
+    (4,3) => [(type=:Inh, weight=20.0)],
+
+    (5,1) => [(type=:Inh, weight=20.0)],
+    (5,3) => [(type=:Inh, weight=20.0)],
+
+    (6,1) => [(type=:Inh, weight=20.0)],
+    (6,2) => [(type=:Inh, weight=20.0)],
 )
-network = build_network(connections, neurons)
+@time network = build_network(connections, neurons)
 
-#--Workflow 2
-#Create your inputs here. Different options include inbuilt Julia functions ->Sin, cos, exp, log, etc. For log you need to specify base.
-#Not every neuron needs an input; create prebuilt input neurons by specifying their input functions, other prebuilt neurons through an int param.
-#Neurons are added to a dict depending on when they were created, which depends on their location within the build_network args.
-#If 3 input HHs and 1 input Liu, the first non-input HH will be n4, the first non-input LIF will be n$(all_previously_made_neurons+1)
-
-#=@named inp = TimeVaryingFunction(f=t -> min(log(t,10), 1.0))
-@named inp2 = TimeVaryingFunction(f=t -> exp(sin(t)))
-connections = Dict(
-    ("n1", "n3") => (type=:Exc, weight=0.6),
-    ("n1", "n4") => (type=:Exc, weight=0.6),
-    ("n1", "n5") => (type=:Exc, weight=1.0),
-    ("n3", "n6") => (type=:Exc, weight=10.0),
-    ("n4", "n6") => (type=:Exc, weight=10.0),
-    ("n5", "n6") => (type=:Inh, weight=0.2),
-    ("n6", "n5") => (type=:Inh, weight=0.2),
-    ("n6", "n2") => (type=:Exc, weight=1.0),
-    ("n2", "n5") => (type=:Inh, weight=1.0),
-    ("n2", "n6") => (type=:Inh, weight=1.0)
-)
-network = build_network_quick(connections; inpHH=[inp, inp2], noinpHH=5)
-=#
-#--Workflow 3
-#=@named inp = TimeVaryingFunction(f=t -> min(log(t,10), 1.0))
-@named inp2 = TimeVaryingFunction(f=t -> exp(sin(t)))
-@named n1 = build_Liu(inp; name=:n1)
-@named n2 = build_HH(;name=:n2)
-
-s1 = put_synapse(n1,n2,:Exc,0.1; name=:s1)
-network = compose(ODESystem([], t; name=:network), [s1])
-network = structural_simplify(network)=#
-
-#If using Liu neurons change solver from Tsit5 -> TRBDF2. 
-#Might need to manually give more maxiters as well through solve(x,y, maxiters=[more lol])
-
-prob = ODEProblem(network, Pair[], (0.0, 500.0))
-#inspect_network(network)
-sol = solve(prob, TRBDF2());
-
-p = plot(sol, idxs=parse_sol_for_membrane_voltages(sol), size=(1000, 800))
-gui(p)
+@time prob = ODEProblem(network, Pair[], (0.0, 500.0))
+@time sol = solve(prob, TRBDF2());

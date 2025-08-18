@@ -23,6 +23,23 @@
     end
 end
 
+@mtkmodel nagates_opt begin
+    @extend v, i = oneport = OnePort()
+    @parameters begin
+        g, [description = "Conductance"]
+        E
+    end
+    @variables begin
+        m_gate(t)=0.0, [description = "m gate"]
+        h_gate(t)=1.0, [description = "h gate"]
+    end
+    @equations begin
+        D(m_gate) ~  (0.182(v+E+35)/(1. −exp(−(v+E+35.)/ 9.))) * (1 - m_gate) - (-0.124(v+E+35)/(1. −exp((v+E+35.)/ 9.))) * m_gate
+        D(h_gate) ~ (0.25*exp(−(v+E+90.)/12.) )* (1 - h_gate) - (0.25*(exp((v+E+62.)/6.))/exp((v+E+90.)/12.)) * h_gate
+        i ~ g * m_gate^3*h_gate * v 
+    end
+end
+
 """
 Leak Channel is just a conductance
 """
@@ -53,12 +70,11 @@ Just a conductance
     end
     @equations begin
         αₙ ~ 0.02(v +E − 25.) / (1. − exp(− (v +E − 25.) /  9.))
-        βₙ ~  -0.002(v+E − 25.) / (1. − exp( (v+E − 25.) /  9.))
-        D(n_gate) ~ αₙ * (1 - n_gate) - βₙ * n_gate
+        βₙ ~ -0.002(v+E − 25.) / (1. − exp( (v+E − 25.) /  9.))
+        D(n_gate) ~ (αₙ) * (1 - n_gate) - (βₙ) * n_gate
         i ~ v*n_gate^4*g
     end
 end
-
 NaGates(  ;name=:conductance , kwargs...) = nagates( ;name , kwargs...)
 KGates( ;name=:conductance , kwargs...) = kgates( ;name, kwargs...)
 LGates( ;name=:conductance , kwargs...) = lgates(;name , kwargs...)

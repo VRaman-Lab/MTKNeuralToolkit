@@ -13,14 +13,13 @@ import MTKNeuralToolkit.Prinz as Prinz
 import MTKNeuralToolkit.Config as cfg
 import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
 using MTKNeuralToolkit
-include("script_utils.jl")
 using Plots
 
-@named inp2 = TimeVaryingFunction(f=t -> sin(t))
+@named inp = TimeVaryingFunction(f=t -> sin(t))
 syn_cf = 0.254
 prinz_cf = 159.2
 neurons = Dict(
-    "AB" => build_Prinz(inp2; name=:AB, config=cfg.PrinzConfig(
+    "AB" => build_Prinz(inp; name=:AB, config=cfg.PrinzConfig(
         V0=-60.0, Na_g=100.0*prinz_cf, CaS_g=6.0*prinz_cf, CaT_g=2.5*prinz_cf, 
         H_g=0.01*prinz_cf, K_g=50.0*prinz_cf, KCa_g=5.0*prinz_cf, DRK_g=100.0*prinz_cf, Leak_g=0.0*prinz_cf)),
     "PY" => build_Prinz(;name=:PY, config=cfg.PrinzConfig(
@@ -39,13 +38,14 @@ connections = Dict(
     ("PY", "LP") => [(type=:Glut, weight=30.0*syn_cf)],
 )
 
+println("Building network")
 @time network = build_network(connections, neurons)
+println("Building ODEProblem")
+@time prob = ODEProblem(network, Pair[], (0.0, 100.0) )
+println("Equations: ", length(equations(network)))
 
-@time prob = ODEProblem(network, Pair[], (0.0, 300.0) )
+println("Solving")
 @time sol = solve(prob, TRBDF2());
 
-p = plot(sol, idxs=parse_sol_for_membrane_voltages(sol), layout=(4,1), subplot=1,size=(1000, 800))
-plot!(p, sol, idxs=[network.s_ABLP_Chol_1.AB.AB.Ca], subplot=2)
-plot!(p, sol, idxs=[network.s_ABLP_Chol_1.LP.LP.Ca], subplot=3)
-plot!(p, sol, idxs=[network.s_ABPY_Chol_1.PY.PY.Ca], subplot=4)
+p = plot(sol, idxs=[network.AB.AB.V, network.PY.PY.V, network.LP.LP.V], size=(1000, 800))
 gui(p)

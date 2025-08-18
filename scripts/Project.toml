@@ -1,4 +1,7 @@
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
+JuliaSyntax = "70703baa-626e-46a2-a12c-08ffd08c73b4"
 Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
 MTKNeuralToolkit = "88376828-b154-4662-bcd7-a3562b4741f6"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
