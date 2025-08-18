@@ -31,3 +31,4 @@ prob = ODEProblem(simple_network, Pair[], (0.0, 100.0))
 sol  = solve(prob, Rodas5());
 plot(sol, idxs=[IF_synapse.v_pre])
 plot!(sol, idxs=[IF_synapse.v_post])
+

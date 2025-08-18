@@ -94,7 +94,7 @@ function build_network(connections::Dict, neurons::Dict, check_connections=true)
     validate_neuron_existence(connections, neurons)
     if check_connections validate_no_self_connections(connections) end
     network = create_network_from_connections(connections, neurons, [])
-    final_system = compose(ODESystem([], t; name=:network), network...)
+    final_system = compose(ODESystem([], t; name=:network), network)
     return structural_simplify(final_system)
 end
 
@@ -119,12 +119,13 @@ function build_network(connections::Dict, neurons::Vector, check_connections=tru
     neurons_dict = Dict("n$i" => neuron for (i, neuron) in enumerate(neurons))
     network = []
     network = create_network_from_connections(connections, neurons, neurons_dict)
-    final_system = compose(ODESystem([], t; name=:network), network...)
+    final_system = compose(ODESystem([], t; name=:network), network)
     return structural_simplify(final_system)
 end
 """
 Internal: Wire synapses between neurons based on connection specifications.
 """
+
 
 function create_network_from_connections(connections::Dict{Tuple{String, String}, @NamedTuple{type::Symbol, weight::Float64}}, neurons::Dict, network::Vector)
     for ((pre, post), (conn_params)) in connections
@@ -221,7 +222,7 @@ function build_HH(input=nothing; name=:soma, config=config.HHConfig())
 end
 
 """
-    build_Prinz(input=nothing; name=:soma, config=PrinzConfig())
+build_Prinz(input=nothing; name=:soma, config=PrinzConfig())
 
 Build a Prinz STG neuron model with calcium dynamics.
 Commonly used for central pattern generator networks.
@@ -249,7 +250,8 @@ function build_Liu(input=nothing; name=:soma, config=config.LiuConfig())
 end
 
 """
-Internal: Extract voltage states from system unknowns, handling duplicates.
+I
+ternal: Extract voltage states from system unknowns, handling duplicates.
 """
 
 function build_Prinz(input=nothing; name=:soma, config=config.PrinzConfig())

@@ -24,7 +24,6 @@ fn = BasicSoma(; C=10, name = :soma)
 neur = build_neuron(fn, inp; channels = [IF])
 neur = structural_simplify(neur)
 
-
 prob = ODEProblem(neur, Pair[], (0.0, 40.0))
 
 sol = solve(prob, Rodas5(),initializealg = ShampineCollocationInit())
@@ -33,14 +32,3 @@ p = plot(sol, idxs=[neur.soma.v],layout=(2,1), subplot =1)
 t_vec = 0:0.1:40  # Time vector
 input_current = [ifelse((t > 10) & (t < 20), 100.0, 0.0) for t in t_vec]
 plot!(t_vec, input_current, label="Input Current", xlabel="Time", ylabel="Current", subplot=2)
-
-#=IF = IaF.Make_channel(IaF.IntAndFire(; name = :conductance); name = :IF)
-fn = BasicSoma(; C=10, name = :soma)
-
-neur = build_neuron(fn, inp, channels = [IF])
-neur = structural_simplify(neur)
-
-prob = ODEProblem(neur, Pair[], (0.0, 40))
-
-sol = solve(prob, Rodas5())
-p = plot(sol, idxs=[neur.IF.conductance.oneport.v]) =#
