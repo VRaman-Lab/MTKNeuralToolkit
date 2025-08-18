@@ -39,7 +39,6 @@ include("Config/Config.jl")
 include("network_assembly/network_assembly.jl")
 
 export build_network, put_synapse, build_IF, build_HH, build_Liu, build_Prinz
-#export PrinzConfig
 
 end
 

@@ -2,7 +2,7 @@
 
    #Neuron params
    V0::Float64 = -65.0
-   Ca0::Float64 = 0.5
+   Ca0::Float64 = 0.05
 
    # Sodium channel
    Na_g::Float64 = 100.0
@@ -44,7 +44,7 @@ end
 
    #Neuron params
    V0::Float64 = -65.0
-   Ca0::Float64 = 0.5
+   Ca0::Float64 = 0.05
 
    # Sodium channel
    Na_g::Float64 = 100.0

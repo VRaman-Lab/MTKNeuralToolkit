@@ -1,3 +1,7 @@
+import Pkg
+Pkg.activate(@__DIR__)
+Pkg.develop(path = joinpath(@__DIR__, ".."))
+
 using ModelingToolkit
 using OrdinaryDiffEq
 using ModelingToolkitStandardLibrary.Blocks: TimeVaryingFunction 
@@ -5,22 +9,19 @@ using ModelingToolkit: t_nounits as t, D_nounits as D
 import MTKNeuralToolkit.HodgkinHuxley as HH
 import MTKNeuralToolkit.Config as cfg
 using MTKNeuralToolkit
-
-# Create 400 HH neurons with simple inputs
+#DOES NOT RUN
 n_neurons = 400
 neurons = Dict{String, Any}()
 
 println("Building $n_neurons neurons...")
 build_start = time()
 for i in 1:n_neurons
-    # Simple constant input for each neuron
     @eval @named $(Symbol("inp_$i")) = TimeVaryingFunction(f=t -> 0.1)
     neurons["N$i"] = build_HH(@eval $(Symbol("inp_$i")); 
                               name=Symbol("N$i"), 
                               config=cfg.HHConfig(V0=-65.0))
 end
 
-# Create sparse random inhibitory connections (~10% connectivity)
 connections = Dict{Tuple{String,String}, Vector{@NamedTuple{type::Symbol, weight::Float64}}}()
 syn_weight = 2.0
 
