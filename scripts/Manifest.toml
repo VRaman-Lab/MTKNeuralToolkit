@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.6"
+julia_version = "1.11.5"
 manifest_format = "2.0"
 project_hash = "151f768126ebedfcc0bd98d5e1408d6cfbf19fa8"
 
@@ -1493,7 +1493,7 @@ uuid = "d8e11817-5142-5d16-987a-aa16d5891078"
 version = "0.4.17"
 
 [[deps.MTKNeuralToolkit]]
-deps = ["Distributions", "Lux", "ModelingToolkit", "ModelingToolkitNeuralNets", "ModelingToolkitStandardLibrary", "OrdinaryDiffEq", "OrdinaryDiffEqNonlinearSolve", "Pkg", "Random", "SciMLStructures"]
+deps = ["Distributions", "Lux", "ModelingToolkit", "ModelingToolkitNeuralNets", "ModelingToolkitStandardLibrary", "OrdinaryDiffEq", "Pkg", "Random", "SciMLStructures"]
 path = "/Users/ellabennison/Documents/GitHub/MTKNeuralToolkit/scripts/.."
 uuid = "88376828-b154-4662-bcd7-a3562b4741f6"
 version = "0.0.1-DEV"
