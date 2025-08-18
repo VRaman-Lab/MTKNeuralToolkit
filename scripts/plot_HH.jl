@@ -28,4 +28,3 @@ sol = solve(prob, Tsit5());
 p = plot(sol,idxs=[neur.Na.conductance.m_gate,neur.Na.conductance.h_gate], layout=(4,1), subplot=1)
 plot!(p, sol, idxs=[neur.K.conductance.n_gate], subplot=2)
 plot!(p, sol, idxs=[neur.soma.V], subplot=3)
-gui(p)
