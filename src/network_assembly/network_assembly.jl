@@ -4,6 +4,7 @@ import ..Liu as Liu_module
 import ..Prinz as Prinz_module
 import ..Synapse as Synapse
 import ..Types
+import ..IntegrateAndFire as IaF
 using ModelingToolkit
 using ModelingToolkit: t_nounits as t
 using OrdinaryDiffEq
@@ -67,6 +68,8 @@ function put_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:Cus
         @named syn_channel = Synapse.GlutamatergicSynapse(;g=weight, name =name)
     elseif synapse_type == :Custom
         @named syn_channel = custom_synapse(;g=weight, E, Vth, k_, sigma, name=name)
+    elseif synapse_type == :LIF
+        @named syn_channel = Synapse.LifSynapseComplex(;g_max=weight, name =name)
     end
     return add_synapse(syn_channel, pre, post)
 end
@@ -76,14 +79,14 @@ Placeholder for integrate-and-fire neuron implementation.
 """
 
 function build_IF(input=nothing; name=:IF)
-    string = ("Not implemented yet :(")
-    println(string)
-    println("Your code will crash in:")
-    println("3")
-    println("2")
-    println("1")
-    error("Never gonna give you up")
-    #TODO Everything lol
+    IF = build_channel(IaF.IF_channel(; E=-65, name = :conductance), FixedReversal(; E=0); name =:IF)
+    fn = BasicSoma(; C=10, name = name)
+    if input === nothing
+        neur = build_neuron(fn; channels = [IF])
+    else
+        neur = build_neuron(fn, input; channels = [IF])
+    end
+    return(neur)
 end
 
 """

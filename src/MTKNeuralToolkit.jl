@@ -9,7 +9,7 @@ using Random
 
 include("Electrical/utils.jl")
 
-export build_channel, build_channel_explicit, build_neuron, add_synapse
+export build_channel, build_channel_explicit, build_neuron, add_synapse, make_lif_synapse
 
 include("Electrical/components.jl")
 
@@ -20,7 +20,6 @@ export IonicPin, IonicPort, IonicTerminal, CalciumSensitiveNeuron, DirectionalTw
 
 include("HodgkinHuxley/HodgkinHuxley.jl")
 include("IntegrateAndFire/IntegrateAndFire.jl")
-export IF_channel
 include("Liu/Liu.jl")
 
 include("Synapse/Synapse.jl")

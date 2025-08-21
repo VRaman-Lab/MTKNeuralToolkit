@@ -77,3 +77,15 @@ function add_synapse(channel, pre_neuron, post_neuron;)
 
     return channel_connection, channel
 end
+function make_lif_synapse(pre_neuron, post_neuron, synapse; name)
+    pre_name = nameof(pre_neuron) 
+    post_name = nameof(post_neuron)
+    println("Names:  ", pre_name, "__", post_name)
+    
+    eqs = [
+        connect(synapse.pre, getproperty(pre_neuron, pre_name).oneport.p)
+        connect(synapse.post, getproperty(post_neuron, post_name).oneport.p)
+    ]
+
+    return compose(ODESystem(eqs, t; name), [pre_neuron, post_neuron, synapse])
+end

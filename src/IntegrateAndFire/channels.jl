@@ -2,8 +2,8 @@
     @extend v, i = oneport = OnePort()
     @parameters begin
         E
-        V_reset = -2.0
-        V_th = 10.0
+        V_reset = -67.0
+        V_th = -55.0
         τ_m = 1.0 
         R = 1.0
         C = 10.0
