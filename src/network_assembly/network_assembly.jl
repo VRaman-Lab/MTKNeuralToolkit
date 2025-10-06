@@ -2,7 +2,7 @@ import ..Config as config
 import ..HodgkinHuxley as HH_module
 import ..Liu as Liu_module
 import ..Prinz as Prinz_module
-import ..IF as IF_module
+import ..IntegrateAndFire as IF_module
 import ..Synapse as Synapse
 import ..Types
 using ModelingToolkit
@@ -56,6 +56,19 @@ function build_network(connections::Dict{<:Tuple, Vector{@NamedTuple{type::Symbo
     return structural_simplify(final_system)
 end
 
+function build_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:Custom, E=nothing, Vth=nothing, k_=nothing,sigma=nothing)
+    synapse = put_synapse(pre, post, synapse_type, weight; name, E, Vth, k_, sigma)
+
+    network_system = System(Equation[], t; 
+                           systems=[pre, post, synapse], 
+                           name=:network)
+    
+    final_system = extend(network_system, System(s_connections, t, name=:connections))
+    
+    return structural_simplify(final_system)
+    
+end
+
 function put_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:Custom, E=nothing, Vth=nothing, k_=nothing,sigma=nothing)
     synapse_type in Types.SYNAPSE_TYPES || throw(ArgumentError("Invalid synapse type"))
     if synapse_type == :Exc
@@ -72,12 +85,8 @@ function put_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:Cus
     return add_synapse(syn_channel, pre, post)
 end
 
-"""
-Placeholder for integrate-and-fire neuron implementation.
-"""
-
 function build_IF(input=nothing; name=:IF)
-    IF = build_channel(IaF.IF_channel(; E=0, name = :conductance), FixedReversal(; E=-65); name =:IF)
+    IF = build_channel(IF_module.IF_channel(; E=0, name = :conductance), FixedReversal(; E=-65); name =:IF)
     fn = BasicSoma(; C=10, name = :soma)
 
     if input === nothing
@@ -89,7 +98,7 @@ function build_IF(input=nothing; name=:IF)
 end
 
 function build_LIF(input=nothing; name=:IF)
-    LIF = build_channel(IaF.LIF_channel(; E=0, name = :conductance), FixedReversal(; E=-65); name =:LIF)
+    LIF = build_channel(IF_module.LIF_channel(; E=0, name = :conductance), FixedReversal(; E=-65); name =:LIF)
     fn = BasicSoma(; C=10, name = :soma)
 
     if input === nothing
@@ -99,13 +108,6 @@ function build_LIF(input=nothing; name=:IF)
     end
     return(neur)
 end
-
-"""
-    build_HH(input=nothing; name=:soma, config=HHConfig())
-
-Build a Hodgkin-Huxley neuron with Na, K, and leak channels.
-Optional input stimulus and customizable parameters via config.
-"""
 
 function build_HH(input=nothing; name=:soma, config=config.HHConfig())
 
@@ -122,13 +124,6 @@ function build_HH(input=nothing; name=:soma, config=config.HHConfig())
     end
     return(neur)
 end
-
-"""
-    build_Prinz(input=nothing; name=:soma, config=PrinzConfig())
-
-Build a Prinz STG neuron model with calcium dynamics.
-Commonly used for central pattern generator networks.
-"""
 
 function build_Liu(input=nothing; name=:soma, config=config.LiuConfig())
 
@@ -150,10 +145,6 @@ function build_Liu(input=nothing; name=:soma, config=config.LiuConfig())
     end
     return(neur)
 end
-
-"""
-Internal: Extract voltage states from system unknowns, handling duplicates.
-"""
 
 function build_Prinz(input=nothing; name=:soma, config=config.PrinzConfig())
 

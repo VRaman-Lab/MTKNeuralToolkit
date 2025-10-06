@@ -1,4 +1,3 @@
-#Prinz channels
 @mtkmodel nagates begin
     @extend v, i = oneport = OnePort()
     @parameters begin

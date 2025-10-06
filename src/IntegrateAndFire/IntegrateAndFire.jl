@@ -1,4 +1,4 @@
-module HodgkinHuxley
+module IntegrateAndFire
 
 import ..MTKNeuralToolkit
 

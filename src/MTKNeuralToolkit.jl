@@ -26,6 +26,8 @@ include("Synapse/Synapse.jl")
 
 include("Types/Types.jl")
 
+include("IntegrateAndFire/IntegrateAndFire.jl")
+
 export SYNAPSE_TYPES
 
 include("RMM/RMM.jl")
