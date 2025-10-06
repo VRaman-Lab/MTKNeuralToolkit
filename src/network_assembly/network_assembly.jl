@@ -2,6 +2,7 @@ import ..Config as config
 import ..HodgkinHuxley as HH_module
 import ..Liu as Liu_module
 import ..Prinz as Prinz_module
+import ..IF as IF_module
 import ..Synapse as Synapse
 import ..Types
 using ModelingToolkit
@@ -76,14 +77,27 @@ Placeholder for integrate-and-fire neuron implementation.
 """
 
 function build_IF(input=nothing; name=:IF)
-    string = ("Not implemented yet :(")
-    println(string)
-    println("Your code will crash in:")
-    println("3")
-    println("2")
-    println("1")
-    error("Never gonna give you up")
-    #TODO Everything lol
+    IF = build_channel(IaF.IF_channel(; E=0, name = :conductance), FixedReversal(; E=-65); name =:IF)
+    fn = BasicSoma(; C=10, name = :soma)
+
+    if input === nothing
+        neur = build_neuron(fn; channels = [IF])
+    else
+        neur = build_neuron(fn, input; channels = [IF])
+    end
+    return(neur)
+end
+
+function build_LIF(input=nothing; name=:IF)
+    LIF = build_channel(IaF.LIF_channel(; E=0, name = :conductance), FixedReversal(; E=-65); name =:LIF)
+    fn = BasicSoma(; C=10, name = :soma)
+
+    if input === nothing
+        neur = build_neuron(fn; channels = [LIF])
+    else
+        neur = build_neuron(fn, input; channels = [LIF])
+    end
+    return(neur)
 end
 
 """
