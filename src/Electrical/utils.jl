@@ -1,7 +1,3 @@
-
-"""
-    Build channel from gates: put in series with voltage.
-"""
 function build_channel(conductance, reversal;name)
     if conductance.p === nothing
         return build_channel_explicit(conductance;name, reversal=reversal)
