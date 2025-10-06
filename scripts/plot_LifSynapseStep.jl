@@ -28,6 +28,6 @@ simple_network = structural_simplify(network)
 
 prob = ODEProblem(simple_network, Pair[], (0.0, 100.0))
 
-sol  = solve(prob, Rodas4(), abstol=1e-9, reltol=1e-9);
+sol  = solve(prob, Tsit5(), abstol=1e-9, reltol=1e-9);
 plot(sol, idxs=[IF_synapse.v_pre])
 plot!(sol, idxs=[IF_synapse.v_post])

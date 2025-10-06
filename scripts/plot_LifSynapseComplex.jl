@@ -28,7 +28,7 @@ simple_network = structural_simplify(network)
 
 prob = ODEProblem(simple_network, Pair[], (0.0, 100.0))
 
-sol  = solve(prob, Rodas5());
-plot(sol, idxs=[IF_synapse.v_pre])
-plot!(sol, idxs=[IF_synapse.v_post])
+sol  = solve(prob, Tsit5());
+plot(sol, idxs=[IF_synapse.v_pre], title="LIF spiking dynamics", label="Presynaptic neuron", ylabel="Voltage(V)", xlabel="Time")
+plot!(sol, idxs=[IF_synapse.v_post], label="Postsynaptic neuron", xlabel="Time(ms)")
 

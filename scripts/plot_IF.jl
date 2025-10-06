@@ -17,7 +17,7 @@ import MTKNeuralToolkit
 using Plots
 
 IF = build_channel(IaF.IF_channel(; E=-65, name = :conductance), FixedReversal(; E=0); name =:IF)
-  
+
 @named inp = TimeVaryingFunction(f = t -> ifelse((t > 10) & (t < 20), 100.0, 0.0))
 fn = BasicSoma(; C=10, name = :soma)
 
@@ -26,9 +26,9 @@ neur = structural_simplify(neur)
 
 prob = ODEProblem(neur, Pair[], (0.0, 40.0))
 
-sol = solve(prob, Rodas5(),initializealg = ShampineCollocationInit())
+sol = solve(prob, Tsit5())
 
-p = plot(sol, idxs=[neur.soma.oneport.v],layout=(2,1), subplot =1)
+p = plot(sol, idxs=[neur.soma.oneport.v],label="LIF neuron", ylabel="Voltage(V)", xlabel="Time(ms)",layout=(2,1), subplot =1)
 t_vec = 0:0.1:40  # Time vector
 input_current = [ifelse((t > 10) & (t < 20), 100.0, 0.0) for t in t_vec]
-plot!(t_vec, input_current, label="Input Current", xlabel="Time", ylabel="Current", subplot=2)
+plot!(t_vec, input_current, label="Input Current", xlabel="Time(ms)", ylabel="Current(A)", subplot=2)
