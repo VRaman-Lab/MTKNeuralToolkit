@@ -5,19 +5,23 @@ version = "0.0.1-DEV"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
 Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 ModelingToolkitNeuralNets = "f162e290-f571-43a6-83d9-22ecc16da15f"
 ModelingToolkitStandardLibrary = "16a59e39-deab-5bd0-87e4-056b12336739"
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 OrdinaryDiffEqNonlinearSolve = "127b3ac7-2247-4354-8eb6-78cf4e7c58e8"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SciMLSensitivity = "1ed8b502-d754-442c-8d5d-10ac956f44a1"
 SciMLStructures = "53ae85a6-f571-4167-b2af-e1d143709226"
 
 [compat]
-ModelingToolkitNeuralNets = "2.0.0"
-OrdinaryDiffEqNonlinearSolve = "1.14.1"
+FiniteDiff = "2.28.1"
+Optim = "1.13.2"
+SciMLSensitivity = "7.89.0"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

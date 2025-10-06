@@ -15,11 +15,10 @@ import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
 using MTKNeuralToolkit
 using Plots
 
-@named inp = TimeVaryingFunction(f=t -> sin(t))
-syn_cf = 0.254
-prinz_cf = 159.2
+syn_cf = 0.25355998214
+prinz_cf = 159.23566879
 neurons = Dict(
-    "AB" => build_Prinz(inp; name=:AB, config=cfg.PrinzConfig(
+    "AB" => build_Prinz(; name=:AB, config=cfg.PrinzConfig(
         V0=-60.0, Na_g=100.0*prinz_cf, CaS_g=6.0*prinz_cf, CaT_g=2.5*prinz_cf, 
         H_g=0.01*prinz_cf, K_g=50.0*prinz_cf, KCa_g=5.0*prinz_cf, DRK_g=100.0*prinz_cf, Leak_g=0.0*prinz_cf)),
     "PY" => build_Prinz(;name=:PY, config=cfg.PrinzConfig(
@@ -41,7 +40,7 @@ connections = Dict(
 println("Building network")
 @time network = build_network(connections, neurons)
 println("Building ODEProblem")
-@time prob = ODEProblem(network, Pair[], (0.0, 100.0) )
+@time prob = ODEProblem(network, Pair[], (0.0, 300.0) )
 println("Equations: ", length(equations(network)))
 
 println("Solving")
