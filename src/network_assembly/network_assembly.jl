@@ -100,9 +100,9 @@ function build_IF(input=nothing; name=:IF)
     return(neur)
 end
 
-function build_LIF(input=nothing; name=:IF)
-    LIF = build_channel(IF_module.LIF_channel(; E=0, name = :conductance), FixedReversal(; E=-65); name =:LIF)
-    fn = BasicSoma(; C=10, name = :soma)
+function build_LIF(input=nothing; name=:soma)
+    LIF = build_channel(IF_module.IF_channel(; name = :conductance), FixedReversal(; E=-65); name =:LIF)
+    fn = LIFSoma(; C=10, R = 1, name = name)
 
     if input === nothing
         neur = build_neuron(fn; channels = [LIF])

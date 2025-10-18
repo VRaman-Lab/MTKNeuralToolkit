@@ -17,13 +17,13 @@ using Plots
 @named inp = TimeVaryingFunction(f = t -> ifelse((t > 10) & (t < 20),30.0, 0.0))
 @named inp2 = TimeVaryingFunction(f = t ->  ifelse((t > 30) & (t < 40),30.0, 0.0))
 neurons = [
-    build_HH(inp;name=:HH1),
-    build_HH(inp2;name=:HH2),
-    build_IF(;name=:IF1)
+    build_LIF(inp;name=:IF1),
+    build_LIF(inp2;name=:IF2),
+    build_LIF(;name=:IF3)
 ]
 connections = Dict(
-    (1, 3) => [(type=:Exc, weight=9.0)],
-    (2, 3) => [(type=:Inh, weight=20.0)]
+    (1, 3) => [(type=:LIF, weight=9.0)],
+    (2, 3) => [(type=:LIF, weight=20.0)]
 )
 sys = build_network(connections, neurons)
 

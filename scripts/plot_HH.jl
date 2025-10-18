@@ -19,9 +19,9 @@ Leak =  build_channel(HH.LGates( ;g=0.3, E = -65), FixedReversal(;E=-65); name =
 fn = BasicSoma(; C=1, name = :soma)
 
 neur = build_neuron(fn, inp; channels = [Na, K, Leak])
-neur = structural_simplify(neur) 
+test = structural_simplify(neur) 
 
-prob = ODEProblem(neur, Pair[], (0.0, 200.0) )
+prob = ODEProblem(test, Pair[], (0.0, 200.0) )
 sol = solve(prob, Tsit5());
 
 
