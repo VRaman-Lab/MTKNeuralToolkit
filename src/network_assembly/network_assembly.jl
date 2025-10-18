@@ -97,6 +97,20 @@ function build_IF(input=nothing; name=:IF)
     return(neur)
 end
 
+function build_modular_IF(input=nothing; name=:IF, v_thresh=-55.0, v_rst= -70.0)
+    IF = build_channel(IF_module.IF(; E=0, name = :conductance), FixedReversal(; E=-65); name =:IF)
+    event_builder = v -> [v ~ -v_thresh] => (affect = [v ~ Pre(v_rst)])
+    #ev = [temporary_testicle~-v_thresh]=> (affect = [temporary_testicle ~ Pre(v_rst)])
+    fn = ModularSoma(; C=10, name = :soma, continuous_events=event_builder)
+
+    if input === nothing
+        neur = build_neuron(fn; channels = [IF])
+    else
+        neur = build_neuron(fn, input; channels = [IF])
+    end
+    return(neur)
+end
+
 function build_LIF(input=nothing; name=:IF)
     LIF = build_channel(IF_module.LIF(; E=0, name = :conductance), FixedReversal(; E=-65); name =:LIF)
     fn = BasicSoma(; C=10, name = :soma)
@@ -116,6 +130,22 @@ function build_HH(input=nothing; name=:soma, config=config.HHConfig())
     Leak = build_channel(HH_module.LGates(;g=config.Leak_g, E=config.Leak_E), FixedReversal(;E=config.Leak_E); name = :Leak)
 
     fn=BasicSoma(; C=1, name = name)
+
+    if input === nothing
+        neur = build_neuron(fn; channels = [Na, K, Leak])
+    else
+        neur = build_neuron(fn, input; channels = [Na, K, Leak])
+    end
+    return(neur)
+end
+
+function build_modular_HH(input=nothing; name=:soma, config=config.HHConfig())
+
+    Na = build_channel(HH_module.NaGates(;g=config.Na_g, E=config.Na_E), FixedReversal(;E=config.Na_E); name = :Na)      
+    K = build_channel(HH_module.KGates(;g=config.K_g, E=config.K_E), FixedReversal(;E=config.K_E); name = :K)
+    Leak = build_channel(HH_module.LGates(;g=config.Leak_g, E=config.Leak_E), FixedReversal(;E=config.Leak_E); name = :Leak)
+
+    fn=ModularSoma(; C=1, name = name)
 
     if input === nothing
         neur = build_neuron(fn; channels = [Na, K, Leak])

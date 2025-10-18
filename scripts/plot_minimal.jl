@@ -10,7 +10,7 @@ import MTKNeuralToolkit
 using Plots
 @named inp = TimeVaryingFunction(f=t -> (exp(sin(t))))
 
-neurons = [build_LIF(inp;name=:LIF), build_HH(; name=:HH)]
+neurons = [build_modular_HH(inp;name=:LIF), build_modular_HH(; name=:HH)]
 connections = Dict(
     (1,2) => [(type=:Exc, weight=5.0)]
 )
@@ -22,5 +22,5 @@ prob = ODEProblem(network, Pair[], (0.0, 10.0) )
 println("solvering")
 sol = solve(prob, Tsit5());
 
-p = plot(sol, idxs=[network.Liu.Liu.V, network.HH.HH.V])
+p = plot(sol, idxs=[network.LIF.LIF.V, network.HH.HH.V])
 gui(p)

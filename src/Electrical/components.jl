@@ -17,6 +17,38 @@
     end
 end
 
+function ModularSoma(;name=:conductance, continuous_events = nothing, C = 1.0, kwargs...)
+
+    @named oneport = OnePort()
+    @named I = RealInput()
+    @named ground = Ground()
+    
+    @parameters begin
+        C = C
+    end
+
+    @variables begin
+        V(t) = -65.0
+    end
+
+    D = Differential(t)
+    sys_eqs = [
+        D(oneport.v) ~ (oneport.i + I.u) / C
+        connect(ground.g, oneport.n)
+        V ~ oneport.v
+    ]
+
+    if !isnothing(continuous_events)
+        cuntenv = continuous_events(oneport.v)
+    else
+        cuntenv = []
+    end
+
+    sys = ODESystem(sys_eqs, t, name=name, [V], [C],
+                    systems=[oneport, I, ground], continuous_events=cuntenv)
+    return sys    
+end
+
 """
 A battery: generates a constant potential difference across its terminals
 """
