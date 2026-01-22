@@ -1,3 +1,10 @@
+"""
+Build_channel 1 takes in a reversal, and does the usual. Build channel 2 is for channels without fixed reversals. 
+These are to neurons with dynamic calcium reversals for instance.
+If no conductance.p, then assume the channel is being added through a function - ODE_Problem, and not a mtkmodel.
+These require slightly different connections. I had issues propagating the oneport's p object through the ODE_Problem 
+function, and passing the oneport works fine, just is a bit uglier.
+"""
 function build_channel(conductance, reversal;name)
     if conductance.p === nothing
         return build_channel_explicit(conductance;name, reversal=reversal)
@@ -11,8 +18,6 @@ function build_channel(conductance, reversal;name)
     ]
     return compose(ODESystem(connections, t; name), [p,n,conductance,reversal])
 end
-
-
 
 function build_channel(conductance; name)
     if conductance.p === nothing
@@ -57,7 +62,9 @@ function build_neuron(neuron, input; channels)
      connected_system = System(connections, t, name=nameof(neuron); systems=[neuron, channels..., input])
      return connected_system
 end
-
+"""
+Little bit more interoperability
+"""
 function build_neuron(neuron; channels)
     build_neuron(neuron, Constant(; name=:input, k=0.0); channels)
 end

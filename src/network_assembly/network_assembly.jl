@@ -10,6 +10,9 @@ using ModelingToolkit
 using ModelingToolkit: t_nounits as t
 using OrdinaryDiffEq
 
+"""
+Build_network args can reference predefined synapses or pass functions through - allows users to define their own synapses.
+"""
 function build_network(connections::Dict, neurons)
     s_connections::Vector{Equation} = []
     synapses = []
@@ -56,6 +59,14 @@ function build_network(connections::Dict{<:Tuple, Vector{@NamedTuple{type::Symbo
     
     return structural_simplify(final_system)
 end
+
+"""
+Build and put_synapse are used when manually making a connection. Build_network is when building a network through a dict.
+You can build a network using just the build_synapse, but it's slow. Example in plot_minimal.
+Put_synapse does nothing but a big ugly if else going through predefined synapses.
+In this manner you can use predefined synapse functionality with new params, and you can define your own synapses, but there's a 
+bit less hand-holding there - lack of functionality or good enough?
+"""
 
 function build_synapse(pre, post, synapse_type::Symbol, weight::Float64; name=:Custom, E=nothing, Vth=nothing, k_=nothing,sigma=nothing)
     synapse = put_synapse(pre, post, synapse_type, weight; name, E, Vth, k_, sigma)
