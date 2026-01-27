@@ -1,3 +1,6 @@
+"
+This is all test code and is in the works (Ella dissertation)
+"
 function membrane_mse(system, sol, output_neurons)
     arrs = get_last_neurons_arrays(system, sol, output_neurons)
     weights = get_weights(sol, system)

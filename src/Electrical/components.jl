@@ -17,6 +17,11 @@
     end
 end
 
+"
+Leaky Integrate-And-Fire soma where resetting dynamics are used 
+This solves the Mass Matrix problem 
+"
+
 @mtkmodel LIFSoma begin
     @parameters begin
         C, [description = "Capacitance"]

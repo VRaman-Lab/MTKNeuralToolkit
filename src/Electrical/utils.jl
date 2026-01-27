@@ -1,3 +1,6 @@
+"
+Builds a channel which conects a conductance and a reversal property
+"
 function build_channel(conductance, reversal;name)
     if conductance.p === nothing
         return build_channel_explicit(conductance;name, reversal=reversal)
@@ -12,7 +15,9 @@ function build_channel(conductance, reversal;name)
     return compose(ODESystem(connections, t; name), [p,n,conductance,reversal])
 end
 
-
+"
+Subtype of build channel, doesn't take a reversal 
+"
 
 function build_channel(conductance; name)
     if conductance.p === nothing
@@ -41,6 +46,9 @@ function build_channel_explicit(conductance; name, reversal=nothing)
     return compose(ODESystem(connections, t; name=name), reversal === nothing ? [p, n, conductance] : [p, n, conductance, reversal])
 end
 
+"
+Builds a neuron which connects the channel to the nueron made in test files
+"
 function build_neuron(neuron, input; channels)
     channel_connections = [[
          connect(channel.p, neuron.oneport.p),
@@ -58,10 +66,16 @@ function build_neuron(neuron, input; channels)
      return connected_system
 end
 
+"
+Builds a neuron but makes a constant channel
+"
 function build_neuron(neuron; channels)
     build_neuron(neuron, Constant(; name=:input, k=0.0); channels)
 end
 
+"
+Makes a synapse which connects a pre neuron to a post neuron 
+"
 function add_synapse(channel, pre_neuron, post_neuron;)
     pre_name = nameof(pre_neuron) 
     post_name = nameof(post_neuron)
@@ -73,6 +87,10 @@ function add_synapse(channel, pre_neuron, post_neuron;)
 
     return channel_connection, channel
 end
+
+"
+Same as add_synapse but returns ODEProblem (works for LIF may be a issue to fix)
+"
 function make_lif_synapse(pre_neuron, post_neuron, synapse; name)
     pre_name = nameof(pre_neuron) 
     post_name = nameof(post_neuron)

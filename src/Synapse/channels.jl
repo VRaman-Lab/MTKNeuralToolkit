@@ -26,6 +26,9 @@ CholinergicSynapse(; g, E=-80.0, Vth=-35.0, k_=0.01, sigma=5.0, name=:cholinergi
 GlutamatergicSynapse(; g, E=-70.0, Vth=-35.0, k_=0.025, sigma=5.0, name=:glutamatergic_syn) = 
     BaseSynapse(; g=g, E=E, Vth=Vth, k_=k_, sigma=sigma, name=name)
 
+"
+LIF synapse: Allows current to be injected from pro-synapse to post-synapse
+"
 @mtkmodel LifSynapseComplex begin
     @extend v_pre, v_post, i_post = twoport = DirectionalTwoPort()
     @parameters begin

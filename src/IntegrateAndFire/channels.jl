@@ -1,3 +1,7 @@
+"
+Simple leaky integrate-and-fire channel 
+"
+
 @mtkmodel IF_channel begin
     @extend v, i = oneport = OnePort()
     @parameters begin
