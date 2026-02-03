@@ -1,6 +1,6 @@
 name = "MTKNeuralToolkit"
 uuid = "88376828-b154-4662-bcd7-a3562b4741f6"
-authors = ["Dhruva V. Raman", "Elouan Simonneau"]
+authors = ["Dhruva V. Raman", "Elouan Simonneau", "Ella Bennison"]
 version = "0.0.1-DEV"
 
 [deps]
@@ -15,9 +15,6 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SciMLStructures = "53ae85a6-f571-4167-b2af-e1d143709226"
 
-[compat]
-ModelingToolkitNeuralNets = "2.0.0"
-OrdinaryDiffEqNonlinearSolve = "1.14.1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
