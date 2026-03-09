@@ -7,6 +7,7 @@ using MTKNeuralToolkit
 using Zygote
 using Plots
 using ForwardDiff
+using ChainRulesCore
 using OrdinaryDiffEq
 using OrdinaryDiffEqNonlinearSolve
 using Statistics 
@@ -14,6 +15,8 @@ using Optimization
 using OptimizationOptimJL
 using OptimizationOptimisers
 using SymbolicIndexingInterface
+using SciMLStructures
+using ComponentArrays
 using SciMLSensitivity
 using SciMLStructures: Tunable, canonicalize, replace, replace!
 using ModelingToolkitStandardLibrary.Electrical

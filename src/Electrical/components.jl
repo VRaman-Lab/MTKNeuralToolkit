@@ -32,16 +32,6 @@ reset_function(V_reset, V_th, v) = v - (V_th - V_reset)
 σ′(V_th, v; k=10.0) = k * σ(V_th, v; k=k) * (1 - σ(V_th, v; k=k))
 @register_symbolic σ′(V_th, v)
 
-function ChainRulesCore.frule(::typeof(reset_function), V_reset, V_th, v)
-    Y = reset_function(V_reset, V_th, v)
-        function pullback(ȳ)
-            print("hello")
-            @info "rrule pullback called" ȳ V_th v σ′(V_th,v)  
-            return NoTangent(), ȳ * (-1.0), ȳ * σ′(V_th, v), ȳ * 1.0
-        end 
-        return Y, pullback
-
-end
 
 
 function ChainRulesCore.rrule(::typeof(reset_function), V_reset, V_th, v)

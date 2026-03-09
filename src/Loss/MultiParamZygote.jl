@@ -4,57 +4,47 @@ This is all test code and is in the works (Ella dissertation)
 "
 
 function MulitParamZygote_test(system, ref_sol, prob, params, opt, epoch)
-
     ground_sol = generate_groundtruth_system(ref_sol)
     tsteps = unique(ground_sol.t)
-
     p_array, params_idx, state_idx = get_parameters(prob, system, params)
 
-    f_plain    = ODEFunction(prob.f.f)
-    prob_plain = ODEProblem(f_plain, copy(prob.u0), prob.tspan, p_array)
-    
     truth_vec = []
     for idx in state_idx
         push!(truth_vec, ground_sol(tsteps)[idx, :])
     end
-    
-    p0 = [p_array[x] for x in params_idx]
 
-    optfn   = OptimizationFunction(loss_with_logging, Optimization.AutoZygote())
+    p0 = [p_array[x] for x in params_idx]
+    optfn   = OptimizationFunction(loss, Optimization.AutoZygote())
     optprob = OptimizationProblem(
         optfn, p0,
-        (prob_plain, tsteps, truth_vec, params_idx, state_idx, params),
+        (prob, tsteps, truth_vec, params_idx, state_idx, params),  # no f_plain/cb
     )
-    if opt=="ADAM"
-        sol = solve(optprob, ADAM(0.1); epochs = epoch)
+    if opt == "ADAM"
+        sol = solve(optprob, ADAM(0.01); epochs = epoch)
     end
-    
     sol.u, sol
 end
 
+function loss(x, p)
+    prob, tsteps, truth_vec, param_idx, state_idx, params = p
+    loss_val = lif_loss(prob, x, tsteps, param_idx, state_idx, truth_vec[1])
+    println("Loss: ", loss_val, " ", x)
+    return loss_val
+end
 
-function loss_with_logging(x, p)
-    prob_plain, tsteps, truth_vec, param_idx, state_idx, params = p
 
-    p_new = [i in param_idx ? x[findfirst(==(i), param_idx)] : prob_plain.p[i] 
-            for i in eachindex(prob_plain.p)]
-    
-    newprob = remake(prob_plain; p = p_new)
+function lif_loss(prob, p_flat, tsteps, param_idx, state_idx, truth)
+    p_tunable, replace_p, _ = canonicalize(Tunable(), prob.p)
+    p_new = [i in param_idx ? p_flat[findfirst(==(i), param_idx)] : p_tunable[i]
+             for i in eachindex(p_tunable)]
+    newprob = remake(prob; p = replace_p(p_new))
+    sol = solve(newprob, Tsit5(); 
+                saveat = tsteps,
+                dtmax = minimum(diff(tsteps)),
+                verbose = false)
 
-    sol = solve(
-        newprob, Tsit5();
-        saveat   = tsteps,
-        sensealg = BacksolveAdjoint(autojacvec=ZygoteVJP()))
-    
-    pred     = sol[state_idx[1], :]
-    loss_val = mean(abs2, Array(pred) .- truth_vec[1])
-
-    #test = Dict(zip(params, x))
-    #println("loss = ", loss_val, " ", test)
-
-    println("Loss: ",loss_val, " ", x)
-    println(truth_vec[1], " ", pred)
-   return loss_val
+    pred =[sol(t)[state_idx[1]] for t in tsteps]
+    return mean(abs2, pred .- truth)
 end
 
 function generate_groundtruth_system(ref_sol)
@@ -67,12 +57,12 @@ function generate_groundtruth_system(ref_sol)
         MTKNeuralToolkit.build_LIF(;name=:IF5)
     ]
     connections = Dict(
-    (1, 2) => [(type=:LIF, weight=3.0)],
-    (1, 3) => [(type=:LIF, weight=3.0)],
-    (1, 4) => [(type=:LIF, weight=3.5)],
-    (2, 5) => [(type=:LIF, weight=10.0)],
-    (3, 5) => [(type=:LIF, weight=10.0)],
-    (4, 5) => [(type=:LIF, weight=10.0)]
+    (1, 2) => [(type=:LIF, weight=5.0)],
+    (1, 3) => [(type=:LIF, weight=5.0)],
+    (1, 4) => [(type=:LIF, weight=5.0)],
+    (2, 5) => [(type=:LIF, weight=5.0)],
+    (3, 5) => [(type=:LIF, weight=5.0)],
+    (4, 5) => [(type=:LIF, weight=5.0)]
 )
 
     ground_sys = build_network(connections, neurons)
@@ -86,24 +76,49 @@ end
 
 function get_parameters(prob, system, params)
     param_syms = parameters(prob.f.sys)
-    p_array    = Float64[prob.ps[s] for s in param_syms]
     
+    p_array, _, _ = SciMLStructures.canonicalize(Tunable(), prob.p)
+    p_array = collect(p_array)  
+
     params_idx = Int[]
     for p in params
         matches = findall(param_syms) do s
-            sym_str = split(string(s), "(")[1]  # strip "(t)"
-            contains(sym_str, p)                # contains not endswith
+            sym_str = split(string(s), "(")[1]
+            contains(sym_str, p)
         end
         println("'$p' → matched: ", param_syms[matches])
         append!(params_idx, matches)
     end
-    
-    # state_idx is separate — define explicitly
-    state_idx = [variable_index(prob, system.IF5.IF5.oneport.v)]  # or whichever output neuron
-    
+
+    state_idx = [variable_index(prob, system.IF5.IF5.oneport.v)]
     println("Total optimizable params: ", length(params_idx))
-    println("Symbols: ", param_syms[params_idx])
-    
     return p_array, params_idx, state_idx
+end
+
+function ChainRulesCore.rrule(::typeof(lif_loss), prob, p_flat, tsteps, param_idx, state_idx, truth)
+    loss_val = lif_loss(prob, p_flat, tsteps, param_idx, state_idx, truth)
+    
+    _prob = prob
+    _tsteps = tsteps
+    _param_idx = param_idx
+    _state_idx = state_idx
+    _p_flat = copy(p_flat)
+    _truth = truth
+
+    function lif_loss_pullback(Δ)
+        δ = unthunk(Δ)
+        ε = 1e-5
+        ∂p = zeros(Float64, length(_p_flat))
+        for i in eachindex(_p_flat)
+            p_plus  = copy(_p_flat); p_plus[i]  += ε
+            p_minus = copy(_p_flat); p_minus[i] -= ε
+            loss_plus  = lif_loss(_prob, p_plus,  _tsteps, _param_idx, _state_idx, _truth)
+            loss_minus = lif_loss(_prob, p_minus, _tsteps, _param_idx, _state_idx, _truth)
+            ∂p[i] = δ * (loss_plus - loss_minus) / (2ε)
+        end
+        return (NoTangent(), NoTangent(), ∂p, NoTangent(), NoTangent(), NoTangent(), NoTangent())
+    end
+
+    return loss_val, lif_loss_pullback
 end
 
