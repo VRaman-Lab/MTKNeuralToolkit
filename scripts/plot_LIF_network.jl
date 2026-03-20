@@ -17,22 +17,20 @@ import MTKNeuralToolkit
 using Plots
 
 
-@named inp = TimeVaryingFunction(f = t -> ifelse((t > 10) & (t < 20),20, 0.0))
+@named inp = TimeVaryingFunction(f = t -> ifelse((t > 10) & (t < 20),10, 0.0))
 @named inp2 = TimeVaryingFunction(f = t ->  ifelse((t > 20) & (t < 30),20.0, 0.0))
 neurons = [
     build_LIF(inp;name=:IF1),
     build_LIF(;name=:IF2),
     build_LIF(;name=:IF3),
-    build_LIF(;name=:IF4),
-    build_LIF(;name=:IF5)
+    build_LIF(;name=:IF4)
+
+   
 ]
 connections = Dict(
-    (1, 2) => [(type=:LIF, weight=3.0)],
-    (1, 3) => [(type=:LIF, weight=3.0)],
-    (1, 4) => [(type=:LIF, weight=3.5)],
-    (2, 5) => [(type=:LIF, weight=10.0)],
-    (3, 5) => [(type=:LIF, weight=10.0)],
-    (4, 5) => [(type=:LIF, weight=10.0)]
+    (1, 2) => [(type=:LIF, weight = 5.0)],
+    (2, 3) => [(type =:LIF, weight = 2.0)],
+    (3, 4) => [(type =:LIF, weight = 2.0)],
 )
 
 
@@ -54,7 +52,7 @@ outputs_neurons = ["IF1", "IF2"]
 plot(sol, idxs=[sys.IF1.IF1.oneport.v], label="Neuron One", ylabel="Voltage(V)")
 plot!(sol, idxs=[sys.IF2.IF2.oneport.v], label="Neuron Two", xlabel="Time(ms)")
 plot!(sol, idxs=[sys.IF3.IF3.oneport.v], label="Neuron Three", xlabel="Time(ms)")
-plot!(sol, idxs=[sys.IF4.IF4.oneport.v], label="Neuron Four", xlabel="Time(ms)")
-plot!(sol, idxs=[sys.IF5.IF5.oneport.v], label="Neuron Five", xlabel="Time(ms)")
+plot!(sol, idxs=[sys.IF4.IF4.oneport.v], label="Neuron Three", xlabel="Time(ms)")
+
 
 

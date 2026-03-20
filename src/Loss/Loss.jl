@@ -6,7 +6,6 @@ using ModelingToolkit
 using MTKNeuralToolkit
 using Zygote
 using Plots
-using ForwardDiff
 using ChainRulesCore
 using OrdinaryDiffEq
 using OrdinaryDiffEqNonlinearSolve
@@ -28,5 +27,6 @@ include("FiniteDiff_test.jl")
 include("ForwardDiff_test.jl")
 include("Zygote_test.jl")
 include("MultiParamZygote.jl")
+
 
 end

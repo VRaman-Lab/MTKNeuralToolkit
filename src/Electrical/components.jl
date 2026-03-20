@@ -33,17 +33,6 @@ reset_function(V_reset, V_th, v) = v - (V_th - V_reset)
 @register_symbolic σ′(V_th, v)
 
 
-
-function ChainRulesCore.rrule(::typeof(reset_function), V_reset, V_th, v)
-    Y = reset_function(V_reset, V_th, v)
-    function pullback(ȳ)
-        print("hello")
-        @info "rrule pullback called" ȳ V_th v σ′(V_th,v)  
-        return NoTangent(), ȳ * (-1.0), ȳ * σ′(V_th, v), ȳ * 1.0
-    end 
-    return Y, pullback
-end 
-
 @mtkmodel LIFSoma begin
     @parameters begin
         C, [description = "Capacitance"]
