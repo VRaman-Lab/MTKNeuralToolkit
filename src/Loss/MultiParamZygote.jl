@@ -4,13 +4,8 @@ This is all test code and is in the works (Ella dissertation)
 "
 safe_std(x) = length(x) > 1 && any(xi != x[1] for xi in x) ? std(x) : 0.0
 
-function MulitParamZygote_test(system, ref_sol, prob, neurons, params, opt, epoch)
-    ground_sol, Spike_count = generate_groundtruth_system(ref_sol, [4.0, 4.0, 4.0])
+function MulitParamZygote_test(system, prob, ground_sol, neurons, params, opt, epoch)
     tsteps = unique(ground_sol.t)
-
-    for (i, n) in enumerate(neurons)
-        println("Ground $(nameof(n)) spikes: ", length(Spike_count[i]))
-    end
 
     p_array, params_idx, state_idx = get_parameters(prob, system, params, neurons)
     loss_arr = []
@@ -23,7 +18,6 @@ function MulitParamZygote_test(system, ref_sol, prob, neurons, params, opt, epoc
         ground_idx = findfirst(s -> contains(string(s), pattern), ground_state_syms)
         if !isnothing(ground_idx)
             push!(truth_vec, ground_sol(tsteps)[ground_idx, :])
-            println("Ground $neuron_name → idx=$ground_idx, mean=$(mean(truth_vec[end]))")
         else
             println("Warning: could not find $neuron_name in ground system")
         end
@@ -76,33 +70,6 @@ function lif_loss(prob, p_flat, tsteps, param_idx, state_idx, truth_vec, neurons
     return total_loss
 end
 
-
-function generate_groundtruth_system(ref_sol, target_weights)
-    @named inp = TimeVaryingFunction(f = t -> ifelse((t > 10) & (t < 20), 10, 0.0))
-    neurons = [
-        build_LIF(inp; name=:IF1),
-        build_LIF(; name=:IF2),
-        build_LIF(; name=:IF3),
-        build_LIF(; name=:IF4)
-    ]
-    connections = Dict(
-        (1, 2) => [(type=:LIF, weight=target_weights[1])],
-        (2, 3) => [(type=:LIF, weight=target_weights[2])],
-        (3, 4) => [(type=:LIF, weight=target_weights[3])],
-    )
-
-    ground_sys  = build_network(connections, neurons)
-    ground_prob = ODEProblem(ground_sys, Pair[], (0.0, 200.0))
-    cb, spike_counts = make_spike_callback(ground_prob, neurons)
-    ground_sol = solve(ground_prob, Tsit5(); callback=cb)
-
-    for (i, n) in enumerate(neurons)
-        println("Ground $(nameof(n)) spikes: $(length(spike_counts[i]))")
-    end
-
-    return ground_sol, spike_counts
-end
-
 function get_parameters(prob, system, params, neurons)
     param_syms = parameters(prob.f.sys)
     
@@ -151,8 +118,6 @@ function forward_callback(prob, neurons, tsteps)
                 verbose = false)
     return sol, spike_times
 end
-
-
 
 function ChainRulesCore.rrule(::typeof(lif_loss), prob, p_flat, tsteps, param_idx, state_idx, truth, neurons)
     loss_val = lif_loss(prob, p_flat, tsteps, param_idx, state_idx, truth, neurons)

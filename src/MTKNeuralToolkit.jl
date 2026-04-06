@@ -10,11 +10,11 @@ using Random
 
 include("Electrical/utils.jl")
 
-export build_channel, build_channel_explicit, build_neuron, add_synapse, make_lif_synapse
+export build_channel, build_channel_explicit, build_neuron, add_synapse, make_lif_synapse, make_spike_callback
 
 include("Electrical/components.jl")
 
-export NaGates, KGates, LGates, BasicSoma, LIFSoma, reset_function, rrule, frule, make_spike_callback, FixedReversal, fixed_reversal
+export NaGates, KGates, LGates, BasicSoma, LIFSoma, reset_function, rrule, frule, FixedReversal, fixed_reversal
 
 include("MixedIonic/components.jl")
 export IonicPin, IonicPort, IonicTerminal, CalciumSensitiveNeuron, DirectionalTwoPort, BiDirectionalTwoPort
@@ -33,7 +33,9 @@ include("Loss/loss.jl")
 
 export membrane_mse
 
+include("GroundTruth/GroundTruth.jl")
 
+export generate_groundtruth_system
 
 include("RMM/RMM.jl")
 
