@@ -27,9 +27,9 @@ neurons = [
     build_LIF(;name=:IF4)   
 ]
 connections = Dict(
-    (1, 2) => [(type=:LIF, weight = 2.5)],
-    (2, 3) => [(type =:LIF, weight = 2.5)],
-    (3, 4) => [(type =:LIF, weight = 2.5)],
+    (1, 2) => [(type=:LIF, weight = 5.0)],
+    (2, 3) => [(type =:LIF, weight = 5.0)],
+    (3, 4) => [(type =:LIF, weight = 5.0)],
 )
 
 sys = build_network(Dict(connections), neurons)

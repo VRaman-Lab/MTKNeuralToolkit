@@ -131,20 +131,21 @@ function ChainRulesCore.rrule(::typeof(lif_loss), prob, p_flat, tsteps, param_id
     _neurons = neurons
 
     function lif_loss_pullback(Δ)
-    δ = unthunk(Δ)
-    ε = 0.1
-    ∂p = zeros(Float64, length(_p_flat))
-    for i in eachindex(_p_flat)
-        p_plus  = copy(_p_flat); p_plus[i]  += ε
-        p_minus = copy(_p_flat); p_minus[i] -= ε
-        loss_plus  = lif_loss(_prob, p_plus,  _tsteps, _param_idx, _state_idx, _truth, _neurons)
-        loss_minus = lif_loss(_prob, p_minus, _tsteps, _param_idx, _state_idx, _truth, _neurons)
-        ∂p[i] = δ * (loss_plus - loss_minus) / (2ε)
+            
+        δ = unthunk(Δ)
+        ε = 0.1
+        ∂p = zeros(Float64, length(_p_flat))
+        for i in eachindex(_p_flat)
+            p_plus  = copy(_p_flat); p_plus[i]  += ε
+            p_minus = copy(_p_flat); p_minus[i] -= ε
+            loss_plus  = lif_loss(_prob, p_plus,  _tsteps, _param_idx, _state_idx, _truth, _neurons)
+            loss_minus = lif_loss(_prob, p_minus, _tsteps, _param_idx, _state_idx, _truth, _neurons)
+            ∂p[i] = δ * (loss_plus - loss_minus) / (2ε)
+        end
+    
+    
+        return (NoTangent(), NoTangent(), ∂p, NoTangent(), NoTangent(), NoTangent(), NoTangent(), NoTangent())
     end
-    
-    
-    return (NoTangent(), NoTangent(), ∂p, NoTangent(), NoTangent(), NoTangent(), NoTangent(), NoTangent())
-end
 
     return loss_val, lif_loss_pullback
 end

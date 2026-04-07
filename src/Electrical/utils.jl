@@ -143,3 +143,46 @@ function make_spike_callback(prob, neurons_or_idx)
 
     return CallbackSet(callbacks...), spike_times
 end
+
+function make_surrogate_callback(prob, neurons_or_idx; β=10.0)
+    param_syms   = parameters(prob.f.sys)
+    V_th_pidx    = findfirst(s -> contains(string(s), "V_th"),    param_syms)
+    V_reset_pidx = findfirst(s -> contains(string(s), "V_reset"), param_syms)
+
+    v_indices = if eltype(neurons_or_idx) <: Integer
+        neurons_or_idx
+    else
+        state_syms = unknowns(prob.f.sys)
+        map(neurons_or_idx) do n
+            name = string(nameof(n))
+            sym  = state_syms[findfirst(s -> contains(string(s), name * "₊" * name * "₊oneport₊v"), state_syms)]
+            variable_index(prob, sym)
+        end
+    end
+
+    spike_times = [Float64[] for _ in v_indices]
+
+    callbacks = map(enumerate(v_indices)) do (i, v_idx)
+        ContinuousCallback(
+            (u, t, integrator) -> begin
+                V_th = SciMLStructures.canonicalize(SciMLStructures.Tunable(), integrator.p)[1][V_th_pidx]
+                u[v_idx] - V_th
+            end,
+            (integrator) -> begin
+                p       = SciMLStructures.canonicalize(SciMLStructures.Tunable(), integrator.p)[1]
+                V_th    = p[V_th_pidx]
+                V_reset = p[V_reset_pidx]
+                v       = integrator.u[v_idx]
+
+                # Smooth reset: sigmoid centered between V_th and V_reset
+                Δv = V_th - V_reset
+                surrogate_weight = 1.0 / (1.0 + exp(β * (v - (V_reset + 0.1 * Δv))))
+                integrator.u[v_idx] = V_reset + surrogate_weight * (v - V_reset)
+
+                push!(spike_times[i], integrator.t)
+            end
+        )
+    end
+
+    return CallbackSet(callbacks...), spike_times
+end

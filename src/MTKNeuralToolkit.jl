@@ -10,8 +10,7 @@ using Random
 
 include("Electrical/utils.jl")
 
-export build_channel, build_channel_explicit, build_neuron, add_synapse, make_lif_synapse, make_spike_callback
-
+export build_channel, build_channel_explicit, build_neuron, add_synapse, make_lif_synapse, make_spike_callback, make_surrogate_callback
 include("Electrical/components.jl")
 
 export NaGates, KGates, LGates, BasicSoma, LIFSoma, reset_function, rrule, frule, FixedReversal, fixed_reversal

@@ -40,7 +40,7 @@ sys = build_network(connections, neurons)
 
 prob = ODEProblem(sys, Pair[], (0.0, 200.0))
 
-cb, spike_times = make_spike_callback(prob, neurons)
+cb, spike_times = make_surrogate_callback(prob, neurons)
 
 sol = solve(prob, Tsit5(); callback=cb);
 
