@@ -27,6 +27,8 @@ neur = structural_simplify(neur)
 
 prob = ODEProblem(neur, Pair[], (0.0, 40.0))
 
+cb, spike_times = make_
+
 sol = solve(prob, Tsit5())
 
 p = plot(sol, idxs=[neur.soma.oneport.v],label="LIF neuron", ylabel="Voltage(V)", xlabel="Time(ms)",layout=(2,1), subplot =1)

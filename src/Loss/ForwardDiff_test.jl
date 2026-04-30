@@ -18,7 +18,7 @@ function Forwardiff_test(system, ref_sol, prob)
     p0 = [p_array[g_max_idx]]
     print(p0)
 
-    optfn = OptimizationFunction(loss, Optimization.AutoForwardDiff(; chunksize = 1))
+    optfn = OptimizationFunction(loss_forwards, Optimization.AutoForwardDiff(; chunksize = 1))
     optprob = OptimizationProblem(
         optfn, p0, (prob_plain, tsteps, ground_sol, g_max_idx, state_idx),
         lb = 0.0, ub = 100.0
@@ -29,7 +29,7 @@ function Forwardiff_test(system, ref_sol, prob)
     return sol.u[1], sol.minimum
 end
 
-function loss(x, p)
+function loss_forwards(x, p)
     prob, tsteps, truth, g_max_idx, state_idx = p
 
     T = eltype(x)

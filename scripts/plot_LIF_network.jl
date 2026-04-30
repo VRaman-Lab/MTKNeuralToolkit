@@ -17,7 +17,7 @@ import MTKNeuralToolkit
 using Plots
 
 
-@named inp = TimeVaryingFunction(f = t -> ifelse((t > 10) & (t < 20),10, 0.0))
+@named inp = TimeVaryingFunction(f = t -> ifelse((t > 10) & (t < 20),14, 0.0))
 @named inp2 = TimeVaryingFunction(f = t ->  ifelse((t > 20) & (t < 30),20.0, 0.0))
 neurons = [
     build_LIF(inp;name=:IF1),
@@ -28,9 +28,9 @@ neurons = [
    
 ]
 connections = Dict(
-    (1, 2) => [(type=:LIF, weight = 3.0)],
-    (2, 3) => [(type =:LIF, weight = 3.0)],
-    (3, 4) => [(type =:LIF, weight = 3.0)],
+    (1, 2) => [(type=:LIF, weight = 3.8)],
+    (2, 3) => [(type =:LIF, weight = 5.2)],
+    (3, 4) => [(type =:LIF, weight = 5.6)],
 )
 
 
@@ -40,7 +40,7 @@ sys = build_network(connections, neurons)
 
 prob = ODEProblem(sys, Pair[], (0.0, 200.0))
 
-cb, spike_times = make_surrogate_callback(prob, neurons)
+cb, spike_times = make_spike_callback(prob, neurons)
 
 sol = solve(prob, Tsit5(); callback=cb);
 

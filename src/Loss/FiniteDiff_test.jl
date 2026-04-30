@@ -13,19 +13,19 @@ function optim_test(system, ref_sol, prob)
     
     p0 = get_weights(system, prob)
 
-    optfn = OptimizationFunction(loss, Optimization.AutoFiniteDiff())
+    optfn = OptimizationFunction(loss_finitediff, Optimization.AutoFiniteDiff())
     
     optprob = OptimizationProblem(
     optfn, p0, (prob, tsteps, ground_sol, system, loss_arr, values_arr),
     lb = 0.0, ub = 100.0)
-    sol = solve(optprob, GradientDescent(); time_limit=2)
+    sol = solve(optprob, GradientDescent(); time_limit=60)
 
     sol.u, sol.minimum
 
     return loss_arr, values_arr
 end
 
-function loss(x, p)
+function loss_finitediff(x, p)
     prob, tsteps, truth, system, loss_arr, values_arr = p
     g_val = x[1]
 
@@ -54,7 +54,7 @@ function generate_groundtruth_system(ref_sol)
     @named inp = TimeVaryingFunction(f = t -> ifelse((t > 10) & (t < 20),20, 0.0))
     neurons = [
         MTKNeuralToolkit.build_LIF(inp;name=:IF1),
-        MTKNeuralToolkit.build_LIF(name=:IF2) 
+        MTKNeuralToolkit.build_LIF(name=:IF2)
     ]
     connections = Dict(
         (1, 2) => [(type=:LIF, weight=1.0)]
