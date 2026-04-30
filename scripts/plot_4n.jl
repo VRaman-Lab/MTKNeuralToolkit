@@ -30,9 +30,9 @@ neurons = [
     build_LIF(;name=:IF4)   
 ]
 connections = Dict(
-    (1, 2) => [(type=:LIF, weight = 10.5)],
-    (2, 3) => [(type =:LIF, weight = 10.5)],
-    (3, 4) => [(type =:LIF, weight = 10.5)],
+    (1, 2) => [(type=:LIF, weight = 11.0)],
+    (2, 3) => [(type =:LIF, weight = 11.0)],
+    (3, 4) => [(type =:LIF, weight = 11.0)],
 )
 
 sys = build_network(Dict(connections), neurons)
@@ -49,9 +49,8 @@ sol = solve(prob, Tsit5(); callback=cb, saveat = tsteps, abstol = 1e-8,reltol = 
 #arr1, arr2 = Loss.optim_test(sys, sol, prob)
 #Loss.Forwardiff_test(sys, sol, prob)
 #Loss.Zygote_test(sys, sol, prob)
-ground_sol, ground_spike_times = GroundTruth.make_ground_truth(prob, neurons, [9.0, 5.0, 3.0], tsteps, ad_sys=false)
-loss_arr, ans_weights = Loss.MultiParamFinite(sys, prob, ground_sol, ground_spike_times, neurons,  ["g_max"], "ADAM", 2000)
-ans_sol, spike_times = GroundTruth.make_ground_truth(prob, neurons, ans_weights, tsteps)
+ground_sol, ground_spike_times = GroundTruth.make_ground_truth(prob, neurons, [10.0, 10.0, 10.0], tsteps, ad_sys=false)
+
 
 
 loss_arr_BBO, ans_weights_BBO = Loss.MultiParamBBO(sys, prob, ground_sol, ground_spike_times, neurons,  ["g_max"], "BBO", 2000)
@@ -59,7 +58,12 @@ ans_sol_BBO, spike_times_BBO = GroundTruth.make_ground_truth(prob, neurons, ans_
 
 
 loss_arr_fd, ans_weights_fd = Loss.MultiParamForward(sys, prob, ground_sol, ground_spike_times, neurons,  ["g_max"], "ADAM", 2000)
+println(ans_weights_fd)
 ans_sol_fd, spike_times_df = GroundTruth.make_ground_truth(prob, neurons, ans_weights_fd, tsteps)
+
+loss_arr, ans_weights = Loss.MultiParamFinite(sys, prob, ground_sol, ground_spike_times, neurons,  ["g_max"], "ADAM", 2000)
+println(ans_weights)
+ans_sol, spike_times = GroundTruth.make_ground_truth(prob, neurons, ans_weights, tsteps)
 
 best_loss = accumulate(min, loss_arr_BBO)
 best_loss_forward = accumulate(min, loss_arr_fd)

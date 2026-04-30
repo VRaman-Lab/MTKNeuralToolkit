@@ -5,6 +5,7 @@ Pkg.develop(path = joinpath(@__DIR__, ".."))
 using ModelingToolkit
 using OrdinaryDiffEq
 using OrdinaryDiffEqNonlinearSolve
+using SciMLStructures
 using ModelingToolkitStandardLibrary.Blocks: Constant, TimeVaryingFunction 
 using ModelingToolkit: t_nounits as t, D_nounits as D
 import MTKNeuralToolkit.Types: SYNAPSE_TYPES, NEURON_TYPES, CustomSynapseParams
@@ -23,24 +24,21 @@ using SciMLStructures: Tunable, canonicalize, replace, replace!
 @named inp = TimeVaryingFunction(f = t -> ifelse((t > 10.0) & (t < 20.0), 8.0, 0.0))
 
 neurons = [
-    # Input layer
+
     build_LIF(inp; name=:L1N1),
     build_LIF(inp; name=:L1N2),
     build_LIF(inp; name=:L1N3),
-    # Hidden layer 1
     build_LIF(; name=:L2N1),
     build_LIF(; name=:L2N2),
     build_LIF(; name=:L2N3),
     build_LIF(; name=:L2N4),
-    # Hidden layer 2
     build_LIF(; name=:L3N1),
     build_LIF(; name=:L3N2),
-    # Output layer
     build_LIF(; name=:L4N1),
 ]
 
 connections = Dict(
-    # Layer 1 → Layer 2 (3×4)
+  
     (1, 4) => [(type=:LIF, weight=5.0)],
     (1, 5) => [(type=:LIF, weight=5.0)],
     (1, 6) => [(type=:LIF, weight=5.0)],
@@ -90,6 +88,17 @@ ground_weights = [
 
 ground_sol, ground_spike_times = GroundTruth.make_ground_truth(prob, neurons, ground_weights, tsteps, ad_sys=true)
 
+p_ground, _, _ = SciMLStructures.canonicalize(Tunable(), ground_sol.prob.p)
+p_ground = collect(p_ground)
+
+param_syms = parameters(prob.f.sys)
+p_array, params_idx, state_idx = Loss.get_parameters(prob, sys, ["g_max"], neurons)
+
+for (i, idx) in enumerate(params_idx)
+    println("$(param_syms[idx]) → Ground: $(round(p_ground[idx], digits=3))")
+end
+
+
 # Helper to plot all neurons on a given plot
 function plot_all_neurons!(p, solution, sys)
     plot!(p, solution, idxs=[sys.L1N1.L1N1.oneport.v], label="L1N1")
@@ -104,36 +113,31 @@ function plot_all_neurons!(p, solution, sys)
     plot!(p, solution, idxs=[sys.L4N1.L4N1.oneport.v], label="L4N1")
 end
 
-# Finite Diff
-loss_arr, ans_weights = Loss.MultiParamFinite(sys, prob, ground_sol, ground_spike_times, neurons, ["g_max"], "ADAM", 2000)
-ans_sol, spike_times = GroundTruth.make_ground_truth(prob, neurons, ans_weights, tsteps)
-
-# BBO
-loss_arr_BBO, ans_weights_BBO = Loss.MultiParamBBO(sys, prob, ground_sol, ground_spike_times, neurons, ["g_max"], "BBO", 2000)
+loss_arr_BBO, ans_weights_BBO = Loss.MultiParamBBO(sys, prob, ground_sol, ground_spike_times, neurons,  ["g_max"], "BBO", 2000)
 ans_sol_BBO, spike_times_BBO = GroundTruth.make_ground_truth(prob, neurons, ans_weights_BBO, tsteps)
 
-# ForwardDiff
-loss_arr_fd, ans_weights_fd = Loss.MultiParamForward(sys, prob, ground_sol, ground_spike_times, neurons, ["g_max"], "ADAM", 2000)
+loss_arr_fd, ans_weights_fd = Loss.MultiParamForward(sys, prob, ground_sol, ground_spike_times, neurons, ["g_max"], "ADAM", 4000)
 ans_sol_fd, spike_times_fd = GroundTruth.make_ground_truth(prob, neurons, ans_weights_fd, tsteps)
+
+
+loss_arr, ans_weights = Loss.MultiParamFinite(sys, prob, ground_sol, ground_spike_times, neurons, ["g_max"], "ADAM", 4000)
+ans_sol, spike_times = GroundTruth.make_ground_truth(prob, neurons, ans_weights, tsteps)
+
 
 best_loss = accumulate(min, loss_arr)
 best_loss_BBO = accumulate(min, loss_arr_BBO)
 best_loss_fd = accumulate(min, loss_arr_fd)
 
-# Ground Truth
+
 p1 = plot(ground_sol, idxs=[sys.L1N1.L1N1.oneport.v], label="L1N1", ylabel="Voltage (mV)", xlabel="t", title="Ground Truth")
 plot_all_neurons!(p1, ground_sol, sys)
 
-
-# Finite Diff
 p3 = plot(ans_sol, idxs=[sys.L1N1.L1N1.oneport.v], label="L1N1", ylabel="Voltage (mV)", xlabel="t", title="After Optimisation (Finite Diff)")
 plot_all_neurons!(p3, ans_sol, sys)
 
-# BBO
 p4 = plot(ans_sol_BBO, idxs=[sys.L1N1.L1N1.oneport.v], label="L1N1", ylabel="Voltage (mV)", xlabel="t", title="After Optimisation (BBO)")
 plot_all_neurons!(p4, ans_sol_BBO, sys)
 
-# ForwardDiff
 p5 = plot(ans_sol_fd, idxs=[sys.L1N1.L1N1.oneport.v], label="L1N1", ylabel="Voltage (mV)", xlabel="t", title="After Optimisation (ForwardDiff)")
 plot_all_neurons!(p5, ans_sol_fd, sys)
 
