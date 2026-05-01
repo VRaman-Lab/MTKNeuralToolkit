@@ -63,6 +63,7 @@ function MultiParamFinite(system, prob, ground_sol, ground_spike_times,
         sol = solve(optprob, opt_fn; maxiters = epoch, callback = callback)
         finish!(p)
 
+        param_syms = parameters(prob.f.sys)
         for (i, idx) in enumerate(params_idx)
             println("Weight $i → $(param_syms[idx]) → finite: $(round(sol.minimizer[i], digits=3))")
         end

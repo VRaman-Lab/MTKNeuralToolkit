@@ -113,11 +113,11 @@ function plot_all_neurons!(p, solution, sys)
     plot!(p, solution, idxs=[sys.L4N1.L4N1.oneport.v], label="L4N1")
 end
 
-loss_arr_BBO, ans_weights_BBO = Loss.MultiParamBBO(sys, prob, ground_sol, ground_spike_times, neurons,  ["g_max"], "BBO", 2000)
-ans_sol_BBO, spike_times_BBO = GroundTruth.make_ground_truth(prob, neurons, ans_weights_BBO, tsteps)
+#loss_arr_BBO, ans_weights_BBO = Loss.MultiParamBBO(sys, prob, ground_sol, ground_spike_times, neurons,  ["g_max"], "BBO", 2000)
+#ans_sol_BBO, spike_times_BBO = GroundTruth.make_ground_truth(prob, neurons, ans_weights_BBO, tsteps)
 
-loss_arr_fd, ans_weights_fd = Loss.MultiParamForward(sys, prob, ground_sol, ground_spike_times, neurons, ["g_max"], "ADAM", 4000)
-ans_sol_fd, spike_times_fd = GroundTruth.make_ground_truth(prob, neurons, ans_weights_fd, tsteps)
+#loss_arr_fd, ans_weights_fd = Loss.MultiParamForward(sys, prob, ground_sol, ground_spike_times, neurons, ["g_max"], "ADAM", 4000)
+#ans_sol_fd, spike_times_fd = GroundTruth.make_ground_truth(prob, neurons, ans_weights_fd, tsteps)
 
 
 loss_arr, ans_weights = Loss.MultiParamFinite(sys, prob, ground_sol, ground_spike_times, neurons, ["g_max"], "ADAM", 4000)

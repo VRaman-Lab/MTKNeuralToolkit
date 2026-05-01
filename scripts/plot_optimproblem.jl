@@ -10,7 +10,7 @@ using ModelingToolkit: t_nounits as t, D_nounits as D
 import MTKNeuralToolkit.Synapse as Synapse
 import MTKNeuralToolkit.Types: SYNAPSE_TYPES
 using MTKNeuralToolkit
-using SciMLSensitivity, FiniteDiff
+using SciMLSensitivity
 import Statistics: mean
 using Optim
 
