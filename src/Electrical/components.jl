@@ -1,33 +1,49 @@
-@mtkmodel BasicSoma begin
-    @parameters begin
+"""@component function FOL(;name)
+    params = params = @parameters begin
+        τ = 3.0 # parameters
+    end
+    vars = vars = @variables begin
+        x(t) = 0.0 # dependentvars =  variables
+    end
+    eqs = [
+        D(x) ~ (1 - x) / τ
+    ]
+    System(eqs, t, vars, params; name)
+end
+
+@mtkcompile fol = FOL()"""
+
+
+@component BasicSoma(;name)
+    params = @parameters begin
         C, [description = "Capacitance"]
     end
-    @variables begin
+    vars = @variables begin
         V(t) = -65.0, [description = "membrane voltage"]
     end
-    @components begin
+    comps = @components begin
         oneport = OnePort()
         I = RealInput()
         ground = Ground()
     end
-    @equations begin
+    eqs = [
         D(oneport.v) ~ (oneport.i + I.u) / C
         connect(ground.g, oneport.n)
-        V ~ oneport.v
-    end
+        V ~ oneport.v]
+    System(eqs, t, vars, params ; name, components)
 end
 
 """
 A battery: generates a constant potential difference across its terminals
 """
-@mtkmodel fixed_reversal begin
+@component fixed_reversal(;name)
     @extend v, i = oneport = OnePort()
-    @parameters begin
+    params = @parameters begin
         E
     end
-    @equations begin
-        v ~ E
-    end
+    eqs = [
+        v ~ E]
+System(eqs, t, [], params; name)
 end
 
 

@@ -1,6 +1,5 @@
 module MTKNeuralToolkit
-using ModelingToolkitNeuralNets
-using Lux
+# using ModelingToolkitNeuralNets
 using ModelingToolkit
 using ModelingToolkitStandardLibrary.Electrical
 using ModelingToolkitStandardLibrary.Blocks: Constant, RealInput, TimeVaryingFunction, Sum

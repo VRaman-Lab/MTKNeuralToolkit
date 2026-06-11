@@ -1,20 +1,30 @@
 name = "MTKNeuralToolkit"
 uuid = "88376828-b154-4662-bcd7-a3562b4741f6"
-authors = ["Dhruva V. Raman", "Elouan Simonneau", "Ella Bennison"]
 version = "0.0.1-DEV"
+authors = ["Dhruva V. Raman", "Elouan Simonneau", "Ella Bennison"]
 
 [deps]
+DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
+DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 ModelingToolkitNeuralNets = "f162e290-f571-43a6-83d9-22ecc16da15f"
 ModelingToolkitStandardLibrary = "16a59e39-deab-5bd0-87e4-056b12336739"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 OrdinaryDiffEqNonlinearSolve = "127b3ac7-2247-4354-8eb6-78cf4e7c58e8"
-Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+PreallocationTools = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SciMLStructures = "53ae85a6-f571-4167-b2af-e1d143709226"
+SymbolicIndexingInterface = "2efcf032-c050-4f8e-a9bb-153293bab1f5"
 
+[compat]
+DiffEqCallbacks = "4.17.0"
+DifferentiationInterface = "0.7.18"
+PreallocationTools = "1.2.0"
+PrecompileTools = "1.3.4"
+SciMLStructures = "1.10.0"
+SymbolicIndexingInterface = "0.3.48"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

@@ -1,7 +1,47 @@
-1. add juliasyntax and formatter in your startup.jl file (along with revise) if you want them. not in scripts.
+# Notes
+
+Optimisation stuff like Lux is in the package. It should be in the scripts env
 
 
-Build channel logic:
+Don't need callbacks for LIF. need ifelse:
+https://docs.sciml.ai/ModelingToolkitStandardLibrary/stable/tutorials/custom_component/
+
+
+## Proposed core logic:
+
+Need to make sure calcium sensitive neurons and channels are acknowledged. How?
+
+### Option 1: hardcode an IonicPort that generalises across ions. 
+
+
+Soma has a calcium potential. Calcium is a flow variable
+Specifically, build an IonicOnePort() something like
+
+@connector function IonicPort(; name)
+    vars = @variables begin
+        C(t), [description = "Concentration (e.g., mM)"]
+        i(t), [description = "Ionic current component (e.g., mA or pA)"]
+    end
+    # MTK's connector system automatically sums 'i' at a junction 
+    # and ensures 'C' is equal across connected ports.
+    ModelingToolkit.System(vars, t, name=name; flows=[i])
+end
+
+
+
+
+### Extend(oneport)
+Soma
+Voltage-sensitive ion channel
+
+
+### Extend(twoport)
+Synapse
+
+
+
+### Connections
+
 
 
 
