@@ -1,3 +1,16 @@
+# Planning
+
+- Existing code is fragile (e.g. build channel logic). Need it cleaner.
+- Adding ion tracking (calcium) has made everything complicated and fragile. Not clear we are doing it in the best way
+- Don't want to be using callbacks for autodiff ideally. Don't have to for LIF
+
+- I think it's best to have a fresh start. And to add calcium functionality once we have a good system working and differentiating for voltages only. 
+- I've built some scripts that show how i'd like build channel and lif to be implemented in the package. Consider and critique them.
+
+
+
+
+
 # Notes
 
 Optimisation stuff like Lux is in the package. It should be in the scripts env
@@ -40,28 +53,12 @@ Synapse
 
 
 
-### Connections
+## 
 
 
 
 
 
 
-### Improving to new MTK version
-
-https://juliahub.com/blog/what-s-new-with-modelingtoolkit
-
-can put an input as as parameter (see above)
 
 
-### questions
-
-Why do we have nonlinearsolve in plot_LIF?
-Where is this explicit channel being used? Doesn't seem used in HH or Liu
-
-### Code cleaning for Ella/Elouan
-
-Write a short summary of the different functions. eg i'm looking at src/Electrical/utils.jl :
-
-There are several build_channel and build_channel_explicit methods. In what contexts are they used? What types of channel need which?
-Something that would help is to add some 'templates'. What do we require a channel to have, programmatically? A channel.p and a channel.n? 

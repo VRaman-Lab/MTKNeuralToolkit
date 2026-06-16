@@ -1,37 +1,31 @@
-"""@component function FOL(;name)
-    params = params = @parameters begin
-        τ = 3.0 # parameters
-    end
-    vars = vars = @variables begin
-        x(t) = 0.0 # dependentvars =  variables
-    end
+
+"""
+Represents a pure physical lipid bilayer membrane patch.
+"""
+@component function Capacitor(; name, C = 1.0)
+    @named oneport = OnePort()
+    @unpack v, i = oneport
+    params = @parameters C = C
+    vars = @variables V(t) = -65.0
+    
     eqs = [
-        D(x) ~ (1 - x) / τ
+        D(v) ~ i / C
+        V ~ v
     ]
-    System(eqs, t, vars, params; name)
+    extend(System(eqs, t, vars, [C]; name), oneport)
 end
 
-@mtkcompile fol = FOL()"""
-
-
-@component BasicSoma(;name)
-    params = @parameters begin
-        C, [description = "Capacitance"]
-    end
-    vars = @variables begin
-        V(t) = -65.0, [description = "membrane voltage"]
-    end
-    comps = @components begin
-        oneport = OnePort()
-        I = RealInput()
-        ground = Ground()
-    end
-    eqs = [
-        D(oneport.v) ~ (oneport.i + I.u) / C
-        connect(ground.g, oneport.n)
-        V ~ oneport.v]
-    System(eqs, t, vars, params ; name, components)
+"""
+fixed_reversal Component: A pure constant voltage source (Nernst battery).
+"""
+@component function fixed_reversal(; name, E = 0.0)
+    @named oneport = OnePort()
+    @unpack v = oneport
+    params = @parameters E = E
+    eqs = [v ~ E]
+    extend(System(eqs, t, [], [E]; name), oneport)
 end
+
 
 """
 A battery: generates a constant potential difference across its terminals
