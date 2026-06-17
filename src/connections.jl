@@ -162,13 +162,9 @@ function EventSynapseGate(; name, g_max = 0.5, τ = 5.0, v_th = -20.0, w = 0.1)
     return extend(syn_sys, twoport)
 end
 
-
-
 function build_synapse(gate, battery; name)
-    @named p1 = Pin()
-    @named n1 = Pin()
-    @named p2 = Pin()
-    @named n2 = Pin()
+    @named p1 = Pin() # Post-synaptic active injection point
+    @named p2 = Pin() # Post-synaptic reference return point
     
     vars = SymbolicT[]
     params = SymbolicT[]
@@ -176,37 +172,21 @@ function build_synapse(gate, battery; name)
     guesses = Dict{SymbolicT, SymbolicT}()
     
     eqs = Equation[]
-    push!(eqs, connect(p1, gate.p1))
-    push!(eqs, connect(p2, gate.p2))
+    # Complete the post-synaptic circuit through the boundary pins
+    push!(eqs, connect(p1, gate.p2))
     push!(eqs, connect(gate.n2, battery.p))
-    
-    # Pass the references straight through to the boundary pins
-    # instead of sinking them to an internal ground
-    push!(eqs, connect(n1, gate.n1))
-    push!(eqs, connect(n2, battery.n))
+    push!(eqs, connect(battery.n, p2)) # Clear path out to the neuron reference
     
     subsystems = System[]
     push!(subsystems, p1)
-    push!(subsystems, n1)
     push!(subsystems, p2)
-    push!(subsystems, n2)
     push!(subsystems, gate)
     push!(subsystems, battery)
     
     return System(eqs, t, vars, params; systems = subsystems, initial_conditions, guesses, name)
 end
  
-function neuron_connect(pre_compartment, post_compartment, synapse)
-    eqs = Equation[]
-    # Connect signal lines
-    push!(eqs, connect(pre_compartment.p, synapse.p1))
-    push!(eqs, connect(post_compartment.p, synapse.p2))
-    
-    # Safe reference routing: anchors the synapse ports to the neuron's ground reference
-    push!(eqs, connect(pre_compartment.n, synapse.n1))
-    push!(eqs, connect(post_compartment.n, synapse.n2))
-    return eqs
-end
+
 
 """
 build_network: Automatically maps and connects an arbitrary list of neurons,
@@ -214,25 +194,35 @@ synaptic pairs, and external drivers into a unified system.
 
 NEED TO MAKE PRECOMPILATION FRIENDLY
 """
-function build_network(neurons, synapses, connections; drivers=[], name=:neural_network)
+function build_network(neurons, connections; drivers=[], name=:neural_network)
     eqs = Equation[]
-    
-    # 1. Initialize concretely-typed subsystems vector to avoid splatting types
     all_systems = System[]
     append!(all_systems, neurons)
-    append!(all_systems, synapses)
     
     vars = SymbolicT[]
     params = SymbolicT[]
     initial_conditions = Dict{SymbolicT, SymbolicT}()
     guesses = Dict{SymbolicT, SymbolicT}()
     
-    # Automate synaptic wiring from a list of tuples: (pre_idx, post_idx, synapse_obj)
-    for (pre_idx, post_idx, syn) in connections
-        append!(eqs, neuron_connect(neurons[pre_idx], neurons[post_idx], syn))
+    for (pre_idx, post_idx, gate, batt, syn_name) in connections
+        # 1. Instantiate the synapse container
+        syn = build_synapse(gate, batt; name=syn_name)
+        push!(all_systems, syn)
+        
+        # 2. Extract the gate subsystem to access its raw pins directly
+        inner_gate_name = ModelingToolkit.get_name(gate)
+        inner_gate = getproperty(syn, inner_gate_name)
+        
+        # 3. Pre-Synaptic Connection (The trigger - draws 0 current)
+        push!(eqs, connect(neurons[pre_idx].p, inner_gate.p1))
+        push!(eqs, connect(neurons[pre_idx].n, inner_gate.n1))
+        
+        # 4. Post-Synaptic Connection (The closed loop injection)
+        push!(eqs, connect(neurons[post_idx].p, syn.p1))
+        push!(eqs, connect(neurons[post_idx].n, syn.p2)) # Completes the circuit loop!
     end
     
-    # Automate driver loops (e.g., attaching stimulus blocks + current sources)
+    # Handle drivers
     for (neuron_idx, stimulus_block, source_block) in drivers
         push!(eqs, connect(stimulus_block.output, source_block.I))
         push!(eqs, connect(source_block.p, neurons[neuron_idx].p))
@@ -241,15 +231,6 @@ function build_network(neurons, synapses, connections; drivers=[], name=:neural_
         push!(all_systems, source_block)
     end
     
-    return System(
-        eqs, 
-        t, 
-        vars, 
-        params; 
-        systems = all_systems, 
-        initial_conditions, 
-        guesses, 
-        name
-    )
+    return System(eqs, t, vars, params; systems = all_systems, initial_conditions, guesses, name)
 end
 
