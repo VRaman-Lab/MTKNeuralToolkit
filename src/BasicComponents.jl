@@ -150,4 +150,34 @@ end
     return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, v_th, w]; continuous_events, name)
 end
 
-export AlphaSynapse
+
+
+abstract type AbstractSynapseSpec end
+
+Base.@kwdef struct AlphaSynapseSpec <: AbstractSynapseSpec
+    g_max::Float64
+    τ::Float64
+    E_rev::Float64
+    v_th::Float64 = -20.0  # Default value
+    w::Float64 = 0.1       # Default value
+end
+
+"""
+Generates the flat math for a specific pre->post connection.
+Returns: (variables_to_register, equations_to_add, postsynaptic_current_expression)
+"""
+function generate_synapse_equations(spec::AlphaSynapseSpec, pre_V, post_V, i, j)
+    s_symbol = Symbol(:s_, i, :_to_, j)
+    s_var = (@variables $s_symbol(t)=0.0)[1]
+    
+    # Gating variable decay math
+    eqs = [D(s_var) ~ -s_var / spec.τ]
+    
+    # Ohmic current expression
+    I_syn = (post_V - spec.E_rev) * s_var * spec.g_max
+    
+    # The event mapping: condition => affect
+    continuous_events = [pre_V ~ spec.v_th] => [s_var ~ Pre(s_var) + spec.w]
+    
+    return [s_var], eqs, I_syn, continuous_events
+end

@@ -212,4 +212,45 @@ function build_electrical_network(neurons, connections; drivers=[], name=:neural
     return System(eqs, t, vars, params; systems = all_systems, initial_conditions, guesses, name)
 end
 
-
+function build_factored_synapse_network(neuron_list, connectivity_matrix; drivers=[], name=:neural_network)
+    num_neurons = length(neuron_list)
+    net_eqs = Equation[]
+    all_vars = SymbolicT[]
+    all_events = []
+    subsystems = System[]
+    append!(subsystems, neuron_list)
+    
+    total_incoming_currents = zeros(SymbolicT, num_neurons)
+    
+    # 1. Process factored connections
+    for i in 1:num_neurons, j in 1:num_neurons
+        spec = connectivity_matrix[i, j]
+        (spec === nothing || i == j) && continue
+        
+        pre_V  = neuron_list[i].V
+        post_V = neuron_list[j].V
+        
+        syn_vars, syn_eqs, I_syn, syn_events = generate_synapse_equations(spec, pre_V, post_V, i, j)
+        
+        append!(all_vars, syn_vars)
+        append!(net_eqs, syn_eqs)
+        push!(all_events, syn_events)
+        
+        total_incoming_currents[j] += I_syn
+    end
+    
+    # 2. Process external stimulus drivers
+    for (neuron_idx, stimulus_block) in drivers
+        stim_signal = stimulus_block.output.u
+        # Accumulate the signal into your neuron current tracking pool
+        total_incoming_currents[neuron_idx] += -stim_signal
+    push!(subsystems, stimulus_block)
+    end
+    
+    # 3. Drive the open injector command inputs
+    for j in 1:num_neurons
+        push!(net_eqs, neuron_list[j].injector.I.u ~ -total_incoming_currents[j])
+    end
+    
+    return System(net_eqs, t, all_vars, []; systems = subsystems, continuous_events = all_events, name = name)
+end
