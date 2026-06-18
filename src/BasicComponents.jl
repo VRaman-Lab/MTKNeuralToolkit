@@ -1,7 +1,7 @@
 """
 Soma Component: Represents a pure physical lipid bilayer membrane patch.
 """
-@component function Capacitor(; name, C = 1.0)
+@component function Capacitor(; name, C = 1.0, V_init = -65.0)
     @named oneport = OnePort()
     @unpack v, i = oneport
     @parameters begin
@@ -11,14 +11,10 @@ Soma Component: Represents a pure physical lipid bilayer membrane patch.
     push!(params, C)
     
     @variables begin
-        V(t)
+        V(t) = V_init
     end
     vars = SymbolicT[]
     push!(vars, V)
-    
-    initial_conditions = Dict{SymbolicT, SymbolicT}()
-    initial_conditions[V] = -65.0
-    guesses = Dict{SymbolicT, SymbolicT}()
     
     eqs = Equation[]
     push!(eqs, D(v) ~ i / C)
@@ -30,8 +26,6 @@ Soma Component: Represents a pure physical lipid bilayer membrane patch.
         vars, 
         params; 
         systems = System[], 
-        initial_conditions, 
-        guesses, 
         name
     )
     return extend(cap_sys, oneport)
@@ -84,16 +78,12 @@ fixed_reversal Component: A pure constant voltage source (Nernst battery).
     eqs = Equation[]
     push!(eqs, v ~ E)
     
-    initial_conditions = Dict{SymbolicT, SymbolicT}()
-    guesses = Dict{SymbolicT, SymbolicT}()
     reversal_sys = System(
         eqs, 
         t, 
         vars, 
         params; 
         systems = System[], 
-        initial_conditions, 
-        guesses, 
         name
     )
     return extend(reversal_sys, oneport)
@@ -102,7 +92,7 @@ end
 """
 LIFCapacitor Component: Capacitor that automatically resets its voltage when a threshold is crossed 
 """
-@component function LIFCapacitor(; name, C = 10.0, V_th = -55.0, V_reset = -67.0)
+@component function LIFCapacitor(; name, C = 10.0, V_th = -55.0, V_reset = -67.0, V_init = -65.0)
     @named oneport = OnePort()
     @unpack v, i = oneport
     
@@ -111,33 +101,23 @@ LIFCapacitor Component: Capacitor that automatically resets its voltage when a t
         V_th = V_th
         V_reset = V_reset
     end
-    params = SymbolicT[]
-    push!(params, C)
-    push!(params, V_th)
-    push!(params, V_reset)
+    params = SymbolicT[C, V_th, V_reset]
     
     @variables begin
+        # Bind the incoming V_init default directly to the true differential state
+        v(t) = V_init
         V(t)
     end
-    vars = SymbolicT[]
-    push!(vars, V)
+    # Include both v and V in the structural variables array
+    vars = SymbolicT[v, V]
     
-    initial_conditions = Dict{SymbolicT, SymbolicT}()
-    initial_conditions[V] = -65.0
-    guesses = Dict{SymbolicT, SymbolicT}()
+    eqs = Equation[
+        D(v) ~ i / C,
+        V ~ v
+    ]
     
-    eqs = Equation[]
-    push!(eqs, D(v) ~ i / C)
-    push!(eqs, V ~ v)
-    
-    # continuous_events expects a Vector{Equation} => Vector{Equation} pair (or arrays of pairs)
-    # Using push! ensures the condition and affect equations are cleanly typed
-    root_eqs = Equation[]
-    push!(root_eqs, v ~ V_th)
-    
-    affect = Equation[]
-    push!(affect, v ~ V_reset)
-    
+    root_eqs = Equation[v ~ V_th]
+    affect = Equation[v ~ V_reset]
     events = root_eqs => affect
     
     lif_sys = System(
@@ -146,11 +126,28 @@ LIFCapacitor Component: Capacitor that automatically resets its voltage when a t
         vars, 
         params; 
         systems = System[], 
-        initial_conditions, 
-        guesses, 
         continuous_events = events,
         name
     )
     
     return extend(lif_sys, oneport)
 end
+
+
+@component function AlphaSynapse(; name, g_max=3.0, τ=5.0, E_rev=0.0, v_th=-20.0, w=1.0)
+    # Only s(t) gets a constant default because it's a differential state.
+    # V_pre, V_post, and I_syn are algebraic/boundary variables determined by connections.
+    @variables s(t)=0.0 I_syn(t) V_pre(t) V_post(t)
+    @parameters g_max=g_max τ=τ E_rev=E_rev v_th=v_th w=w
+
+    eqs = [
+        D(s) ~ -s / τ,
+        I_syn ~ (V_post - E_rev) * s * g_max
+    ]
+    
+    continuous_events = [[V_pre ~ v_th] => [s ~ Pre(s) + w]]
+    
+    return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, v_th, w]; continuous_events, name)
+end
+
+export AlphaSynapse

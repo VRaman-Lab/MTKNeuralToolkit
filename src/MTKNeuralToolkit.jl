@@ -18,10 +18,15 @@ export Ground, OnePort, Pin, Capacitor, LIFCapacitor, CurrentSource, FixedRevers
 
 include("connections.jl")
 export build_channel, build_neuron, connect_synapse, build_compartment
-export build_synapse, EventSynapseGate
-export neuron_connect, build_network
 
-# include("BasicComponents.jl")
+
+export build_synapse, EventSynapseGate
+export neuron_connect, build_electrical_network, build_dense_network
+
+include("causal_connections.jl")
+export CausalSynapseGate, build_causal_synapse, VectorSynapsePopulation
+
+
 
 
 

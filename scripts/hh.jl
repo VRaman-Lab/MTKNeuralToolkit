@@ -13,10 +13,10 @@ sodium    = build_channel(nagates(name=:gate), FixedReversal(E = 50.0, name=:bat
 potassium = build_channel(kgates(name=:gate), FixedReversal(E = -77.0, name=:batt); name=:potassium)
 leak      = build_channel(lgates(name=:gate), FixedReversal(E = -54.4, name=:batt); name=:leak)
 
-hh_neuron = build_compartment(soma, [sodium, potassium, leak]; stimulus_block = stimulus_block, name = :hh_neuron)
+hh_neuron = build_compartment(soma, [sodium, potassium, leak]; open_injector=false, name = :hh_neuron)
 
 hh_compiled = mtkcompile(hh_neuron)
-prob = ODEProblem(hh_compiled, [], (0.0, 50.0))
+prob = ODEProblem(hh_compiled, [], (0.0, 50.0); fully_determined=true)
 sol = solve(prob, Rosenbrock23())
 
 plot(sol, idxs=[soma.V], title="Voltage trace", xlabel="Time", ylabel="Voltage (mV)")

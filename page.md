@@ -1,3 +1,9 @@
+This is a codebase where susceptible to devious MTK bugs. I want to make changes incrementally and test them. Was working, but having issues now. Here is the codebase for context. No question asked yet. I'm copy pasting different files so out of order
+
+
+
+
+
 # Building Precompilation-Friendly Components
 
 How components are *defined* has a significant impact on how well ModelingToolkit precompiles. The core principle is **type stability**: the `System` constructor and the functions it calls can only precompile specialized, fast code paths when the types of all arguments are fully known at compile time. Type instability causes the compiler to fall back to dynamic dispatch, generating generic `Any`-typed code that is slow and hard to compile.

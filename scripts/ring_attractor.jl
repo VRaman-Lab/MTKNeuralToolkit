@@ -49,7 +49,7 @@ for i in 1:NUM_NEURONS, j in 1:NUM_NEURONS
 end
 
 # Assemble the network
-@named ring_system = build_network(neurons, connections_metadata; drivers=drivers)
+@named ring_system = build_electrical_network(neurons, connections_metadata; drivers=drivers)
 ring_compiled = mtkcompile(ring_system)
 
 # ==========================================
