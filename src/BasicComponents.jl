@@ -134,6 +134,48 @@ LIFCapacitor Component: Capacitor that automatically resets its voltage when a t
 end
 
 
+@component function GapJunction(; name, R = 1.0)
+    @named twoport = TwoPort()
+    @unpack v1, i1, v2, i2 = twoport
+
+    params = @parameters R = R
+
+    # The current flowing into port 1 is driven by the voltage difference.
+    # By conservation of current, what goes into port 1 must come out of port 2.
+    eqs = [
+        i1 ~ (v1 - v2) / R,
+        i2 ~ -i1
+    ]
+
+    return extend(System(eqs, t, [], [R]; name), twoport)
+end
+
+@component function ChemicalSynapse(; name, g_max=2.0, τ=5.0, v_th=-20.0, w=0.5, E_rev=0.0)
+    @named twoport = TwoPort()
+    @unpack v1, i1, v2, i2 = twoport
+
+    # Parameters with defaults so they aren't strictly required if omitted
+    params = @parameters E_rev=E_rev g_max=g_max τ=τ v_th=v_th w=w
+    vars = @variables s(t) = 0.0
+
+    # Pre-synaptic side senses voltage (draws no current)
+    # Post-synaptic side injects current with the reversal potential baked in
+    eqs = [
+        i1 ~ 0.0,
+        D(s) ~ -s / τ,
+        i2 ~ (v2 - E_rev) * s * g_max
+    ]
+
+    # Spike detection event
+    root_eqs = [v1 ~ v_th]
+    affect = [s ~ Pre(s) + w]
+    events = root_eqs => affect
+
+    return extend(System(eqs, t, vars, params; continuous_events=events, name), twoport)
+end
+
+
+
 @component function AlphaSynapse(; name, g_max=3.0, τ=5.0, E_rev=0.0, v_th=-20.0, w=1.0)
     # Only s(t) gets a constant default because it's a differential state.
     # V_pre, V_post, and I_syn are algebraic/boundary variables determined by connections.
@@ -145,39 +187,62 @@ end
         I_syn ~ (V_post - E_rev) * s * g_max
     ]
     
-    continuous_events = [[V_pre ~ v_th] => [s ~ Pre(s) + w]]
-    
+    continuous_events = [[V_pre ~ v_th] => [
+        s ~ Pre(s) + w,
+        V_pre ~ Pre(V_pre),   # Lock pre-synaptic voltage
+        V_post ~ Pre(V_post) # Lock post-synaptic voltage
+    ]]    
     return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, v_th, w]; continuous_events, name)
 end
 
 
+function spike_affect!(mod, obs, ctx, integ)
+    j = ctx.j
+    W = ctx.W
+    N = ctx.N
 
-abstract type AbstractSynapseSpec end
+    S_new = copy(mod.S)
+    for i in 1:N
+        S_new[j, i] += W[j, i]
+    end
 
-Base.@kwdef struct AlphaSynapseSpec <: AbstractSynapseSpec
-    g_max::Float64
-    τ::Float64
-    E_rev::Float64
-    v_th::Float64 = -20.0  # Default value
-    w::Float64 = 0.1       # Default value
+    return (; S = S_new)
 end
 
-"""
-Generates the flat math for a specific pre->post connection.
-Returns: (variables_to_register, equations_to_add, postsynaptic_current_expression)
-"""
-function generate_synapse_equations(spec::AlphaSynapseSpec, pre_V, post_V, i, j)
-    s_symbol = Symbol(:s_, i, :_to_, j)
-    s_var = (@variables $s_symbol(t)=0.0)[1]
-    
-    # Gating variable decay math
-    eqs = [D(s_var) ~ -s_var / spec.τ]
-    
-    # Ohmic current expression
-    I_syn = (post_V - spec.E_rev) * s_var * spec.g_max
-    
-    # The event mapping: condition => affect
-    continuous_events = [pre_V ~ spec.v_th] => [s_var ~ Pre(s_var) + spec.w]
-    
-    return [s_var], eqs, I_syn, continuous_events
+@component function VectorizedAlphaSynapse(; name, N::Int, W::Matrix{Float64}, tau::Matrix{Float64}, g_max::Matrix{Float64}, E_rev=0.0, v_th=-20.0)
+    # 1. Use pure Symbolic Arrays with default initial conditions
+    @variables V_vec(t)[1:N] I_inj(t)[1:N] S(t)[1:N, 1:N]=zeros(Float64, N, N)
+    @parameters tau_p[1:N, 1:N]=tau g_max_p[1:N, 1:N]=g_max E_rev_p=E_rev v_th_p=v_th
+
+    eqs = Equation[]
+
+    push!(eqs, D(S) ~ -S ./ tau_p)
+
+    # 3. N scalar algebraic equations for the current sum
+    # This avoids the buggy vec(sum(..., dims=1)) syntax
+    for i in 1:N
+        rhs = Num(0.0)
+        for j in 1:N
+            rhs += (V_vec[i] - E_rev_p) * S[j, i] * g_max_p[j, i]
+        end
+        push!(eqs, I_inj[i] ~ rhs)
+    end
+
+    # 4. Events using the O(1) array symbol S
+    events = []
+    for j in 1:N
+        event = [V_vec[j] ~ v_th_p] => ImperativeAffect(
+            spike_affect!,
+            modified = (; S),     # Pass the single O(1) array symbol!
+            observed = (;),
+            ctx = (j=j, W=W, N=N)
+        )
+        push!(events, event)
+    end
+
+
+    vars = [vec(collect(S)); collect(I_inj); collect(V_vec)]
+    params = [vec(collect(tau_p)); vec(collect(g_max_p)); E_rev_p; v_th_p]
+
+    return System(eqs, t, vars, params; continuous_events=events, name)
 end

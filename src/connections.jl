@@ -3,57 +3,47 @@ build_compartment: Constructs a single neural compartment (soma/dendrite).
 If `stimulus_block` is provided, it drives the internal current injector.
 If `open_injector=true`, the injector control input remains open for external wiring.
 """
-function build_compartment(capacitor, channels; stimulus_block=nothing, open_injector=false, name=:neuron)
+function build_compartment(capacitor, channels; stimulus_block=nothing, name=:neuron)
     @named ground = Ground()
     @named injector = CurrentSource()
-
     @named p = Pin()
     @named n = Pin()
 
     @variables begin
         V(t)  
     end
+    
     vars = SymbolicT[V]
     params = SymbolicT[]
+    initial_conditions = Dict{SymbolicT, SymbolicT}()
     guesses = Dict{SymbolicT, SymbolicT}()
 
     eqs = Equation[]
     push!(eqs, connect(capacitor.p, p))
     push!(eqs, connect(capacitor.n, n))
     push!(eqs, connect(capacitor.n, ground.g))
-    
-    # Positive rail connection (Parallel patch across the membrane)
-    p_connections = System[capacitor.p]
-    for ch in channels
-        push!(p_connections, ch.p) # Uses the top-level channel pin refactored earlier
-    end
-    push!(p_connections, injector.p)
-    push!(eqs, connect(p_connections...))
-
-    # Negative rail connection (Reference return paths)
-    n_connections = System[capacitor.n]
-    for ch in channels
-        push!(n_connections, ch.n) # Uses the top-level channel pin refactored earlier
-    end
-    push!(n_connections, injector.n)
-    push!(eqs, connect(n_connections...))
-    
     push!(eqs, V ~ p.v) 
     
+    # FIX: Use append! to combine scalars and vectors cleanly without syntax friction
+    p_connections = System[capacitor, injector]
+    append!(p_connections, channels)
+    push!(eqs, connect([sys.p for sys in p_connections]...))
+
+    # FIX: Same clean combination pattern for the negative rail
+    n_connections = System[capacitor, injector]
+    append!(n_connections, channels)
+    push!(eqs, connect([sys.n for sys in n_connections]...))
+    
+    # FIX: Safe subsystem collection construction
     all_systems = System[p, n, capacitor, ground, injector]
     append!(all_systems, channels)
 
-    # --- Clarified Input Routing Logic ---
     if stimulus_block !== nothing
         push!(eqs, connect(stimulus_block.output, injector.I))
         push!(all_systems, stimulus_block)
-    elseif !open_injector
-        # If the injector isn't actively driven or left open for network connections,
-        # ground the causal input signal to 0.0 to balance the ODE equations.
-        push!(eqs, injector.I.u ~ 0.0)
     end
     
-    return System(eqs, t, vars, params; systems = all_systems, guesses, name)
+    return System(eqs, t, vars, params; systems = all_systems, initial_conditions, guesses, name)
 end
 
 
@@ -169,88 +159,323 @@ function build_synapse(gate, battery; name)
 end
  
 
-
 """
-build_electrical_network: Automatically maps and connects an arbitrary list of neurons,
-synaptic pairs, and external drivers into a unified system.
+    build_electrical_network(neurons, connections; drivers=[], name=:neural_network)
 
-NEED TO MAKE PRECOMPILATION FRIENDLY
+Construct an explicit, acausal circuit network from a list of neurons and an edge list 
+of synaptic blueprints. Ideal for biophysical models requiring physical current pathways 
+(e.g., gap junctions, multi-compartment dynamics).
+
+# Arguments
+- `neurons::Vector{System}`: A flat list of compartment systems generated via `build_compartment`.
+- `connections::Vector{<:Tuple}`: A 1D edge list of connections. Each tuple must follow 
+  the schema: `(pre_idx, post_idx, synapse_blueprint, unique_name::Symbol)`.
+  * `synapse_blueprint`: A functional factory (e.g., `name -> my_synapse(name)`) that 
+    instantiates an isolated synapse system exposing `pre_p`, `pre_n`, `post_p`, and `post_n` pins.
+
+# Keywords
+- `drivers::Vector{Tuple{Int, System}}`: Optional list of causal input blocks (e.g. `Blocks.Sine`) 
+  targeting specific neuron indices. Unbound injectors are automatically grounded inside the builder.
+- `name::Symbol`: The system identifier for the resulting network macro-block.
+
+# Composition Note (Factory List Pattern)
+To build hierarchical or multi-population networks, do not nest network systems inside each other. 
+Instead, write modular helper functions that return flat vectors of neurons and connection tuples, 
+and combine them using `vcat` (e.g., `[nodes_A; nodes_B]`) before passing them to this builder.
 """
-function build_electrical_network(neurons, connections; drivers=[], name=:neural_network)
+function build_electrical_network(neurons::Vector{System}, connections; drivers=[], name=:neural_network)
+    # 1. Map system objects to their flat index positions
+    neuron_to_idx = Dict(sys => i for (i, sys) in enumerate(neurons))
+    
     eqs = Equation[]
     all_systems = System[]
-    append!(all_systems, neurons)
-    
-    vars = SymbolicT[]
-    params = SymbolicT[]
-    initial_conditions = Dict{SymbolicT, SymbolicT}()
-    guesses = Dict{SymbolicT, SymbolicT}()
-    
-    for (pre_idx, post_idx, gate, batt, syn_name) in connections
-        # 1. Instantiate the synapse container
-        syn = build_synapse(gate, batt; name=syn_name)
-        push!(all_systems, syn)
-        
-        # 2. Pre-Synaptic Connection: Senses voltage across the pre-synaptic membrane
-        push!(eqs, connect(neurons[pre_idx].p, syn.pre_p))
-        push!(eqs, connect(neurons[pre_idx].n, syn.pre_n))
-        
-        # 3. Post-Synaptic Connection (Option B): Injects current directly 
-        # into the post-synaptic neuron's internal injector terminal
-        push!(eqs, connect(neurons[post_idx].injector.p, syn.post_p))
-        push!(eqs, connect(neurons[post_idx].injector.n, syn.post_n))
-    end
-    
-    # Handle external drivers (e.g., experimental driving currents)
-    # Inside build_electrical_network, change the driver block loop:
-    for (neuron_idx, stimulus_block) in drivers
-        # Route the causal block output directly into the neuron's built-in injector signal
-        push!(eqs, connect(stimulus_block.output, neurons[neuron_idx].injector.I))
+    append!(all_systems, neurons) 
+
+    # Track driven neurons for grounding logic
+    driven_neurons = Set{Int}()
+    for (target, stimulus_block) in drivers
+        idx = target isa System ? neuron_to_idx[target] : target
+        push!(driven_neurons, idx)
+        push!(eqs, connect(stimulus_block.output, neurons[idx].injector.I))
         push!(all_systems, stimulus_block)
     end
     
-    return System(eqs, t, vars, params; systems = all_systems, initial_conditions, guesses, name)
+    # 2. Wire the physical synapse blocks acausally
+    for conn in connections
+        # UNPACKING LOGIC:
+        # If the user omitted a custom name, we auto-generate one on the fly!
+        if length(conn) == 3
+            pre_sys, post_sys, syn_generator = conn
+            # E.g., :nrn1 and :nrn2 generates a fresh symbol :syn_nrn1_to_nrn2
+            syn_name = Symbol(:syn_, nameof(pre_sys), :_to_, nameof(post_sys))
+        else
+            pre_sys, post_sys, syn_generator, syn_name = conn
+        end
+        
+        pre_idx  = pre_sys  isa System ? neuron_to_idx[pre_sys]  : pre_sys
+        post_idx = post_sys isa System ? neuron_to_idx[post_sys] : post_sys
+    
+        # Call the generator with the safe, unique name
+        syn = syn_generator(name=syn_name)
+        push!(all_systems, syn)
+
+    
+        # Acausal wiring using flat layout positions
+        push!(eqs, connect(neurons[pre_idx].p, syn.p1))
+        push!(eqs, connect(neurons[pre_idx].n, syn.n1))
+        push!(eqs, connect(neurons[post_idx].injector.p, syn.p2))
+        push!(eqs, connect(neurons[post_idx].injector.n, syn.n2)) 
+    end
+    
+    # 3. Ground undriven injectors cleanly
+    for i in eachindex(neurons)
+        if !(i in driven_neurons)
+            zero_block = Constant(k=0.0, name=Symbol(:zero_ground_, i))
+            push!(all_systems, zero_block)
+            push!(eqs, connect(zero_block.output, neurons[i].injector.I))
+        end
+    end
+    
+    return System(eqs, t, SymbolicT[], SymbolicT[]; systems = all_systems, name = name)
 end
 
-function build_factored_synapse_network(neuron_list, connectivity_matrix; drivers=[], name=:neural_network)
+function build_factored_synapse_network(neuron_list::Vector{System}, connections::Vector{<:Tuple}; kwargs...)
     num_neurons = length(neuron_list)
-    net_eqs = Equation[]
-    all_vars = SymbolicT[]
-    all_events = []
-    subsystems = System[]
-    append!(subsystems, neuron_list)
-    
-    total_incoming_currents = zeros(SymbolicT, num_neurons)
-    
-    # 1. Process factored connections
+
+    # Build a stable pointer lookup map
+    neuron_to_idx = Dict(sys => i for (i, sys) in enumerate(neuron_list))
+
+    # Safely normalize driver targets if they contain direct System objects
+    clean_kwargs = Dict{Symbol, Any}(kwargs...)
+    if haskey(clean_kwargs, :drivers)
+        clean_kwargs[:drivers] = map(clean_kwargs[:drivers]) do (target, block)
+            idx = target isa System ? neuron_to_idx[target] : target
+            return (idx, block)
+        end
+    end
+
+    # Normalize edges into the structural (i, j, spec, name) layout
+    normalized_connections = map(connections) do c
+        pre, post = c[1], c[2]
+        spec      = c[3]
+
+        i = pre  isa System ? neuron_to_idx[pre]  : pre
+        j = post isa System ? neuron_to_idx[post] : post
+
+        if length(c) == 3
+            pre_name  = pre  isa System ? nameof(pre) : Symbol(:n, i)
+            post_name = post isa System ? nameof(post) : Symbol(:n, j)
+            syn_name  = Symbol(:synapse_, pre_name, :_to_, post_name)
+            return (i, j, spec, syn_name)
+        else
+            return (i, j, spec, c[4])
+        end
+    end
+
+    return _build_factored_synapse_network_impl(num_neurons, normalized_connections; clean_kwargs...)
+end
+
+function build_factored_synapse_network(neuron_list::Vector{System}, connectivity_matrix::Matrix; kwargs...)
+    num_neurons = length(neuron_list)
+    neuron_to_idx = Dict(sys => i for (i, sys) in enumerate(neuron_list))
+    connections_list = Tuple[]
+
     for i in 1:num_neurons, j in 1:num_neurons
         spec = connectivity_matrix[i, j]
         (spec === nothing || i == j) && continue
-        
-        pre_V  = neuron_list[i].V
-        post_V = neuron_list[j].V
-        
-        syn_vars, syn_eqs, I_syn, syn_events = generate_synapse_equations(spec, pre_V, post_V, i, j)
-        
-        append!(all_vars, syn_vars)
-        append!(net_eqs, syn_eqs)
-        push!(all_events, syn_events)
-        
-        total_incoming_currents[j] += I_syn
+
+        syn_name = Symbol(:synapse_, nameof(neuron_list[i]), :_to_, nameof(neuron_list[j]))
+        push!(connections_list, (i, j, spec, syn_name))
     end
-    
-    # 2. Process external stimulus drivers
+
+    # Normalize the driver targets for matrix inputs to prevent cross-dispatch bugs
+    clean_kwargs = Dict{Symbol, Any}(kwargs...)
+    if haskey(clean_kwargs, :drivers)
+        clean_kwargs[:drivers] = map(clean_kwargs[:drivers]) do (target, block)
+            idx = target isa System ? neuron_to_idx[target] : target
+            return (idx, block)
+        end
+    end
+
+    return _build_factored_synapse_network_impl(num_neurons, connections_list; clean_kwargs...)
+end
+
+
+# function _build_factored_synapse_network_impl(neuron_list::Vector{System}, connections_list; drivers=[], name=:neural_network)
+#     num_neurons = length(neuron_list)
+
+#     net_eqs = Equation[]
+#     all_vars = SymbolicT[]
+#     all_params = SymbolicT[]
+
+#     # We add BOTH neurons and the dynamically created synapses as subsystems
+#     subsystems = System[]
+#     append!(subsystems, neuron_list)
+
+#     # FIX (Problem 1): Instead of accumulating into a single nested expression,
+#     # we store individual current contributions in a list per neuron.
+#     current_contributions = [Num[] for _ in 1:num_neurons]
+
+#     # 1. Process connections from the unified list
+#     for (i, j, syn_constructor, syn_name) in connections_list
+#         pre_neuron = neuron_list[i]
+#         post_V     = neuron_list[j].V
+
+#         # Instantiate the true MTK component instance on the fly
+#         syn_instance = syn_constructor(name=syn_name)
+
+#         # Push the synapse system as a subsystem
+#         push!(subsystems, syn_instance)
+
+#         # Look up the boundary variables WITH namespacing active
+#         v_pre_var  = getproperty(syn_instance, :V_pre)
+#         v_post_var = getproperty(syn_instance, :V_post)
+#         i_syn_var  = getproperty(syn_instance, :I_syn)
+
+#         # Link the parent network boundaries to the namespaced child variables.
+#         # MTK will automatically hoist the synapse's internal events (Option A)
+#         push!(net_eqs, v_pre_var ~ pre_neuron.V)
+#         push!(net_eqs, v_post_var ~ post_V)
+
+#         # Collect the current variable expression for this neuron
+#         push!(current_contributions[j], i_syn_var)
+#     end
+
+#     # 2. Process external stimulus drivers
+#     for (neuron_idx, stimulus_block) in drivers
+#         push!(current_contributions[neuron_idx], -stimulus_block.output.u)
+#         push!(subsystems, stimulus_block)
+#     end
+
+#     # 3. Create intermediate sum variables and drive implicit injector inputs
+#     # This prevents MTK from generating a single massive equation for highly connected neurons
+#     @variables I_sum(t)[1:num_neurons]
+#     append!(all_vars, collect(I_sum))
+
+#     for j in 1:num_neurons
+#         if isempty(current_contributions[j])
+#             push!(net_eqs, I_sum[j] ~ 0.0)
+#         else
+#             push!(net_eqs, I_sum[j] ~ sum(current_contributions[j]))
+#         end
+
+#         # Drive the implicit injector input using the flattened intermediate variable
+#         push!(net_eqs, neuron_list[j].injector.I.u ~ -I_sum[j])
+#     end
+
+#     initial_conditions = Dict{SymbolicT, SymbolicT}()
+#     guesses = Dict{SymbolicT, SymbolicT}()
+
+#     # We pass all_vars to the System constructor so it knows about the I_sum variables
+#     return System(
+#         net_eqs, t, all_vars, all_params;
+#         systems = subsystems, initial_conditions, guesses,
+#         name = name
+#     )
+# end
+
+function _build_factored_synapse_network_impl(num_neurons::Int, connections_list; drivers=[], name=:synapse_net)
+    net_eqs = Equation[]
+    subsystems = System[]
+
+    # 1. Create causal IO boundaries using Array connectors (only 2 subsystems!)
+    @named V_in = RealInputArray(nin = num_neurons)
+    @named I_out = RealOutputArray(nout = num_neurons)
+
+    push!(subsystems, V_in)
+    push!(subsystems, I_out)
+
+    # Array of arrays to collect current contributions per neuron
+    current_contributions = [Num[] for _ in 1:num_neurons]
+
+    # 2. Process connections from the unified list
+    for (i, j, syn_constructor, syn_name) in connections_list
+        # Instantiate the synapse component
+        syn_instance = syn_constructor(name=syn_name)
+        push!(subsystems, syn_instance)
+
+        # Look up the boundary variables
+        v_pre_var  = getproperty(syn_instance, :V_pre)
+        v_post_var = getproperty(syn_instance, :V_post)
+        i_syn_var  = getproperty(syn_instance, :I_syn)
+
+        # Link synapse boundary vars directly to the array elements
+        push!(net_eqs, v_pre_var ~ V_in.u[i])
+        push!(net_eqs, v_post_var ~ V_in.u[j])
+
+        # Collect the current variable expression for this neuron
+        push!(current_contributions[j], i_syn_var)
+    end
+
+    # 3. Process external stimulus drivers
     for (neuron_idx, stimulus_block) in drivers
-        stim_signal = stimulus_block.output.u
-        # Accumulate the signal into your neuron current tracking pool
-        total_incoming_currents[neuron_idx] += -stim_signal
-    push!(subsystems, stimulus_block)
+        push!(current_contributions[neuron_idx], -stimulus_block.output.u)
+        push!(subsystems, stimulus_block)
     end
-    
-    # 3. Drive the open injector command inputs
+
+    # 4. Create intermediate sum variables and drive outputs
+    @variables I_sum(t)[1:num_neurons]
+    all_vars = collect(I_sum)
+
     for j in 1:num_neurons
-        push!(net_eqs, neuron_list[j].injector.I.u ~ -total_incoming_currents[j])
+        if isempty(current_contributions[j])
+            push!(net_eqs, I_sum[j] ~ 0.0)
+        else
+            push!(net_eqs, I_sum[j] ~ sum(current_contributions[j]))
+        end
+
+        # Drive the array output element with the intermediate sum
+        push!(net_eqs, I_out.u[j] ~ -I_sum[j])
     end
-    
-    return System(net_eqs, t, all_vars, []; systems = subsystems, continuous_events = all_events, name = name)
+
+    return System(
+        net_eqs, t, all_vars, SymbolicT[];
+        systems = subsystems,
+        name = name
+    )
+end
+
+
+function build_vectorized_network(neurons::Vector{System}, synapse_blocks::Vector{System}; drivers=[], name=:vec_net)
+    N = length(neurons)
+
+    eqs = Equation[]
+    all_systems = System[]
+    append!(all_systems, neurons)
+
+    @variables total_I(t)[1:N]
+    I_exprs = [Num(0.0) for _ in 1:N]
+
+    for block in synapse_blocks
+        push!(all_systems, block)
+        for i in 1:N
+            # Map neuron voltages to the block's V_vec
+            push!(eqs, block.V_vec[i] ~ neurons[i].V)
+            # Accumulate current expression
+            I_exprs[i] = I_exprs[i] + block.I_inj[i]
+        end
+    end
+
+    for i in 1:N
+        push!(eqs, total_I[i] ~ I_exprs[i])
+    end
+
+    # 3. Handle drivers
+    driven_idx = Set{Int}()
+    for (target, stim) in drivers
+        idx = target isa System ? findfirst(==(target), neurons) : target
+        push!(driven_idx, idx)
+        push!(eqs, neurons[idx].injector.I.u ~ total_I[idx] + stim.output.u)
+        push!(all_systems, stim)
+    end
+
+    # 4. Connect undriven injectors directly to the total_I array
+    for i in 1:N
+        if !(i in driven_idx)
+            push!(eqs, neurons[i].injector.I.u ~ total_I[i])
+        end
+    end
+
+    # 5. Build the system, ensuring total_I is passed as a variable
+    return System(eqs, t, collect(total_I), SymbolicT[]; systems=all_systems, name=name)
 end

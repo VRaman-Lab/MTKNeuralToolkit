@@ -1,75 +1,42 @@
-"""
-WAS WORKING BUT NOT SINCE I TRIED TO CHANGE BUILD HET NETWORK. 
-    
-"""
-
-
-using ModelingToolkit
+using MTKNeuralToolkit
+import ModelingToolkitStandardLibrary.Blocks
 using ModelingToolkit: mtkcompile, @named, System
-using ModelingToolkit: t_nounits as t
-using OrdinaryDiffEq
-using Plots
+using OrdinaryDiffEq, Plots
 
+# 1. Populating your neural array using the framework's constructors
+make_compartment(id) = build_compartment(LIFCapacitor(C=1.0, name=:soma), []; name=Symbol(:n, id))
+neurons = System[make_compartment(i) for i in 1:3]
 
-# ==============================================================================
-# 1. Instantiate the isolated neurons with clean, local V_init defaults
-# ==============================================================================
-# Define a clean, reusable component factory
-make_soma() = LIFCapacitor(C = 1.0, name = :soma)
+# 2. Map standard connection factories (Anonymous functions)
+function make_excitatory_synapse(; g_max=0.4, τ=5.0, v_th=-55.0, w=0.1)
+    return (syn_name) -> begin
+        gate = EventSynapseGate(g_max=g_max, τ=τ, v_th=v_th, w=w, name=:gate)
+        batt = FixedReversal(E=0.0, name=:batt)
+        return build_synapse(gate, batt; name=syn_name)
+    end
+end
 
-# ==============================================================================
-# 1. Instantiate the isolated neurons with clean, component-level V_init defaults
-# ==============================================================================
-neurons = System[
-    build_compartment(make_soma(), []; has_synapses = true, name = :n1),
-    build_compartment(make_soma(), []; has_synapses = true, name = :n2),
-    build_compartment(make_soma(), []; has_synapses = true, name = :n3)
+connections = [
+    (neurons[1], neurons[2], make_excitatory_synapse(), :synapse_1_to_2),
+    (neurons[2], neurons[3], make_excitatory_synapse(), :synapse_2_to_3),
+    (neurons[3], neurons[1], make_excitatory_synapse(), :synapse_3_to_1)
 ]
 
-# ==============================================================================
-# 2. Build the heterogeneous synapse factory matrix (3x3)
-# ==============================================================================
-synapse_matrix = Matrix{Any}(nothing, 3, 3)
-
-# n1 -> n2
-synapse_matrix[1, 2] = (; name) -> AlphaSynapse(; name, g_max=0.4, τ=5.0, E_rev=0.0, v_th=-55.0, w=0.1)
-# n2 -> n3
-synapse_matrix[2, 3] = (; name) -> AlphaSynapse(; name, g_max=0.4, τ=5.0, E_rev=0.0, v_th=-55.0, w=0.1)
-# n3 -> n1
-synapse_matrix[3, 1] = (; name) -> AlphaSynapse(; name, g_max=0.4, τ=5.0, E_rev=0.0, v_th=-55.0, w=0.1)
-
-# ==============================================================================
-# 3. Define the Symbolic Stimulus Expression
-# ==============================================================================
-sine_stimulus = 12.5 * sin(2 * π * 0.1 * t)
-stimulus_exprs = [sine_stimulus, nothing, nothing]
-
-# ==============================================================================
-# 4. Assemble the network using behavioral routing
-# ==============================================================================
-@named final_network = build_heterogeneous_network(neurons, synapse_matrix)
-
-# Grab the namespaced discrete handle safely from your system object
-stim1 = final_network.user_stim_1
-
-# Build the discrete callbacks to change the value at exact points in time
-kick_on  = ModelingToolkit.SymbolicDiscreteCallback(1.0  => [stim1 ~ 15.0], discrete_parameters = stim1, iv = t)
-kick_off = ModelingToolkit.SymbolicDiscreteCallback(30.0 => [stim1 ~ 0.0],  discrete_parameters = stim1, iv = t)
-
-compiled_net = mtkcompile(final_network, discrete_events = [kick_on, kick_off])
-
-# Map initial condition values at t = 0.0
-my_initial_maps = [
-    stim1 => 0.0,
-    final_network.user_stim_2 => 0.0,
-    final_network.user_stim_3 => 0.0
+# 3. Setup Native External Driving Stimulus using Blocks (No Callbacks)
+@named stim = Blocks.Sine(frequency = 0.05, amplitude = 15.0)
+drivers = [
+    (neurons[1], stim) # Maps and routes causal block right into Neuron 1's injector
 ]
 
-prob = ODEProblem(compiled_net, my_initial_maps, (0.0, 50.0))
-sol = solve(prob, Tsit5())
+# 4. Compile and Run Network via the internal architecture
+@named net = build_electrical_network(neurons, connections; drivers=drivers)
+net_compiled = mtkcompile(net)
 
+prob = ODEProblem(net_compiled, [], (0.0, 100.0))
+sol = solve(prob, Rosenbrock23())
 
-
-# Plot the membrane potentials of the three neurons to watch the spikes cascade!
-plot(sol, idxs=[neurons[1].soma.v, neurons[2].soma.v, neurons[3].soma.v], 
-     label=["Neuron 1" "Neuron 2" "Neuron 3"], ylabel="Voltage (mV)", xlabel="Time (ms)")
+# 5. Plot Results Natively
+plot(sol, idxs=[net.n1.V, net.n2.V, net.n3.V], 
+     title="3-Neuron LIF Network Dynamics", 
+     label=["Neuron 1 (Driven)" "Neuron 2" "Neuron 3"],
+     xlabel="Time (ms)", ylabel="Voltage (mV)", lw=1.5)
