@@ -8,12 +8,10 @@ make_compartment(id) = build_compartment(LIFCapacitor(C=1.0, name=:soma), []; na
 neurons = System[make_compartment(i) for i in 1:3]
 
 # 2. Map standard connection factories (Anonymous functions)
-function make_excitatory_synapse(; g_max=0.4, τ=5.0, v_th=-55.0, w=0.1)
-    return (syn_name) -> begin
-        gate = EventSynapseGate(g_max=g_max, τ=τ, v_th=v_th, w=w, name=:gate)
-        batt = FixedReversal(E=0.0, name=:batt)
-        return build_synapse(gate, batt; name=syn_name)
-    end
+# FIX: Use the unified ChemicalSynapse TwoPort component directly!
+function make_excitatory_synapse(; g_max=0.4, τ=5.0, v_th=-55.0, w=0.1, E_rev=0.0)
+    # Must accept 'name' as a keyword to match the updated build_electrical_network
+    return (; name) -> ChemicalSynapse(name=name, g_max=g_max, τ=τ, v_th=v_th, w=w, E_rev=E_rev)
 end
 
 connections = [
@@ -33,10 +31,10 @@ drivers = [
 net_compiled = mtkcompile(net)
 
 prob = ODEProblem(net_compiled, [], (0.0, 100.0))
-sol = solve(prob, Rosenbrock23())
+sol = solve(prob, Tsit5())
 
 # 5. Plot Results Natively
-plot(sol, idxs=[net.n1.V, net.n2.V, net.n3.V], 
-     title="3-Neuron LIF Network Dynamics", 
+plot(sol, idxs=[net.n1.V, net.n2.V, net.n3.V],
+     title="3-Neuron LIF Network Dynamics",
      label=["Neuron 1 (Driven)" "Neuron 2" "Neuron 3"],
      xlabel="Time (ms)", ylabel="Voltage (mV)", lw=1.5)

@@ -300,80 +300,6 @@ function build_factored_synapse_network(neuron_list::Vector{System}, connectivit
     return _build_factored_synapse_network_impl(num_neurons, connections_list; clean_kwargs...)
 end
 
-
-# function _build_factored_synapse_network_impl(neuron_list::Vector{System}, connections_list; drivers=[], name=:neural_network)
-#     num_neurons = length(neuron_list)
-
-#     net_eqs = Equation[]
-#     all_vars = SymbolicT[]
-#     all_params = SymbolicT[]
-
-#     # We add BOTH neurons and the dynamically created synapses as subsystems
-#     subsystems = System[]
-#     append!(subsystems, neuron_list)
-
-#     # FIX (Problem 1): Instead of accumulating into a single nested expression,
-#     # we store individual current contributions in a list per neuron.
-#     current_contributions = [Num[] for _ in 1:num_neurons]
-
-#     # 1. Process connections from the unified list
-#     for (i, j, syn_constructor, syn_name) in connections_list
-#         pre_neuron = neuron_list[i]
-#         post_V     = neuron_list[j].V
-
-#         # Instantiate the true MTK component instance on the fly
-#         syn_instance = syn_constructor(name=syn_name)
-
-#         # Push the synapse system as a subsystem
-#         push!(subsystems, syn_instance)
-
-#         # Look up the boundary variables WITH namespacing active
-#         v_pre_var  = getproperty(syn_instance, :V_pre)
-#         v_post_var = getproperty(syn_instance, :V_post)
-#         i_syn_var  = getproperty(syn_instance, :I_syn)
-
-#         # Link the parent network boundaries to the namespaced child variables.
-#         # MTK will automatically hoist the synapse's internal events (Option A)
-#         push!(net_eqs, v_pre_var ~ pre_neuron.V)
-#         push!(net_eqs, v_post_var ~ post_V)
-
-#         # Collect the current variable expression for this neuron
-#         push!(current_contributions[j], i_syn_var)
-#     end
-
-#     # 2. Process external stimulus drivers
-#     for (neuron_idx, stimulus_block) in drivers
-#         push!(current_contributions[neuron_idx], -stimulus_block.output.u)
-#         push!(subsystems, stimulus_block)
-#     end
-
-#     # 3. Create intermediate sum variables and drive implicit injector inputs
-#     # This prevents MTK from generating a single massive equation for highly connected neurons
-#     @variables I_sum(t)[1:num_neurons]
-#     append!(all_vars, collect(I_sum))
-
-#     for j in 1:num_neurons
-#         if isempty(current_contributions[j])
-#             push!(net_eqs, I_sum[j] ~ 0.0)
-#         else
-#             push!(net_eqs, I_sum[j] ~ sum(current_contributions[j]))
-#         end
-
-#         # Drive the implicit injector input using the flattened intermediate variable
-#         push!(net_eqs, neuron_list[j].injector.I.u ~ -I_sum[j])
-#     end
-
-#     initial_conditions = Dict{SymbolicT, SymbolicT}()
-#     guesses = Dict{SymbolicT, SymbolicT}()
-
-#     # We pass all_vars to the System constructor so it knows about the I_sum variables
-#     return System(
-#         net_eqs, t, all_vars, all_params;
-#         systems = subsystems, initial_conditions, guesses,
-#         name = name
-#     )
-# end
-
 function _build_factored_synapse_network_impl(num_neurons::Int, connections_list; drivers=[], name=:synapse_net)
     net_eqs = Equation[]
     subsystems = System[]
@@ -443,39 +369,39 @@ function build_vectorized_network(neurons::Vector{System}, synapse_blocks::Vecto
     all_systems = System[]
     append!(all_systems, neurons)
 
-    @variables total_I(t)[1:N]
+    # 1. Accumulate synaptic currents using Julia expressions
     I_exprs = [Num(0.0) for _ in 1:N]
 
     for block in synapse_blocks
         push!(all_systems, block)
         for i in 1:N
-            # Map neuron voltages to the block's V_vec
             push!(eqs, block.V_vec[i] ~ neurons[i].V)
-            # Accumulate current expression
             I_exprs[i] = I_exprs[i] + block.I_inj[i]
         end
     end
 
-    for i in 1:N
-        push!(eqs, total_I[i] ~ I_exprs[i])
-    end
-
-    # 3. Handle drivers
-    driven_idx = Set{Int}()
+    # 2. Accumulate external stimulus directly into I_exprs
     for (target, stim) in drivers
         idx = target isa System ? findfirst(==(target), neurons) : target
-        push!(driven_idx, idx)
-        push!(eqs, neurons[idx].injector.I.u ~ total_I[idx] + stim.output.u)
         push!(all_systems, stim)
+        I_exprs[idx] = I_exprs[idx] + stim.output.u
     end
 
-    # 4. Connect undriven injectors directly to the total_I array
+    # 3. Map the final accumulated current directly to the injectors
+    # (No if/else branches, just one clean equation per neuron)
     for i in 1:N
-        if !(i in driven_idx)
-            push!(eqs, neurons[i].injector.I.u ~ total_I[i])
+        push!(eqs, neurons[i].injector.I.u ~ I_exprs[i])
+    end
+
+    return System(eqs, t, SymbolicT[], SymbolicT[]; systems=all_systems, name=name)
+end
+
+# Helper to find the stim output for a specific neuron index
+function stim_output(drivers, idx)
+    for (target, stim) in drivers
+        if (target isa System ? findfirst(==(target), neurons) : target) == idx
+            return stim.output.u
         end
     end
-
-    # 5. Build the system, ensuring total_I is passed as a variable
-    return System(eqs, t, collect(total_I), SymbolicT[]; systems=all_systems, name=name)
-end
+    return Num(0.0)
+end 

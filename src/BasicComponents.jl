@@ -205,21 +205,18 @@ function spike_affect!(mod, obs, ctx, integ)
     for i in 1:N
         S_new[j, i] += W[j, i]
     end
-
     return (; S = S_new)
 end
 
-@component function VectorizedAlphaSynapse(; name, N::Int, W::Matrix{Float64}, tau::Matrix{Float64}, g_max::Matrix{Float64}, E_rev=0.0, v_th=-20.0)
-    # 1. Use pure Symbolic Arrays with default initial conditions
+@component function VectorizedAlphaSynapse(; name, N::Int, W::Matrix{Float64}, tau::Matrix{Float64}, g_max::Matrix{Float64},
+E_rev=0.0, v_th=-20.0)
+    # I_inj has NO default value, because it is an algebraic variable
     @variables V_vec(t)[1:N] I_inj(t)[1:N] S(t)[1:N, 1:N]=zeros(Float64, N, N)
     @parameters tau_p[1:N, 1:N]=tau g_max_p[1:N, 1:N]=g_max E_rev_p=E_rev v_th_p=v_th
 
     eqs = Equation[]
-
     push!(eqs, D(S) ~ -S ./ tau_p)
 
-    # 3. N scalar algebraic equations for the current sum
-    # This avoids the buggy vec(sum(..., dims=1)) syntax
     for i in 1:N
         rhs = Num(0.0)
         for j in 1:N
@@ -228,21 +225,32 @@ end
         push!(eqs, I_inj[i] ~ rhs)
     end
 
-    # 4. Events using the O(1) array symbol S
     events = []
     for j in 1:N
         event = [V_vec[j] ~ v_th_p] => ImperativeAffect(
             spike_affect!,
-            modified = (; S),     # Pass the single O(1) array symbol!
+            modified = (; S),
             observed = (;),
             ctx = (j=j, W=W, N=N)
         )
         push!(events, event)
     end
 
+    # Type-stable SymbolicT[] vectors for fast precompilation
+    vars = SymbolicT[]
+    push!(vars, S)
+    push!(vars, I_inj)
+    push!(vars, V_vec)
 
-    vars = [vec(collect(S)); collect(I_inj); collect(V_vec)]
-    params = [vec(collect(tau_p)); vec(collect(g_max_p)); E_rev_p; v_th_p]
+    params = SymbolicT[]
+    push!(params, tau_p)
+    push!(params, g_max_p)
+    push!(params, E_rev_p)
+    push!(params, v_th_p)
 
-    return System(eqs, t, vars, params; continuous_events=events, name)
+    # No guesses needed, the system is perfectly balanced
+    return System(eqs, t, vars, params;
+                  continuous_events=events,
+                  systems = System[],
+                  name)
 end

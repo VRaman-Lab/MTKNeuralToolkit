@@ -13,7 +13,7 @@ import Symbolics: Sym, Num
 
 include("BasicComponents.jl")
 export Ground, OnePort, Pin, Capacitor, LIFCapacitor, CurrentSource, FixedReversal 
-export AlphaSynapse, AbstractSynapseSpec, AlphaSynapseSpec, ChemicalSynapse, GapJunction, VectorizedAlphaSynapse
+export AlphaSynapse, AbstractSynapseSpec, AlphaSynapseSpec, ChemicalSynapse, GapJunction, VectorizedAlphaSynapse,VectorizedAlphaSynapse2
 
 include("connections.jl")
 export build_channel, build_neuron, connect_synapse, build_compartment

@@ -19,9 +19,8 @@ function build_hh_neurons(N)
     return neurons
 end
 
-println("=== Isolation Benchmark (N=50) ===")
 
-N = 50
+N = 10
 neurons = build_hh_neurons(N)
 
 
@@ -29,7 +28,7 @@ tau_mat = fill(5.0, N, N)
 gmax_mat = fill(0.5 / N, N, N)
 
 
-println("\nTest 3: Compiling Full Network...")
+println("Compiling Full Network...")
 W = fill(0.1, N, N); [W[i,i] = 0.0 for i in 1:N]
 @named exc_syn_conn = VectorizedAlphaSynapse(N=N, W=W, tau=tau_mat, g_max=gmax_mat)
 @named stim = Blocks.Sine(frequency = 0.05, amplitude = 15.0)
@@ -39,4 +38,4 @@ t3 = @elapsed @named net3_compiled = mtkcompile(net3)
 prob3 = ODEProblem(net3_compiled, [], (0.0, 50.0))
 println("Solving Full Network...")
 @time sol3 = solve(prob3, Tsit5(); reltol=1e-3, abstol=1e-3);
-println(" ")
+println(" compile time was", t3)
