@@ -290,7 +290,7 @@ struct Compartment
     interfaces::NamedTuple
 end
 
-function build_floating_compartment(capacitor, channels; name=:compartment)
+function build_floating_compartment(capacitor, channels; name=:compartment, V_init=-65.0)
     @named injector = CurrentSource()
     @named axial_injector = CurrentSource() 
     @named ground = Ground()
@@ -317,9 +317,8 @@ function build_floating_compartment(capacitor, channels; name=:compartment)
     push!(eqs, V ~ capacitor.v)
     
     sys = System(eqs, t, vars, SymbolicT[]; systems = all_systems, name)
-    return Compartment(sys, (V=V, cap_name=nameof(capacitor), I_axial=axial_injector.I.u, I_ext=injector.I.u))
+    return Compartment(sys, (V=V, cap_name=nameof(capacitor), V_init=V_init, I_axial=axial_injector.I.u, I_ext=injector.I.u))
 end
-
 
 
 
@@ -501,6 +500,9 @@ function build_network(cell::Cell, N::Int; synapse_connections=[], ground_inputs
                     V_new = local_sub[u]
                     break
                 end
+            end
+            if V_new !== nothing
+                all_defaults[V_new] = comp.interfaces.V_init
             end
 
             # Find I_ext in compiled inputs

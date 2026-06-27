@@ -70,7 +70,7 @@ cell1_soma_input = net.nodes[(net.nodes.cell_idx .== 1) .& (net.nodes.comp_idx .
 u0[cell1_soma_input] = 10.0
 
 println("Setting up ODE Problem...")
-prob = ODEProblem(net_compiled, u0, (0.0, 50.0))
+prob = ODEProblem(net_compiled, u0, (0.0, 50.0), fully_determined=true)
 
 println("Solving...")
 sol = solve(prob, Rosenbrock23(), saveat=0.01)
