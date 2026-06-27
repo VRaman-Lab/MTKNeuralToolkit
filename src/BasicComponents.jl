@@ -1,7 +1,7 @@
 """
 Soma Component: Represents a pure physical lipid bilayer membrane patch.
 """
-@component function Capacitor(; name, C = 1.0, V_init = -65.0)
+@component function Capacitor(; name, C = 1.0)
     @named oneport = OnePort()
     @unpack v, i = oneport
     @parameters begin
@@ -10,15 +10,10 @@ Soma Component: Represents a pure physical lipid bilayer membrane patch.
     params = SymbolicT[]
     push!(params, C)
     
-    @variables begin
-        V(t) = V_init
-    end
     vars = SymbolicT[]
-    push!(vars, V)
     
     eqs = Equation[]
     push!(eqs, D(v) ~ i / C)
-    push!(eqs, V ~ v)
     
     cap_sys = System(
         eqs, 
@@ -30,6 +25,8 @@ Soma Component: Represents a pure physical lipid bilayer membrane patch.
     )
     return extend(cap_sys, oneport)
 end
+
+
 
 """
 CurrentSource Component: Converts a causal RealInput signal (u) 
@@ -90,9 +87,9 @@ fixed_reversal Component: A pure constant voltage source (Nernst battery).
 end
 
 """
-LIFCapacitor Component: Capacitor that automatically resets its voltage when a threshold is crossed 
+SpikingCapacitor Component: Capacitor that automatically resets its voltage when a threshold is crossed 
 """
-@component function LIFCapacitor(; name, C = 10.0, V_th = -55.0, V_reset = -67.0, V_init = -65.0)
+@component function SpikingCapacitor(; name, C = 10.0, V_th = -55.0, V_reset = -67.0, V_init = -65.0)
     @named oneport = OnePort()
     @unpack v, i = oneport
     
@@ -101,7 +98,8 @@ LIFCapacitor Component: Capacitor that automatically resets its voltage when a t
         V_th = V_th
         V_reset = V_reset
     end
-    params = SymbolicT[C, V_th, V_reset]
+    params = params = SymbolicT[]
+    push!(params, C, V_th, V_reset)
     
     @variables begin
         # Bind the incoming V_init default directly to the true differential state
@@ -109,8 +107,9 @@ LIFCapacitor Component: Capacitor that automatically resets its voltage when a t
         V(t)
     end
     # Include both v and V in the structural variables array
-    vars = SymbolicT[v, V]
-    
+    vars = SymbolicT[]
+    push!(vars, v, V)
+
     eqs = Equation[
         D(v) ~ i / C,
         V ~ v
@@ -118,7 +117,7 @@ LIFCapacitor Component: Capacitor that automatically resets its voltage when a t
     
     root_eqs = Equation[v ~ V_th]
     affect = Equation[v ~ V_reset]
-    events = root_eqs => affect
+    events = [root_eqs => affect]
     
     lif_sys = System(
         eqs, 
@@ -133,66 +132,80 @@ LIFCapacitor Component: Capacitor that automatically resets its voltage when a t
     return extend(lif_sys, oneport)
 end
 
-
 @component function GapJunction(; name, R = 1.0)
     @named twoport = TwoPort()
     @unpack v1, i1, v2, i2 = twoport
 
-    params = @parameters R = R
+    @parameters R = R
+    params = SymbolicT[]
+    push!(params, R)
 
+    vars = SymbolicT[]
+
+    eqs = Equation[]
     # The current flowing into port 1 is driven by the voltage difference.
     # By conservation of current, what goes into port 1 must come out of port 2.
-    eqs = [
-        i1 ~ (v1 - v2) / R,
-        i2 ~ -i1
-    ]
+    push!(eqs, i1 ~ (v1 - v2) / R)
+    push!(eqs, i2 ~ -i1)
 
-    return extend(System(eqs, t, [], [R]; name), twoport)
+    return extend(System(eqs, t, vars, params; systems=System[], name=name), twoport)
 end
 
 @component function ChemicalSynapse(; name, g_max=2.0, τ=5.0, v_th=-20.0, w=0.5, E_rev=0.0)
     @named twoport = TwoPort()
     @unpack v1, i1, v2, i2 = twoport
 
-    # Parameters with defaults so they aren't strictly required if omitted
-    params = @parameters E_rev=E_rev g_max=g_max τ=τ v_th=v_th w=w
-    vars = @variables s(t) = 0.0
+    @parameters E_rev=E_rev g_max=g_max τ=τ v_th=v_th w=w
+    params = SymbolicT[]
+    push!(params, E_rev, g_max, τ, v_th, w)
 
-    # Pre-synaptic side senses voltage (draws no current)
-    # Post-synaptic side injects current with the reversal potential baked in
-    eqs = [
-        i1 ~ 0.0,
-        D(s) ~ -s / τ,
-        i2 ~ (v2 - E_rev) * s * g_max
-    ]
+    @variables s(t) = 0.0
+    vars = SymbolicT[]
+    push!(vars, s)
 
-    # Spike detection event
-    root_eqs = [v1 ~ v_th]
-    affect = [s ~ Pre(s) + w]
-    events = root_eqs => affect
+    eqs = Equation[]
+    push!(eqs, i1 ~ 0.0)
+    push!(eqs, D(s) ~ -s / τ)
+    push!(eqs, i2 ~ (v2 - E_rev) * s * g_max)
 
-    return extend(System(eqs, t, vars, params; continuous_events=events, name), twoport)
+    # Events should also be built cleanly
+    root_eqs = Equation[]
+    push!(root_eqs, v1 ~ v_th)
+    affect = Equation[]
+    push!(affect, s ~ Pre(s) + w)
+    events = [root_eqs => affect]
+
+    return extend(System(eqs, t, vars, params; systems=System[], continuous_events=events, name=name), twoport)
 end
 
-
-
 @component function AlphaSynapse(; name, g_max=3.0, τ=5.0, E_rev=0.0, v_th=-20.0, w=1.0)
-    # Only s(t) gets a constant default because it's a differential state.
-    # V_pre, V_post, and I_syn are algebraic/boundary variables determined by connections.
     @variables s(t)=0.0 I_syn(t) V_pre(t) V_post(t)
     @parameters g_max=g_max τ=τ E_rev=E_rev v_th=v_th w=w
 
-    eqs = [
-        D(s) ~ -s / τ,
-        I_syn ~ (V_post - E_rev) * s * g_max
-    ]
-    
-    continuous_events = [[V_pre ~ v_th] => [
-        s ~ Pre(s) + w,
-        V_pre ~ Pre(V_pre),   # Lock pre-synaptic voltage
-        V_post ~ Pre(V_post) # Lock post-synaptic voltage
-    ]]    
-    return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, v_th, w]; continuous_events, name)
+    vars = SymbolicT[]
+    push!(vars, s, I_syn, V_pre, V_post)
+
+    params = SymbolicT[]
+    push!(params, g_max, τ, E_rev, v_th, w)
+
+    eqs = Equation[]
+    push!(eqs, D(s) ~ -s / τ)
+    push!(eqs, I_syn ~ (V_post - E_rev) * s * g_max)
+
+    # Build event equations as explicitly typed Equation[] vectors
+    root_eqs = Equation[]
+    push!(root_eqs, V_pre ~ v_th)
+
+    affect = Equation[]
+    push!(affect, s ~ Pre(s) + w)
+    push!(affect, V_pre ~ Pre(V_pre))   # Lock pre-synaptic voltage
+    push!(affect, V_post ~ Pre(V_post)) # Lock post-synaptic voltage
+
+    events = Any[] 
+    push!(events, root_eqs => affect)
+
+    # Explicitly pass systems=System[]
+    return System(eqs, t, vars, params; systems=System[], continuous_events=events, name=name)
 end
 
 
@@ -225,7 +238,7 @@ E_rev=0.0, v_th=-20.0)
         push!(eqs, I_inj[i] ~ rhs)
     end
 
-    events = []
+    events = Any[]
     for j in 1:N
         event = [V_vec[j] ~ v_th_p] => ImperativeAffect(
             spike_affect!,

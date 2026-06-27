@@ -4,7 +4,9 @@ using ModelingToolkit: mtkcompile, @named, System, Equation
 using ModelingToolkit: t_nounits as t, D_nounits as D
 using OrdinaryDiffEq
 
-
+"""
+  Commented out works and is elegant but slower for compilation  
+"""
 function build_hh_neurons(N)
     neurons = System[]
     for i in 1:N
@@ -19,8 +21,17 @@ function build_hh_neurons(N)
     return neurons
 end
 
+function build_hh_neurons(N)
+    neurons = System[]
+    for i in 1:N
+        # The default parameters (C=1.0, E_Na=50.0, E_K=-77.0, E_L=-54.4)
+        nrn = InlinedHHNeuron(name = Symbol(:nrn_, i))
+        push!(neurons, nrn)
+    end
+    return neurons
+end
 
-N = 10
+N = 30
 neurons = build_hh_neurons(N)
 
 

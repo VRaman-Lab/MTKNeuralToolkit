@@ -4,7 +4,7 @@ using ModelingToolkit: mtkcompile, @named, System
 using OrdinaryDiffEq, Plots
 
 # 1. Populating your neural array using the framework's constructors
-make_compartment(id) = build_compartment(LIFCapacitor(C=1.0, name=:soma), []; name=Symbol(:n, id))
+make_compartment(id) = build_compartment(SpikingCapacitor(C=1.0, name=:soma), []; name=Symbol(:n, id))
 neurons = System[make_compartment(i) for i in 1:3]
 
 # 2. Map standard connection factories (Anonymous functions)

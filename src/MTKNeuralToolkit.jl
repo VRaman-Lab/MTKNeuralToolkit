@@ -7,21 +7,22 @@ using ModelingToolkit: t_nounits as t, D_nounits as D, connect, SymbolicT,Impera
 using ModelingToolkit: mtkcompile, Pre
 using OrdinaryDiffEq
 using DynamicQuantities
+using DataFrames
 import SymbolicUtils: scalarize
 import Symbolics: Sym, Num
 
 
 include("BasicComponents.jl")
-export Ground, OnePort, Pin, Capacitor, LIFCapacitor, CurrentSource, FixedReversal 
-export AlphaSynapse, AbstractSynapseSpec, AlphaSynapseSpec, ChemicalSynapse, GapJunction, VectorizedAlphaSynapse,VectorizedAlphaSynapse2
+export Ground, OnePort, Pin, Capacitor, SpikingCapacitor, CurrentSource, FixedReversal 
+export ChemicalSynapse, GapJunction, VectorizedAlphaSynapse, AlphaSynapse
 
 include("connections.jl")
-export build_channel, build_neuron, connect_synapse, build_compartment
+export build_channel, build_compartment, build_floating_compartment, Cell, Compartment, build_cell, build_network
 
 
 
-export build_synapse, EventSynapseGate
-export neuron_connect, build_electrical_network, build_factored_synapse_network, build_vectorized_network
+export build_synapse
+export build_electrical_network, build_vectorized_network, build_fully_vectorized_network
 # include("causal_connections.jl")
 # export CausalSynapseGate, build_causal_synapse, VectorSynapsePopulation
 
@@ -30,34 +31,12 @@ export neuron_connect, build_electrical_network, build_factored_synapse_network,
 
 
 include("tempgates.jl")
+export GateSpec, GenericChannel
+export nagates,lgates,kgates
+export InlinedHHNeuron, VectorizedHHNeuron
 
+include("loss_functions.jl")
+export build_loss
 
-
-# include("MixedIonic/components.jl")
-# export IonicPin, IonicPort, IonicTerminal, CalciumSensitiveNeuron, DirectionalTwoPort, BiDirectionalTwoPort
-
-# include("HodgkinHuxley/HodgkinHuxley.jl")
-# include("IntegrateAndFire/IntegrateAndFire.jl")
-# include("Liu/Liu.jl")
-
-# include("Synapse/Synapse.jl")
-
-# include("Types/Types.jl")
-
-# export SYNAPSE_TYPES
-
-# include("RMM/RMM.jl")
-
-# export Full_RMM
-
-# include("Prinz/Prinz.jl")
-
-# include("Config/Config.jl")
-
-# include("network_assembly/network_assembly.jl")
-
-# export build_network, put_synapse, build_IF, build_HH, build_Liu, build_Prinz
-#export PrinzConfig
-export Discrete, Continuous
 end
 

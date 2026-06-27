@@ -7,7 +7,7 @@ using Plots
 function make_lif_population(prefix::Symbol, size=2)
     neurons = System[]
     for i in 1:size
-        @named soma = LIFCapacitor(C = 1.0)
+        @named soma = SpikingCapacitor(C = 1.0)
 
         # Type-stable channels vector collection
         channels = System[]

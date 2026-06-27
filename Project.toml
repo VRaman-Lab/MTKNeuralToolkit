@@ -4,6 +4,7 @@ version = "0.0.1-DEV"
 authors = ["Dhruva V. Raman", "Elouan Simonneau", "Ella Bennison"]
 
 [deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -21,6 +22,7 @@ SymbolicUtils = "d1185830-fcd6-423d-90d6-eec64667417b"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 
 [compat]
+DataFrames = "1.8.2"
 DiffEqCallbacks = "4.17.0"
 DifferentiationInterface = "0.7.18"
 DynamicQuantities = "1.13.0"

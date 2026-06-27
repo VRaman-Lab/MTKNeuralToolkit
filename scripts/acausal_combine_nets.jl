@@ -6,6 +6,24 @@ using Plots
 using ModelingToolkit
 
 # =============================================================================
+# Define Channel Dynamics
+# =============================================================================
+
+# Standard Hodgkin-Huxley alpha/beta rates as lambda functions of voltage `v`
+hh_na_m = v -> (
+    0.182 * (v + 35.0) / (1.0 - exp(-(v + 35.0) / 9.0)),
+    -0.124 * (v + 35.0) / (1.0 - exp((v + 35.0) / 9.0))
+)
+hh_na_h = v -> (
+    0.25 * exp(-(v + 90.0) / 12.0),
+    0.25 * (exp((v + 62.0) / 6.0)) / exp(-(v + 90.0) / 12.0)
+)
+hh_k_n = v -> (
+    0.02 * (v - 25.0) / (1.0 - exp(-(v - 25.0) / 9.0)),
+    -0.002 * (v - 25.0) / (1.0 - exp((v - 25.0) / 9.0))
+)
+
+# =============================================================================
 # 2. Mixed Network Test Script
 # =============================================================================
 
@@ -15,14 +33,41 @@ for i in 1:3
     @named soma = Capacitor(C = 1.0)
 
     channels = System[]
-    push!(channels, build_channel(nagates(name=:gate), FixedReversal(E = 50.0, name=:batt); name=Symbol(:na_, i)))
-    push!(channels, build_channel(kgates(name=:gate),  FixedReversal(E = -77.0, name=:batt); name=Symbol(:k_, i)))
-    push!(channels, build_channel(lgates(name=:gate),  FixedReversal(E = -54.4, name=:batt); name=Symbol(:l_, i)))
+    
+    # Sodium channel (m^3 * h^1)
+    push!(channels, GenericChannel(
+        name=Symbol(:na_, i), 
+        g=120.0, 
+        E_rev=50.0, 
+        gates=[
+            GateSpec(:m, 3, 0.0, hh_na_m),
+            GateSpec(:h, 1, 1.0, hh_na_h)
+        ]
+    ))
+    
+    # Potassium channel (n^4)
+    push!(channels, GenericChannel(
+        name=Symbol(:k_, i), 
+        g=36.0, 
+        E_rev=-77.0, 
+        gates=[
+            GateSpec(:n, 4, 0.0, hh_k_n)
+        ]
+    ))
+    
+    # Leak channel (no gates)
+    push!(channels, GenericChannel(
+        name=Symbol(:l_, i), 
+        g=0.3, 
+        E_rev=-54.4, 
+        gates=GateSpec[]
+    ))
 
     nrn = build_compartment(soma, channels; name = Symbol(:nrn_, i))
     push!(neurons, nrn)
 end
 
+# Connection A: Event-driven Chemical Synapse (Neuron 1 -> Neuron 2)
 event_synapse_conn = (
     neurons[1],
     neurons[2],
@@ -46,7 +91,9 @@ drivers = [(1, stim)] # Target the first neuron by index
 # 4. Build the complete mixed network using the explicit acausal builder
 println("Building mixed acausal network...")
 @named net = build_electrical_network(neurons, all_connections; drivers=drivers)
-net_compiled = mtkcompile(net)
+
+# Note: conservative=true and simplify=false drastically speed up compilation for circuits!
+net_compiled = mtkcompile(net; conservative=true, simplify=false)
 
 # 5. Simulate the network
 println("Compiling and solving...")

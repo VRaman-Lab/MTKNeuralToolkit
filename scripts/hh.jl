@@ -5,23 +5,44 @@ using ModelingToolkit: mtkcompile, @named
 using OrdinaryDiffEq
 using Plots
 
-
 @named soma = Capacitor(C = 1.0)
 @named stimulus_block = Blocks.Sine(frequency = 0.1, amplitude = 10.0)
 
-sodium    = build_channel(nagates(name=:gate), FixedReversal(E = 50.0, name=:batt); name=:sodium)
-potassium = build_channel(kgates(name=:gate), FixedReversal(E = -77.0, name=:batt); name=:potassium)
-leak      = build_channel(lgates(name=:gate), FixedReversal(E = -54.4, name=:batt); name=:leak)
+hh_na_m = v -> (
+    0.182 * (v + 35.0) / (1.0 - exp(-(v + 35.0) / 9.0)),   # alpha_m
+    -0.124 * (v + 35.0) / (1.0 - exp((v + 35.0) / 9.0))    # beta_m
+)
 
-hh_neuron = build_compartment(soma, [sodium, potassium, leak]; name = :hh_neuron)
+hh_na_h = v -> (
+    0.25 * exp(-(v + 90.0) / 12.0),                        # alpha_h
+    0.25 * (exp((v + 62.0) / 6.0)) / exp(-(v + 90.0) / 12.0) # beta_h
+)
 
-# 2. Setup the driver mapping (Neuron 1 gets the stimulus_block)
+sodium_gates = [
+    GateSpec(:m, 3, 0.0, hh_na_m),
+    GateSpec(:h, 1, 1.0, hh_na_h)
+]
+
+hh_k_n = v -> (
+    0.02 * (v - 25.0) / (1.0 - exp(-(v - 25.0) / 9.0)),     # alpha_n
+    -0.002 * (v - 25.0) / (1.0 - exp((v - 25.0) / 9.0))    # beta_n
+)
+
+potassium_gates = [
+    GateSpec(:n, 4, 0.0, hh_k_n)
+]
+
+
+@named sodium_channel = GenericChannel(g=120.0, E_rev=50.0, gates=sodium_gates)
+@named potassium_channel = GenericChannel(g=36.0, E_rev=-77.0, gates=potassium_gates)
+@named leak_channel = GenericChannel(g=0.3, E_rev=-54.4, gates=GateSpec[])
+
+hh_neuron = build_compartment(soma, [sodium_channel, potassium_channel, leak_channel]; name = :hh_neuron)
+
 drivers = [
     (1, stimulus_block)
 ]
 
-# 3. Wrap it in a 1-neuron explicit circuit network
-# The builder handles all the boundary math and connector balancing automatically!
 @named net = build_electrical_network([hh_neuron], []; drivers=drivers)
 
 # 4. Compile and solve the network system

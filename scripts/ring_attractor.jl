@@ -15,7 +15,7 @@ end
 
 neurons = System[]
 for i in 1:NUM_NEURONS
-    nrn = build_compartment(LIFCapacitor(C=1.0; name=:soma), []; name = Symbol(:neuron_, i))
+    nrn = build_compartment(SpikingCapacitor(C=1.0; name=:soma), []; name = Symbol(:neuron_, i))
     push!(neurons, nrn)
 end
 
