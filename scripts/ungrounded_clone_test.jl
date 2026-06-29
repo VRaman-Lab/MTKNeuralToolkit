@@ -22,11 +22,11 @@ hh_k_n = v -> (
 @named na1 = GenericChannel(g=120.0, E_rev=50.0, gates=[GateSpec(:m, 3, 0.0, hh_na_m), GateSpec(:h, 1, 0.0, hh_na_h)])
 @named k1  = GenericChannel(g=36.0, E_rev=-77.0, gates=[GateSpec(:n, 4, 0.0, hh_k_n)])
 @named l1  = GenericChannel(g=0.3, E_rev=-54.4, gates=GateSpec[])
-soma_comp = build_floating_compartment(soma1_cap, [na1, k1, l1], name=:soma, V_init=-65.0)
+soma_comp = build_compartment(soma1_cap, [na1, k1, l1], name=:soma, V_init=-65.0)
 
 @named dend1_cap = Capacitor(C=0.5)
 @named l2 = GenericChannel(g=0.1, E_rev=-54.4, gates=GateSpec[])
-dend_comp = build_floating_compartment(dend1_cap, [l2], name=:dend, V_init=-65.0)
+dend_comp = build_compartment(dend1_cap, [l2], name=:dend, V_init=-65.0)
 
 # 3. Build Cell with exposed inputs (ground_undriven=false)
 axial_conns = [(1, 2, 0.5)]
