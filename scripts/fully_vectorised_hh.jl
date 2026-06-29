@@ -1,38 +1,50 @@
 using MTKNeuralToolkit
 import ModelingToolkitStandardLibrary.Blocks
-using ModelingToolkit: mtkcompile, @named, System
-using ModelingToolkit: t_nounits as t, D_nounits as D, SymbolicT, Equation, Num
+using ModelingToolkit: mtkcompile, @named
 using OrdinaryDiffEq
+using Plots
 
-N = 40
-println("Building Fully Vectorized HH Network (N=$N)...")
+N = 30
 
-# Synapse Matrices
-W = fill(0.1, N, N); [W[i,i] = 0.0 for i in 1:N]
-tau_mat = fill(5.0, N, N)
-gmax_mat = fill(0.5 / N, N, N)
+@named soma = Capacitor(N=N, C = 1.0)
 
-# Instantiate Vectorized Components
-@named vec_neurons = VectorizedHHNeuron(N=N)
-@named exc_syn_conn = VectorizedAlphaSynapse(N=N, W=W, tau=tau_mat, g_max=gmax_mat)
+# Broadcasting dots work natively for both scalar and array tracing
+hh_na_m = v -> (
+    0.182 .* (v .+ 35.0) ./ (1.0 .- exp.(-(v .+ 35.0) ./ 9.0)),
+    -0.124 .* (v .+ 35.0) ./ (1.0 .- exp.((v .+ 35.0) ./ 9.0))
+)
+hh_na_h = v -> (
+    0.25 .* exp.(-(v .+ 90.0) ./ 12.0),
+    0.25 .* (exp.((v .+ 62.0) ./ 6.0)) ./ exp.(-(v .+ 90.0) ./ 12.0)
+)
 
-# Stimulus
-@named stim = Blocks.Sine(frequency = 0.05, amplitude = 15.0)
-drivers = [(1, stim)]
+sodium_gates = [
+    GateSpec(:m, 3, 0.0, hh_na_m),
+    GateSpec(:h, 1, 0.0, hh_na_h)
+]
 
-# Build and Compile
-println("Compiling Network...")
-t_c = @elapsed begin
-    @named net = build_fully_vectorized_network(vec_neurons, [exc_syn_conn]; drivers=drivers)
-    net_compiled = mtkcompile(net)
-end
-println("Compile time: $(round(t_c, digits=2)) seconds")
+hh_k_n = v -> (
+    0.02 .* (v .- 25.0) ./ (1.0 .- exp.(-(v .- 25.0) ./ 9.0)),
+    -0.002 .* (v .- 25.0) ./ (1.0 .- exp.((v .- 25.0) ./ 9.0))
+)
 
-# Solve
-println("Solving...")
-prob = ODEProblem(net_compiled, [], (0.0, 50.0), fully_determined=true)
-sol = solve(prob, Tsit5(); reltol=1e-3, abstol=1e-3)
+potassium_gates = [
+    GateSpec(:n, 4, 0.0, hh_k_n)
+]
 
-println("Simulation finished successfully!")
-println("Retcode: ", sol.retcode)
-println("Final Voltage (V[1]): ", sol[vec_neurons.V[1]][end])
+@named sodium_channel = GenericChannel(N=N, g=120.0, E_rev=50.0, gates=sodium_gates)
+@named potassium_channel = GenericChannel(N=N, g=36.0, E_rev=-77.0, gates=potassium_gates)
+@named leak_channel = GenericChannel(N=N, g=0.3, E_rev=-54.4, gates=GateSpec[])
+
+hh_neurons = build_compartment(soma, [sodium_channel, potassium_channel, leak_channel]; name = :hh_neurons, V_init=-65.0, N=N)
+
+# Just pass a Julia array directly as the driver!
+drivers = [(1, 1:30)]
+
+net = build_acausal_network([hh_neurons], [],[]; drivers=drivers, N=N, name=:net)
+
+net_compiled = mtkcompile(net.sys)
+prob = ODEProblem(net_compiled, [], (0.0, 50.0))
+sol = solve(prob, Rosenbrock23())
+
+plot(sol, idxs=[net_compiled.hh_neurons.soma.v...], title="Unified Vectorized HH Network", xlabel="Time", ylabel="Voltage (mV)")

@@ -16,7 +16,7 @@ drivers = [
 ]
 
 # 3. Wrap it inside a 1-neuron explicit circuit network to handle the input mapping
-@named net = build_electrical_network([LIF], []; drivers=drivers)
+@named net = build_acausal_network([LIF], []; drivers=drivers)
 
 # 4. Compile and solve the balanced system
 LIFc = mtkcompile(net)

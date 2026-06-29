@@ -38,15 +38,250 @@ The content is organized as follows:
 src/
   BasicComponents.jl
   connections.jl
+  deprecated.jl
   loss_functions.jl
   MTKNeuralToolkit.jl
   tempgates.jl
+  vectorization.jl
 ```
 
 # Files
 
+## File: src/deprecated.jl
+```julia
+using Symbolics: fixpoint_sub, SymbolicT, Num, isarraysymbolic
+using ModelingToolkit: unknowns, parameters, equations, @named, System, t_nounits as t, isparameter, is_derivative, getname, full_equations, continuous_events, observed, inputs, ImperativeAffect
+using ModelingToolkitStandardLibrary.Blocks: RealInput
+using ModelingToolkitStandardLibrary.Electrical: Ground
+using DataFrames: DataFrame
+using MacroTools: postwalk, @capture
+
+
+function build_network(cell::Cell, N::Int; synapse_connections=[], ground_inputs=true, name=:network)
+
+    compiled_cell = mtkcompile(cell.sys, inputs=cell.inputs)
+
+    all_eqs = Equation[]
+    all_vars = SymbolicT[]
+    all_params = SymbolicT[]
+    all_systems = System[]
+    all_defaults = Dict{Any, Any}()
+    all_events = []
+    final_network_inputs = SymbolicT[]
+    
+    nodes = DataFrame(cell_idx=Int[], comp_idx=Int[], V=Any[], I_ext=Any[], Ca=Any[])
+    
+    driven_keys = Set{Tuple{Int,Int}}()
+    for conn in synapse_connections
+        post_cell, post_comp = conn[3], conn[4]
+        push!(driven_keys, (post_cell, post_comp))
+    end
+
+    for n_idx in 1:N
+        eqs, vars, ps, sub, defaults, events = clone_compiled_cell(compiled_cell, n_idx)
+        append!(all_eqs, eqs)
+        append!(all_vars, vars)
+        append!(all_params, ps)
+        merge!(all_defaults, defaults)
+        append!(all_events, events)
+        
+        for (c_idx, comp) in enumerate(cell.compartments)
+            V_orig = find_compiled_var(compiled_cell, comp.interfaces.V)
+            I_ext_orig = find_compiled_var(compiled_cell, comp.interfaces.I_ext)
+            
+            V_new = sub[V_orig]
+            I_ext_new = sub[I_ext_orig]
+            
+            all_defaults[V_new] = comp.V_init
+            
+            Ca_new = nothing
+            if haskey(comp.interfaces, :Ca)
+                Ca_orig = find_compiled_var(compiled_cell, comp.interfaces.Ca)
+                Ca_new = sub[Ca_orig]
+            end
+            
+            push!(nodes, (cell_idx=n_idx, comp_idx=c_idx, V=V_new, I_ext=I_ext_new, Ca=Ca_new))
+            
+            if !((n_idx, c_idx) in driven_keys)
+                if ground_inputs
+                    push!(all_eqs, I_ext_new ~ 0.0)
+                else
+                    push!(final_network_inputs, I_ext_new)
+                end
+            end
+        end
+    end
+
+    syn_currents = Dict{Tuple{Int, Int}, Vector{Any}}()
+    for (s_idx, conn) in enumerate(synapse_connections)
+        pre_cell, pre_comp, post_cell, post_comp, gen = conn
+        syn = gen(name=Symbol(:syn_, s_idx))
+        push!(all_systems, syn)
+
+        V_pre = nodes[(nodes.cell_idx .== pre_cell) .& (nodes.comp_idx .== pre_comp), :V][1]
+        V_post = nodes[(nodes.cell_idx .== post_cell) .& (nodes.comp_idx .== post_comp), :V][1]
+
+        push!(all_eqs, syn.V_pre ~ V_pre)
+        push!(all_eqs, syn.V_post ~ V_post)
+
+        if hasproperty(syn, :Ca_pre_sense)
+            Ca_pre = nodes[(nodes.cell_idx .== pre_cell) .& (nodes.comp_idx .== pre_comp), :Ca][1]
+            if Ca_pre !== nothing
+                push!(all_eqs, syn.Ca_pre_sense.u ~ Ca_pre)
+            end
+        end
+
+        key = (post_cell, post_comp)
+        haskey(syn_currents, key) || (syn_currents[key] = Any[])
+        
+        if hasproperty(syn, :I_syn)
+            push!(syn_currents[key], syn.I_syn)
+        else
+            push!(syn_currents[key], (syn.V_post - syn.E_rev) * syn.s * syn.g_max)
+        end
+    end
+
+    for (key, currents) in syn_currents
+        I_ext = nodes[(nodes.cell_idx .== key[1]) .& (nodes.comp_idx .== key[2]), :I_ext][1]
+        push!(all_eqs, I_ext ~ sum(currents))
+    end
+
+    net_sys = System(all_eqs, t, all_vars, all_params;
+                     initial_conditions=all_defaults,
+                     systems=all_systems,
+                     continuous_events=all_events,
+                     inputs=final_network_inputs,
+                     name=name)
+
+    return Network(net_sys, nodes, DataFrame(), final_network_inputs)
+end
+```
+
+## File: src/vectorization.jl
+```julia
+using Symbolics: SymbolicT, toexpr, parse_expr_to_symbolic, substitute
+using ModelingToolkit: t_nounits as t, D_nounits as D, System, unknowns, parameters, defaults, Equation, getname
+using MacroTools: postwalk, @capture, inexpr
+
+# Set of operations that act on arrays as a whole, or are structural MTK components
+const NO_BROADCAST_OPS = Set([
+    :Differential, :D, :connect, :Pre, 
+    :sum, :prod, :minimum, :maximum, :dot, :cross, 
+    :length, :size, :eltype, :ndims, :axes, :eachindex, :stride,
+    :colon, :(:), :reshape, :view, :getindex, :setindex!
+])
+
+"""
+Helper function to inject broadcasting dots (`.`) into mathematical operations 
+within a Julia `Expr` so it can act element-wise on Symbolic Arrays.
+"""
+function add_broadcasting(ex::Expr)
+    postwalk(ex) do e
+        if @capture(e, f_(xs__))
+            should_bc = false
+            
+            if f isa Symbol
+                should_bc = !(f in NO_BROADCAST_OPS)
+            elseif f isa Expr
+                if inexpr(f, :(Differential(_))) || inexpr(f, :D) || inexpr(f, :Pre)
+                    should_bc = false
+                else
+                    should_bc = true
+                end
+            end
+
+            if should_bc
+                # Return surface AST for broadcasting: e.g. V .^ 3 becomes Expr(:call, :., :^, :V, 3)
+                return Expr(:call, :., f, xs...)
+            end
+        end
+        return e
+    end
+end
+
+"""
+    vectorize_system(scalar_sys::System, N::Int; scalar_params=Set{Symbol}())
+
+Takes a scalar MTK system and returns a natively vectorized system of size N.
+Parameters named in `scalar_params` are kept as scalars (e.g., shared constants).
+Built strictly for precompilation type-stability.
+"""
+function vectorize_system(scalar_sys::System, N::Int; scalar_params=Set{Symbol}())
+    sub = Dict{Any, Any}()
+    
+    # Precompilation-friendly typed vectors
+    new_vars = SymbolicT[]
+    new_params = SymbolicT[]
+    new_eqs = Equation[]
+    new_defaults = Dict{SymbolicT, Any}() # Any for values, since fill(v, N) is Vector{Float64}
+    
+    # 1. Map scalar unknowns to array unknowns
+    for u in unknowns(scalar_sys)
+        name = getname(u)
+        u_arr = only(@variables $(name)(t)[1:N])
+        push!(new_vars, u_arr)
+        sub[u] = u_arr
+    end
+    
+    # 2. Map scalar parameters to array parameters (or keep scalar)
+    for p in parameters(scalar_sys)
+        name = getname(p)
+        if name in scalar_params
+            p_new = only(@parameters $(name))
+            push!(new_params, p_new)
+            sub[p] = p_new
+        else
+            p_new = only(@parameters $(name)[1:N])
+            push!(new_params, p_new)
+            sub[p] = p_new
+        end
+    end
+    
+    # Build an expression-level substitution dictionary to bypass SymbolicUtils 
+    # type-checking issues when promoting array powers (e.g. V .^ 3)
+    expr_sub = Dict{Any, Any}()
+    for (k, v) in sub
+        expr_sub[toexpr(k)] = toexpr(v)
+    end
+    
+    # 3. Transform equations
+    for eq in equations(scalar_sys)
+        # Convert to Julia Expr FIRST, before substitution
+        expr_lhs = toexpr(eq.lhs)
+        expr_rhs = toexpr(eq.rhs)
+        
+        # Inject broadcasting dots while everything is still scalar
+        expr_lhs = add_broadcasting(expr_lhs)
+        expr_rhs = add_broadcasting(expr_rhs)
+        
+        # Substitute scalar symbols with array symbols directly in the Expr AST
+        expr_lhs_sub = postwalk(x -> haskey(expr_sub, x) ? expr_sub[x] : x, expr_lhs)
+        expr_rhs_sub = postwalk(x -> haskey(expr_sub, x) ? expr_sub[x] : x, expr_rhs)
+        
+        expr_eq = :($expr_lhs_sub ~ $expr_rhs_sub)
+        
+        # parse_expr_to_symbolic avoids `eval` and world-age issues!
+        new_eq = parse_expr_to_symbolic(expr_eq, @__MODULE__)
+        push!(new_eqs, new_eq)
+    end
+    
+    # 4. Handle defaults/initial conditions
+    for (k, v) in defaults(scalar_sys) 
+        if haskey(sub, k)
+            # If scalar init was -65.0, array init is fill(-65.0, N)
+            new_defaults[sub[k]] = fill(v, N) 
+        end
+    end
+
+    return System(new_eqs, t, new_vars, new_params; 
+                  defaults = new_defaults, 
+                  systems = System[], # Explicitly typed Vector{System}
+                  name = nameof(scalar_sys))
+end
+```
+
 ## File: src/loss_functions.jl
-````julia
+```julia
 using PreallocationTools
 using SciMLStructures: Tunable, canonicalize, replace
 using SymbolicIndexingInterface: parameter_values, setp
@@ -98,269 +333,111 @@ function build_loss(net_sys::System, target_parameters, truth_data, tsteps)
 
     return loss_function, base_prob, param_setter, d_cache
 end
-````
+```
 
 ## File: src/tempgates.jl
-````julia
+```julia
 using Symbolics: variable
-struct GateSpec
+
+struct GateSpec{I<:Integer, T<:AbstractFloat, F<:Function}
     name::Symbol
-    power::Int
-    ic::Float64
+    power::I
+    ic::T
     # A function taking voltage `v` and returning a tuple: (alpha_expr, beta_expr)
-    dynamics::Function 
+    dynamics::F 
 end
 
-@component function GenericChannel(; name, g, E_rev, gates::Vector{GateSpec})
-    @named oneport = OnePort()
+@component function GenericChannel(; name, g, E_rev, gates::Vector{<:GateSpec}, N::Union{Int, Nothing}=nothing)
+    if isnothing(N)
+        @named oneport = OnePort()
+    else
+        @named oneport = VectorizedOnePort(N=N)
+    end
     @unpack v, i = oneport
     
     @parameters g=g E_rev=E_rev
     vars = SymbolicT[]
     eqs = Equation[]
-    
-    # Dictionary to cleanly hold initial conditions for dynamically created vars
     init_conds = Dict{Any, Any}()
     
-    conductance_factor = Num(1.0)
-    
-    for gate in gates
-        # Dynamically create the gate variable and its rate variables
-        gate_var = only(@variables $(gate.name)(t))
-        alpha_var = only(@variables $(Symbol(gate.name, :_alpha))(t))
-        beta_var = only(@variables $(Symbol(gate.name, :_beta))(t))
+    if isempty(gates)
+        # Pure leak channel (avoids broadcasting edge cases with empty gates)
+        push!(eqs, i ~ g .* (v .- E_rev))
+    else
+        conductance_factor = true
         
-        push!(vars, gate_var, alpha_var, beta_var)
-        init_conds[gate_var] = gate.ic
+        for gate in gates
+            if isnothing(N)
+                gate_var = only(@variables $(gate.name)(t))
+                alpha_var = only(@variables $(Symbol(gate.name, :_alpha))(t))
+                beta_var = only(@variables $(Symbol(gate.name, :_beta))(t))
+                init_conds[gate_var] = gate.ic
+            else
+                gate_var = only(@variables $(gate.name)(t)[1:N])
+                alpha_var = only(@variables $(Symbol(gate.name, :_alpha))(t)[1:N])
+                beta_var = only(@variables $(Symbol(gate.name, :_beta))(t)[1:N])
+                init_conds[gate_var] = fill(gate.ic, N)
+            end
+            
+            push!(vars, gate_var, alpha_var, beta_var)
+            
+            alpha_expr, beta_expr = gate.dynamics(v)
+            
+            push!(eqs, alpha_var ~ alpha_expr)
+            push!(eqs, beta_var ~ beta_expr)
+            push!(eqs, D(gate_var) ~ alpha_expr .* (1.0 .- gate_var) .- beta_expr .* gate_var)
+            
+            conductance_factor = conductance_factor .* (gate_var .^ gate.power)
+        end
         
-        # Call the user's function to get the symbolic alpha/beta equations
-        alpha_expr, beta_expr = gate.dynamics(v)
-        
-        push!(eqs, alpha_var ~ alpha_expr)
-        push!(eqs, beta_var ~ beta_expr)
-        push!(eqs, D(gate_var) ~ alpha_var * (1 - gate_var) - beta_var * gate_var)
-        
-        # Multiply into the overall conductance (e.g., m^3 * h^1)
-        conductance_factor *= gate_var ^ gate.power
+        push!(eqs, i ~ g .* conductance_factor .* (v .- E_rev))
     end
-    
-    # Final Ohm's law using driving force
-    push!(eqs, i ~ g * conductance_factor * (v - E_rev))
     
     return extend(System(eqs, t, vars, [g, E_rev]; 
                        systems=System[], 
                        initial_conditions=init_conds, 
                        name=name), oneport)
 end
-
-
-@component function InlinedHHNeuron(; name, C=1.0, g_Na=120.0, g_K=36.0, g_L=0.3, E_Na=50.0, E_K=-77.0, E_L=-54.4, V_init=-65.0)
-    @named oneport = OnePort()
-    @unpack v, i, p, n = oneport
-    @named injector = CurrentSource()
-    @named ground = Ground()
-
-    @parameters C=C g_Na=g_Na g_K=g_K g_L=g_L E_Na=E_Na E_K=E_K E_L=E_L
-    params = SymbolicT[]
-    push!(params, C, g_Na, g_K, g_L, E_Na, E_K, E_L)
-
-    @variables begin
-        V(t) = V_init
-        m(t) = 0.0
-        h(t) = 1.0
-        n_gate(t) = 0.0
-        I_Na(t)
-        I_K(t)
-        I_L(t)
-        αₘ(t), βₘ(t)
-        αₕ(t), βₕ(t)
-        αₙ(t), βₙ(t)
-    end
-    vars = SymbolicT[]
-    push!(vars, V, m, h, n_gate, I_Na, I_K, I_L, αₘ, βₘ, αₕ, βₕ, αₙ, βₙ)
-    eqs = Equation[]
-    push!(eqs, V ~ v)
-
-    # Ground the membrane and the injector pins to prevent floating singularities
-    push!(eqs, connect(ground.g, n))
-    push!(eqs, connect(ground.g, injector.n))
-    push!(eqs, connect(ground.g, injector.p))
-    push!(eqs, i ~ p.i)
-
-    # Na gating
-    push!(eqs, αₘ ~ 0.182 * ((v - E_Na) + 35.0) / (1.0 - exp(-((v - E_Na) + 35.0) / 9.0)))
-    push!(eqs, βₘ ~ -0.124 * ((v - E_Na) + 35.0) / (1.0 - exp(((v - E_Na) + 35.0) / 9.0)))
-    push!(eqs, αₕ ~ 0.25 * exp(-((v - E_Na) + 90.0) / 12.0))
-    push!(eqs, βₕ ~ 0.25 * (exp(((v - E_Na) + 62.0) / 6.0)) / exp(-((v - E_Na) + 90.0) / 12.0))
-    push!(eqs, D(m) ~ αₘ * (1 - m) - βₘ * m)
-    push!(eqs, D(h) ~ αₕ * (1 - h) - βₕ * h)
-    push!(eqs, I_Na ~ g_Na * m^3 * h * (v - E_Na))
-
-    # K gating
-    push!(eqs, αₙ ~ 0.02 * ((v - E_K) - 25.0) / (1.0 - exp(-((v - E_K) - 25.0) / 9.0)))
-    push!(eqs, βₙ ~ -0.002 * ((v - E_K) - 25.0) / (1.0 - exp(((v - E_K) - 25.0) / 9.0)))
-    push!(eqs, D(n_gate) ~ αₙ * (1 - n_gate) - βₙ * n_gate)
-    push!(eqs, I_K ~ g_K * n_gate^4 * (v - E_K))
-
-    # Leak
-    push!(eqs, I_L ~ g_L * (v - E_L))
-
-    # Membrane equation: 'i' is acausal current, 'injector.I.u' is causal stimulus
-    push!(eqs, C * D(v) ~ i + injector.I.u - I_Na - I_K - I_L)
-
-    return extend(System(eqs, t, vars, params; systems=[injector, ground], name=name), oneport)
-end
-
-@component function VectorizedHHNeuron(; name, N::Int, C=1.0, g_Na=120.0, g_K=36.0, g_L=0.3, E_Na=50.0, E_K=-77.0,
-E_L=-54.4, V_init=-65.0)
-    # Parameters (scalars are automatically broadcasted by MTK if applied to arrays)
-    @parameters C=C g_Na=g_Na g_K=g_K g_L=g_L E_Na=E_Na E_K=E_K E_L=E_L V_init=V_init
-    params = SymbolicT[]
-    push!(params, C, g_Na, g_K, g_L, E_Na, E_K, E_L, V_init)
-
-    # Array Variables
-    @variables begin
-        V(t)[1:N] = fill(V_init, N)
-        I_inj(t)[1:N] 
-        m(t)[1:N] = zeros(Float64, N)
-        h(t)[1:N] = ones(Float64, N)
-        n_gate(t)[1:N] = zeros(Float64, N)
-        I_Na(t)[1:N]
-        I_K(t)[1:N]
-        I_L(t)[1:N]
-        αₘ(t)[1:N]
-        βₘ(t)[1:N]
-        αₕ(t)[1:N]
-        βₕ(t)[1:N]
-        αₙ(t)[1:N]
-        βₙ(t)[1:N]
-    end
-
-    vars = SymbolicT[]
-    push!(vars, V, I_inj, m, h, n_gate, I_Na, I_K, I_L, αₘ, βₘ, αₕ, βₕ, αₙ, βₙ)
-
-    eqs = Equation[]
-
-    # Na gating (using broadcasting .*)
-    push!(eqs, αₘ ~ 0.182 .* (V .- E_Na .+ 35.0) ./ (1.0 .- exp.(-(V .- E_Na .+ 35.0) ./ 9.0)))
-    push!(eqs, βₘ ~ -0.124 .* (V .- E_Na .+ 35.0) ./ (1.0 .- exp.((V .- E_Na .+ 35.0) ./ 9.0)))
-    push!(eqs, αₕ ~ 0.25 .* exp.(-(V .- E_Na .+ 90.0) ./ 12.0))
-    push!(eqs, βₕ ~ 0.25 .* (exp.((V .- E_Na .+ 62.0) ./ 6.0)) ./ exp.(-(V .- E_Na .+ 90.0) ./ 12.0))
-    push!(eqs, D(m) ~ αₘ .* (1.0 .- m) .- βₘ .* m)
-    push!(eqs, D(h) ~ αₕ .* (1.0 .- h) .- βₕ .* h)
-    push!(eqs, I_Na ~ g_Na .* (m .^ 3) .* h .* (V .- E_Na))
-
-    # K gating
-    push!(eqs, αₙ ~ 0.02 .* (V .- E_K .- 25.0) ./ (1.0 .- exp.(-(V .- E_K .- 25.0) ./ 9.0)))
-    push!(eqs, βₙ ~ -0.002 .* (V .- E_K .- 25.0) ./ (1.0 .- exp.((V .- E_K .- 25.0) ./ 9.0)))
-    push!(eqs, D(n_gate) ~ αₙ .* (1.0 .- n_gate) .- βₙ .* n_gate)
-    push!(eqs, I_K ~ g_K .* (n_gate .^ 4) .* (V .- E_K))
-
-    # Leak
-    push!(eqs, I_L ~ g_L .* (V .- E_L))
-
-    # Membrane equation
-    push!(eqs, D(V) ~ (I_inj .- I_Na .- I_K .- I_L) ./ C)
-
-    return System(eqs, t, vars, params; systems=System[], name=name)
-end
-
-
-@component function STDPSynapse(; name, N::Int, W_init::Matrix{Float64}, A_plus=0.01, A_minus=0.01, tau_plus=20.0,
-tau_minus=20.0, v_th=-20.0)
-    @variables V_vec(t)[1:N] I_inj(t)[1:N] W(t)[1:N, 1:N]=W_init t_pre(t)[1:N]=fill(-1000.0, N) t_post(t)[1:N]=fill(-1000.0,
-N)
-    @parameters A_plus=A_plus A_minus=A_minus tau_plus=tau_plus tau_minus=tau_minus v_th_p=v_th
-
-    # Synaptic conductance based on dynamic weight W
-    eqs = Equation[]
-    push!(eqs, I_inj ~ V_vec .* W)  # Simplified for example
-
-    events = Any[]
-    for j in 1:N # Pre-synaptic spikes
-        root_eqs = [V_vec[j] ~ v_th_p]
-        affect = [
-            t_pre[j] ~ t,
-            W[j, :] ~ clamp.(Pre(W[j, :]) .+ A_plus .* exp.(-(t .- Pre(t_post[:])) ./ tau_plus), 0.0, 1.0)
-        ]
-        push!(events, root_eqs => affect)
-    end
-
-    for i in 1:N # Post-synaptic spikes
-        root_eqs = [V_vec[i] ~ v_th_p]
-        affect = [
-            t_post[i] ~ t,
-            W[:, i] ~ clamp.(Pre(W[:, i]) .- A_minus .* exp.(-(t .- Pre(t_pre[:])) ./ tau_minus), 0.0, 1.0)
-        ]
-        push!(events, root_eqs => affect)
-    end
-
-    return System(eqs, t, [V_vec, I_inj, W, t_pre, t_post], [A_plus, A_minus, tau_plus, tau_minus, v_th_p]; continuous_events=events, name=name)
-end
-````
+```
 
 ## File: src/BasicComponents.jl
-````julia
-"""
-Soma Component: Represents a pure physical lipid bilayer membrane patch.
-"""
-@component function Capacitor(; name, C = 1.0)
-    @named oneport = OnePort()
-    @unpack v, i = oneport
-    @parameters begin
-        C = C
+```julia
+@component function Ground(; name, N::Union{Int, Nothing}=nothing)
+    if isnothing(N)
+        @named g = Pin()
+        eqs = [g.v ~ 0]
+    else
+        @named g = VectorizedPin(N=N)
+        eqs = [g.v ~ zeros(Float64, N)]
     end
-    params = SymbolicT[]
-    push!(params, C)
-    
-    vars = SymbolicT[]
-    
-    eqs = Equation[]
-    push!(eqs, D(v) ~ i / C)
-    
-    cap_sys = System(
-        eqs, 
-        t, 
-        vars, 
-        params; 
-        systems = System[], 
-        name
-    )
-    return extend(cap_sys, oneport)
+    return System(eqs, t, SymbolicT[], SymbolicT[]; systems=[g], name=name)
 end
 
+@component function Capacitor(; name, C = 1.0, N::Union{Int, Nothing}=nothing)
+    if isnothing(N)
+        @named oneport = OnePort()
+    else
+        @named oneport = VectorizedOnePort(N=N)
+    end
+    @unpack v, i = oneport
+    @parameters C=C
+    # ./ works on both scalars and arrays natively in Symbolics
+    eqs = Equation[D(v) ~ i ./ C]
+    return extend(System(eqs, t, SymbolicT[], [C]; systems=System[], name=name), oneport)
+end
 
-
-"""
-CurrentSource Component: Converts a causal RealInput signal (u) 
-into an acausal electrical current (i) injecting into a physical Node.
-"""
-@component function CurrentSource(; name)
-    @named oneport = OnePort()
+@component function CurrentSource(; name, N::Union{Int, Nothing}=nothing)
+    if isnothing(N)
+        @named oneport = OnePort()
+        @named I = RealInput()
+    else
+        @named oneport = VectorizedOnePort(N=N)
+        @named I = RealInputArray(nin=N)
+    end
     @unpack i = oneport
-    @named I = RealInput()
     
-    vars = SymbolicT[]
-    params = SymbolicT[]
-    eqs = Equation[]
-    push!(eqs, i ~ -I.u)
-    initial_conditions = Dict{SymbolicT, SymbolicT}()
-    guesses = Dict{SymbolicT, SymbolicT}()
-    # We cast 'I' into a Vector{System} instead of leaving it as an untyped literal array
-    subsystems = System[]
-    push!(subsystems, I)
-    
-    source_sys = System(
-        eqs, 
-        t, 
-        vars, 
-        params; 
-        systems = subsystems, 
-        initial_conditions, 
-        guesses, 
-        name
-    )
-    return extend(source_sys, oneport)
+    eqs = Equation[i ~ -I.u]
+    return extend(System(eqs, t, SymbolicT[], SymbolicT[]; systems=[I], name=name), oneport)
 end
 
 """
@@ -446,8 +523,6 @@ end
     vars = SymbolicT[]
 
     eqs = Equation[]
-    # The current flowing into port 1 is driven by the voltage difference.
-    # By conservation of current, what goes into port 1 must come out of port 2.
     push!(eqs, i1 ~ (v1 - v2) / R)
     push!(eqs, i2 ~ -i1)
 
@@ -524,384 +599,121 @@ function spike_affect!(mod, obs, ctx, integ)
     return (; S = S_new)
 end
 
-@component function VectorizedAlphaSynapse(; name, N::Int, W::Matrix{Float64}, tau::Matrix{Float64}, g_max::Matrix{Float64},
-E_rev=0.0, v_th=-20.0)
-    # I_inj has NO default value, because it is an algebraic variable
-    @variables V_vec(t)[1:N] I_inj(t)[1:N] S(t)[1:N, 1:N]=zeros(Float64, N, N)
-    @parameters tau_p[1:N, 1:N]=tau g_max_p[1:N, 1:N]=g_max E_rev_p=E_rev v_th_p=v_th
+# ==========================================
+# VECTORIZED ELECTRICAL COMPONENTS
+# ==========================================
 
-    eqs = Equation[]
-    push!(eqs, D(S) ~ -S ./ tau_p)
-
-    for i in 1:N
-        rhs = Num(0.0)
-        for j in 1:N
-            rhs += (V_vec[i] - E_rev_p) * S[j, i] * g_max_p[j, i]
-        end
-        push!(eqs, I_inj[i] ~ rhs)
+@connector function VectorizedPin(; name, N::Int, v = nothing, i = nothing)
+    vars = @variables begin
+        v(t)[1:N] = v
+        i(t)[1:N] = i, [connect = Flow]
     end
-
-    events = Any[]
-    for j in 1:N
-        event = [V_vec[j] ~ v_th_p] => ImperativeAffect(
-            spike_affect!,
-            modified = (; S),
-            observed = (;),
-            ctx = (j=j, W=W, N=N)
-        )
-        push!(events, event)
-    end
-
-    # Type-stable SymbolicT[] vectors for fast precompilation
-    vars = SymbolicT[]
-    push!(vars, S)
-    push!(vars, I_inj)
-    push!(vars, V_vec)
-
-    params = SymbolicT[]
-    push!(params, tau_p)
-    push!(params, g_max_p)
-    push!(params, E_rev_p)
-    push!(params, v_th_p)
-
-    # No guesses needed, the system is perfectly balanced
-    return System(eqs, t, vars, params;
-                  continuous_events=events,
-                  systems = System[],
-                  name)
+    return System(Equation[], t, vars, SymbolicT[]; name=name)
 end
-````
+
+@component function VectorizedOnePort(; name, N::Int, v = nothing, i = nothing)
+    pars = @parameters begin
+    end
+    systems = @named begin
+        p = VectorizedPin(N=N)
+        n = VectorizedPin(N=N)
+    end
+    vars = @variables begin
+        v(t)[1:N] = v
+        i(t)[1:N] = i
+    end
+    equations = Equation[
+        v ~ p.v - n.v,
+        collect(p.i .+ n.i .~ 0.0)...,  # splat the collected equations
+        i ~ p.i,
+    ]
+
+    return System(equations, t, vars, pars; name, systems)
+end
+```
 
 ## File: src/connections.jl
-````julia
-using Symbolics: fixpoint_sub, SymbolicT
-using ModelingToolkit: unknowns, parameters, equations, @named, System, t_nounits as t, isparameter, is_derivative, getname, full_equations, continuous_events, observed, inputs
-using ModelingToolkitStandardLibrary.Blocks: RealInput
-
- 
-"""
-build_compartment: Constructs a single neural compartment (soma/dendrite).
-If `stimulus_block` is provided, it drives the internal current injector.
-If `open_injector=true`, the injector control input remains open for external wiring.
-"""
-function build_compartment(capacitor, channels; stimulus_block=nothing, name=:neuron)
-    @named injector = CurrentSource()
-    @named p = Pin()
-    @named n = Pin()
-
-    @variables V(t)  
-    vars = SymbolicT[V]
-    
-    eqs = Equation[]
-    
-    # Connect capacitor to boundary pins
-    push!(eqs, connect(capacitor.p, p))
-    push!(eqs, connect(capacitor.n, n))
-    push!(eqs, V ~ p.v) 
-    
-    # Connect all positive pins together
-    p_connections = System[capacitor, injector]
-    append!(p_connections, channels)
-    push!(eqs, connect([sys.p for sys in p_connections]...))
-
-    # Connect all negative pins together
-    n_connections = System[capacitor, injector]
-    append!(n_connections, channels)
-    push!(eqs, connect([sys.n for sys in n_connections]...))
-    
-    all_systems = System[p, n, capacitor, injector]
-    append!(all_systems, channels)
-
-    if stimulus_block !== nothing
-        push!(eqs, connect(stimulus_block.output, injector.I))
-        push!(all_systems, stimulus_block)
-    end
-    
-    return System(eqs, t, vars, SymbolicT[]; systems = all_systems, name)
-end
-
-function build_synapse(gate, battery; name)
-    @named pre_p  = Pin() # Pre-synaptic sensing active point
-    @named pre_n  = Pin() # Pre-synaptic sensing reference point
-    @named post_p = Pin() # Post-synaptic active injection point
-    @named post_n = Pin() # Post-synaptic reference return point
-    
-    vars = SymbolicT[]
-    params = SymbolicT[]
-    initial_conditions = Dict{SymbolicT, SymbolicT}()
-    guesses = Dict{SymbolicT, SymbolicT}()
-    
-    eqs = Equation[]
-    # 1. Voltage sensing path (Pre-synaptic side)
-    push!(eqs, connect(pre_p, gate.p1))
-    push!(eqs, connect(pre_n, gate.n1))
-
-    # 2. Current injection path (Post-synaptic side)
-    push!(eqs, connect(post_p, gate.p2))
-    push!(eqs, connect(gate.n2, battery.p))
-    push!(eqs, connect(battery.n, post_n))
-    
-    subsystems = System[pre_p, pre_n, post_p, post_n, gate, battery]
-    
-    return System(eqs, t, vars, params; systems = subsystems, initial_conditions, guesses, name)
-end
-
-function build_vectorized_network(neurons::Vector{System}, synapse_blocks::Vector{System}; drivers=[], name=:vec_net)
-    N = length(neurons)
-    eqs = Equation[]
-    all_systems = System[]
-    append!(all_systems, neurons)
-
-    # 1. Accumulate synaptic currents using Julia expressions
-    I_exprs = [Num(0.0) for _ in 1:N]
-
-    for block in synapse_blocks
-        push!(all_systems, block)
-        for i in 1:N
-            push!(eqs, block.V_vec[i] ~ neurons[i].V)
-            I_exprs[i] = I_exprs[i] + block.I_inj[i]
-        end
-    end
-
-    # 2. Accumulate external stimulus directly into I_exprs
-    for (target, stim) in drivers
-        idx = target isa System ? findfirst(==(target), neurons) : target
-        push!(all_systems, stim)
-        I_exprs[idx] = I_exprs[idx] + stim.output.u
-    end
-
-    # 3. Map the final accumulated current directly to the injectors
-    # (No if/else branches, just one clean equation per neuron)
-    for i in 1:N
-        push!(eqs, neurons[i].injector.I.u ~ I_exprs[i])
-    end
-
-    return System(eqs, t, SymbolicT[], SymbolicT[]; systems=all_systems, name=name)
-end
-
-# Helper to find the stim output for a specific neuron index
-function stim_output(drivers, idx)
-    for (target, stim) in drivers
-        if (target isa System ? findfirst(==(target), neurons) : target) == idx
-            return stim.output.u
-        end
-    end
-    return Num(0.0)
-end 
-
-
-function build_fully_vectorized_network(neuron_block::System, synapse_blocks::Vector{System}; drivers=[], name=:vec_net)
-    N = size(neuron_block.V)[1]
-
-    eqs = Equation[]
-    all_systems = System[neuron_block]
-    append!(all_systems, synapse_blocks)
-
-    # 1. Accumulate currents safely using a loop to maintain a mutable Vector{Num}
-    I_exprs = [Num(0.0) for _ in 1:N]
-
-    for block in synapse_blocks
-        push!(eqs, block.V_vec ~ neuron_block.V)
-        for i in 1:N
-            I_exprs[i] = I_exprs[i] + block.I_inj[i]
-        end
-    end
-
-    # 2. Add drivers (safe because I_exprs is still a standard Julia Vector)
-    for (target, stim) in drivers
-         @assert target isa Int "Fully vectorized networks require integer indices for drivers, because they contain a single monolithic neuron block."
-        push!(all_systems, stim)
-        I_exprs[target] = I_exprs[target] + stim.output.u
-    end
-
-    # 3. Push the connection equations
-    for i in 1:N
-        push!(eqs, neuron_block.I_inj[i] ~ I_exprs[i])
-    end
-
-    return System(eqs, t, SymbolicT[], SymbolicT[]; systems=all_systems, name=name)
-end
-
-"""
-    build_electrical_network(compartments, axial_connections, synapse_connections; drivers=[], name=:network)
-
-Construct an explicit, acausal circuit network from a flat list of compartments and two edge lists. 
-Designed for multi-compartment spatial models, biophysical networks, and mixed-domain synapses.
-
-# Arguments
-
-- `compartments::Vector{System}`: A flat list of all compartment systems generated via `build_compartment`. 
-  Indices in the connection lists refer to positions in this array.
-
-- `axial_connections::Vector{<:Tuple}`: Internal structural connections (e.g., soma to dendrite). 
-  Schema: `(pre_idx, post_idx, generator [, name::Symbol])`
-  * `generator`: A function taking a keyword `name` that returns a `OnePort` or `TwoPort` system. 
-    The builder will efficiently route standard `OnePort` components (like a `Resistor`) if no `p1` pin is found.
-
-- `synapse_connections::Vector{<:Tuple}`: External synaptic connections between compartments.
-  Schema: `(pre_idx, post_idx, generator [, name::Symbol])`
-  * `generator`: A function taking a keyword `name` that returns a synapse system. 
-    Synapses must be `TwoPort` systems for the acausal electrical current path. If the synapse 
-    requires absolute voltage or calcium sensing, it should expose `RealInput`s named `V_pre_sense`, 
-    `V_post_sense`, or `Ca_pre_sense`, which the builder will automatically wire.
-
-# Keywords
-
-- `drivers::Vector{Tuple{Int, System}}`: Optional list of causal input blocks targeting specific compartment indices. 
-  Un-driven injectors are automatically grounded to `0.0` without instantiating redundant subsystems.
-- `name::Symbol`: The system identifier for the resulting network.
-
-# Example
-
 ```julia
-compartments = [soma1, dend1, soma2]
-
-# Efficient OnePort resistor for axial resistance
-axial = [(1, 2, (; name) -> Resistor(R=0.5, name=name))]
-
-# Mixed-domain synapse with absolute voltage sensing
-synapses = [(2, 3, (; name) -> ChemicalSynapse(name=name, g_max=0.5))]
-
-drivers = [(1, stim)] # Drive Soma1
-
-net = build_electrical_network(compartments, axial, synapses; drivers=drivers)
-```
-"""
-
-function build_electrical_network(compartments::Vector{System}, axial_connections, synapse_connections; drivers=[], name=:network)
-N = length(compartments)
-eqs = Equation[]
-all_systems = System[]
-append!(all_systems, compartments)
-
-# 1. Single Global Ground
-@named gnd = Ground()
-push!(all_systems, gnd)
-for i in 1:N
-    push!(eqs, connect(compartments[i].n, gnd.g))
-end
-
-driven_compartments = Set{Int}()
-
-# 2. Setup Driving Stimuli
-for (target, stim) in drivers
-    idx = target isa System ? findfirst(==(target), compartments) : target
-    push!(driven_compartments, idx)
-    push!(all_systems, stim)
-    push!(eqs, connect(stim.output, compartments[idx].injector.I))
-end
-
-# 3. Axial Connections (Internal topology)
-for conn in axial_connections
-    pre_target, post_target, gen = conn[1], conn[2], conn[3]
-    pre_idx = pre_target isa System ? findfirst(==(pre_target), compartments) : pre_target
-    post_idx = post_target isa System ? findfirst(==(post_target), compartments) : post_target
-    
-    ax_name = length(conn) == 4 ? conn[4] : Symbol(:axial_, pre_idx, :_, post_idx)
-    ax = gen(name=ax_name)
-    push!(all_systems, ax)
-    
-    # Efficiently route OnePort vs TwoPort components
-    if hasproperty(ax, :p1)
-        push!(eqs, connect(compartments[pre_idx].p, ax.p1))
-        push!(eqs, connect(compartments[post_idx].p, ax.p2))
-        push!(eqs, connect(compartments[pre_idx].n, ax.n1))
-        push!(eqs, connect(compartments[post_idx].n, ax.n2))
-    else
-        push!(eqs, connect(compartments[pre_idx].p, ax.p))
-        push!(eqs, connect(compartments[post_idx].p, ax.n))
-    end
-end
-
-# 4. Synaptic Connections (External topology)
-for conn in synapse_connections
-    pre_target, post_target, gen = conn[1], conn[2], conn[3]
-    pre_idx = pre_target isa System ? findfirst(==(pre_target), compartments) : pre_target
-    post_idx = post_target isa System ? findfirst(==(post_target), compartments) : post_target
-    
-    syn_name = length(conn) == 4 ? conn[4] : Symbol(:syn_, pre_idx, :_, post_idx)
-    syn = gen(name=syn_name)
-    push!(all_systems, syn)
-
-    # Acausal wiring for synaptic currents
-    push!(eqs, connect(compartments[pre_idx].p, syn.p1))
-    push!(eqs, connect(compartments[post_idx].p, syn.p2))
-    push!(eqs, connect(compartments[pre_idx].n, syn.n1))
-    push!(eqs, connect(compartments[post_idx].n, syn.n2))
-
-    # Auto-wiring for mixed-domain sensing
-    if hasproperty(syn, :V_pre_sense)
-        push!(eqs, syn.V_pre_sense.u ~ compartments[pre_idx].V)
-    end
-    if hasproperty(syn, :V_post_sense)
-        push!(eqs, syn.V_post_sense.u ~ compartments[post_idx].V)
-    end
-    if hasproperty(syn, :Ca_pre_sense) && hasproperty(compartments[pre_idx], :Ca)
-        push!(eqs, syn.Ca_pre_sense.u ~ compartments[pre_idx].Ca)
-    end
-end
-
-# 5. Ground undriven injectors cleanly
-for i in 1:N
-    if !(i in driven_compartments)
-        push!(eqs, compartments[i].injector.I.u ~ 0.0)
-    end
-end
-
-return System(eqs, t, SymbolicT[], SymbolicT[]; systems = all_systems, name = name)
-end
-
-using Symbolics
-using ModelingToolkit: unknowns, parameters, equations, @named, System, t_nounits as t
-
-using ModelingToolkitStandardLibrary.Blocks: RealInput
-
-using Symbolics: fixpoint_sub
-using ModelingToolkit: unknowns, parameters, equations, @named, System, t_nounits as t, isparameter, is_derivative, getname
-
-using ModelingToolkit: full_equations
+# =========================================================
+# 1. STRUCT DEFINITIONS
+# =========================================================
 
 struct Compartment
     sys::System
     interfaces::NamedTuple
+    V_init::Float64
 end
-
-function build_floating_compartment(capacitor, channels; name=:compartment, V_init=-65.0)
-    @named injector = CurrentSource()
-    @named axial_injector = CurrentSource() 
-    @named ground = Ground()
-
-    @variables V(t)
-    vars = SymbolicT[V]
-    
-    eqs = Equation[]
-    
-    push!(eqs, connect(capacitor.n, ground.g))
-    push!(eqs, connect(injector.n, ground.g))
-    push!(eqs, connect(axial_injector.n, ground.g))
-    for c in channels
-        push!(eqs, connect(c.n, ground.g))
-    end
-    
-    p_connections = System[capacitor, injector, axial_injector]
-    append!(p_connections, channels)
-    push!(eqs, connect([sys.p for sys in p_connections]...))
-    
-    all_systems = System[ground, capacitor, injector, axial_injector]
-    append!(all_systems, channels)
-
-    push!(eqs, V ~ capacitor.v)
-    
-    sys = System(eqs, t, vars, SymbolicT[]; systems = all_systems, name)
-    return Compartment(sys, (V=V, cap_name=nameof(capacitor), V_init=V_init, I_axial=axial_injector.I.u, I_ext=injector.I.u))
-end
-
-
 
 struct Cell
     sys::System
     compartments::Vector{Compartment}
-    inputs::Vector{Any}  # <-- ADD THIS
+    inputs::Vector{Any}
+end
+
+struct Network
+    sys::System
+    nodes::DataFrame
+    edges::DataFrame
+    inputs::Vector{Any}
+end
+
+# =========================================================
+# 2. COMPARTMENT & CELL BUILDERS
+# =========================================================
+
+function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0, N::Union{Int, Nothing}=nothing)
+    if isnothing(N)
+        @named injector = CurrentSource()
+        @named axial_injector = CurrentSource()
+        @named p = Pin()
+        @named n = Pin()
+        init_v = V_init
+    else
+        @named injector = CurrentSource(N=N)
+        @named axial_injector = CurrentSource(N=N)
+        @named p = VectorizedPin(N=N)
+        @named n = VectorizedPin(N=N)
+        init_v = fill(V_init, N)
+    end
+
+    vars = SymbolicT[]
+    eqs = Equation[]
+    
+    # 1. Connect ALL negative terminals together
+    n_pins = Any[capacitor.n, injector.n, axial_injector.n, n]
+    for c in channels
+        push!(n_pins, c.n)
+    end
+    push!(eqs, connect(n_pins...))
+    
+    # 2. Connect all positive terminals of the components together
+    p_connections = System[capacitor, injector, axial_injector]
+    append!(p_connections, channels)
+    push!(eqs, connect([sys.p for sys in p_connections]...))
+    
+    # 3. Expose boundary pins for acausal connections
+    push!(eqs, connect(p, capacitor.p))
+    
+    all_systems = System[capacitor, injector, axial_injector, p, n]
+    append!(all_systems, channels)
+
+    sys = System(eqs, t, vars, SymbolicT[]; 
+                 systems = all_systems, 
+                 initial_conditions = Dict(capacitor.v => init_v), 
+                 name)
+    
+    cap_name = nameof(capacitor)
+    V_state = getproperty(sys, cap_name).v
+    
+    interfaces = (
+        V = V_state, 
+        p_pin = getproperty(sys, nameof(p)), 
+        n_pin = getproperty(sys, nameof(n)), 
+        I_ext = getproperty(sys, nameof(injector)).I.u,
+        I_axial = getproperty(sys, nameof(axial_injector)).I.u,
+        cap_name=cap_name
+    )
+    return Compartment(sys, interfaces, V_init)
 end
 
 function build_cell(compartments::Vector{Compartment}, axial_connections; drivers=[], ground_undriven=true, name=:cell)
@@ -915,256 +727,150 @@ function build_cell(compartments::Vector{Compartment}, axial_connections; driver
         push!(all_systems, comp.sys)
     end
     
+    # 1. Connect all n pins together to share a common reference
+    n_pins = [comp.interfaces.n_pin for comp in compartments]
+    if length(n_pins) > 1
+        push!(eqs, connect(n_pins...))
+    end
+
+    # 2. Add a single global ground for the entire cell
+    @named ground = Ground()
+    push!(all_systems, ground)
+    push!(eqs, connect(ground.g, compartments[1].interfaces.n_pin))
+    
+    # 3. Axial connections
     for conn in axial_connections
         pre_idx, post_idx, R_val = conn
-        V_pre = compartments[pre_idx].sys.V
-        V_post = compartments[post_idx].sys.V
-        I_ax_pre = compartments[pre_idx].sys.axial_injector.I.u
-        I_ax_post = compartments[post_idx].sys.axial_injector.I.u
-        
+        V_pre = compartments[pre_idx].interfaces.V
+        V_post = compartments[post_idx].interfaces.V
+        I_ax_pre = compartments[pre_idx].interfaces.I_axial
+        I_ax_post = compartments[post_idx].interfaces.I_axial
         I_flow = (V_pre - V_post) / R_val
         push!(eqs, I_ax_pre ~ -I_flow)
         push!(eqs, I_ax_post ~ I_flow)
     end
-
     
+    # 4. Drivers
     for (target, stim) in drivers
         idx = target isa Int ? target : findfirst(==(target), compartments)
         push!(all_systems, stim)
-        push!(eqs, compartments[idx].sys.injector.I.u ~ stim.output.u)
+        push!(eqs, compartments[idx].interfaces.I_ext ~ stim.output.u)
         push!(driven_exts, idx)
     end
     
+    # 5. Ground undriven injectors
     if ground_undriven
         for (idx, comp) in enumerate(compartments)
             if !(idx in driven_exts)
-                push!(eqs, comp.sys.injector.I.u ~ 0.0)
+                push!(eqs, comp.interfaces.I_ext ~ 0.0)
             end
         end
     else
-        # Network mode: directly expose the native RealInput of the CurrentSource
         for (idx, comp) in enumerate(compartments)
             if !(idx in driven_exts)
-                push!(cell_inputs, comp.sys.injector.I.u)
+                push!(cell_inputs, comp.interfaces.I_ext)
             end
         end
+    end
+    
+    # 6. Ground the unused acausal boundary pins
+    for comp in compartments
+        push!(eqs, comp.interfaces.p_pin.i ~ 0.0)
     end
     
     @named cell_sys = System(eqs, t, vars, SymbolicT[]; systems=all_systems, inputs=cell_inputs, name=name)
     return Cell(cell_sys, compartments, cell_inputs)
 end
 
+# =========================================================
+# 3. NETWORK BUILDERS (Acausal & Cloned)
+# =========================================================
 
-
-
-
-
-
-struct Network
-    sys::System
-    nodes::DataFrame
-    edges::DataFrame
-    inputs::Vector{Any}
-end
-
-"""
-    build_network(cell::Cell, N::Int; synapse_connections=[], ground_inputs=true, name=:network)
-
-Pre-compile a cell once, then clone its simplified equations N times into a flat
-network. This avoids re-running MTK's structural simplification on N identical cells,
-trading hierarchical structure for compile-time speed on large homogeneous networks.
-
-# Arguments
-- `cell::Cell`: A cell built via `build_cell` with `ground_undriven=false`.
-
-# Keywords
-- `synapse_connections::Vector{Tuple}`: Each tuple is `(pre_cell, pre_comp, post_cell, post_comp, generator)`
-  where `generator` is a function `(; name) -> System` producing a synapse with `V_pre`, `V_post`,
-  `I_syn`, `s`, `E_rev`, and `g_max` variables/parameters.
-- `ground_inputs::Bool`: If true, unconnected injector inputs are grounded to 0.0.
-- `name::Symbol`: Network system name.
-
-# Returns
-- `Network`: The uncompiled flat system, a `nodes` DataFrame, and exposed inputs.
-"""
-function build_network(cell::Cell, N::Int; synapse_connections=[], ground_inputs=true, name=:network)
-    # 1. Pre-compile the cell once — structural simplification runs here, not N times
-    compiled_cell = mtkcompile(cell.sys, inputs=cell.inputs)
-
-    all_eqs = Equation[]
-    all_vars = SymbolicT[]
-    all_params = SymbolicT[]
-    all_defaults = Dict{Any, Any}()
+function build_acausal_network(compartments::Vector{Compartment}, axial_connections=[], synapse_connections=[]; drivers=[], name=:network, N::Union{Int, Nothing}=nothing)
+    num_compartments = length(compartments)
+    eqs = Equation[]
     all_systems = System[]
-    all_events = []
-    nodes = DataFrame(cell_idx=Int[], comp_idx=Int[], V=Any[], I_ext=Any[])
-
-    # Helper: create a renamed clone of a compiled symbolic variable
-    function clone_sym(sym, n_idx, is_param)
-        sym_str = Base.replace(string(sym), "(t)" => "")
-        flat_name = Base.replace(sym_str, "₊" => "_")
-        prefix = is_param ? :p_ : :n_
-        new_name = Symbol(prefix, n_idx, :_, flat_name)
-        return is_param ? only(@parameters $new_name) : only(@variables $new_name(t))
+    
+    for comp in compartments
+        push!(all_systems, comp.sys)
     end
 
-    # Pre-compute lookup strings (avoid rebuilding inside the N-loop)
-    compiled_inputs = ModelingToolkit.inputs(compiled_cell)
-    input_strs = [Base.replace(string(inp), "(t)" => "") for inp in compiled_inputs]
-
-    comp_lookup = Dict{Int, NamedTuple}()
-    for (c_idx, comp) in enumerate(cell.compartments)
-        comp_name = string(nameof(comp.sys))
-        comp_lookup[c_idx] = (
-            I_ext_str = "$(comp_name)₊injector₊I₊u(t)",
-        )
+    # 1. Tie all grounds together and add a single global ground
+    n_pins = [compartments[i].sys.n for i in 1:num_compartments]
+    if length(n_pins) > 1
+        push!(eqs, connect(n_pins...))
     end
+    
+    if isnothing(N)
+        @named gnd = Ground()
+    else
+        @named gnd = Ground(N=N)
+    end
+    push!(all_systems, gnd)
+    push!(eqs, connect(gnd.g, compartments[1].sys.n))
 
-    # 2. Clone the compiled cell N times
-    for n_idx in 1:N
-        local_sub = Dict{Any, Any}()
+    driven_compartments = Set{Int}()
+    connected_p_pins = Set{Int}()
 
-        # Clone unknowns
-        for u in unknowns(compiled_cell)
-            new_v = clone_sym(u, n_idx, false)
-            local_sub[u] = new_v
-            push!(all_vars, new_v)
-        end
-
-        # Clone inputs as unknowns (they need to be driven by network equations)
-        for inp in compiled_inputs
-            haskey(local_sub, inp) && continue  # Already cloned as unknown
-            new_v = clone_sym(inp, n_idx, false)
-            local_sub[inp] = new_v
-            push!(all_vars, new_v)
-        end
-
-        # Clone parameters (skip inputs — strip (t) from both sides for matching)
-        for p in parameters(compiled_cell)
-            p_str_clean = Base.replace(string(p), "(t)" => "")
-            any(endswith.(p_str_clean, input_strs)) && continue
-            new_p = clone_sym(p, n_idx, true)
-            local_sub[p] = new_p
-            push!(all_params, new_p)
-        end
-
-        # Clone initial conditions
-        for (orig_var, val) in ModelingToolkit.initial_conditions(compiled_cell)
-            if haskey(local_sub, orig_var)
-                all_defaults[local_sub[orig_var]] = val
-            end
-        end
-
-        # Clone equations (already simplified by the pre-compilation)
-        for eq in full_equations(compiled_cell)
-            push!(all_eqs, fixpoint_sub(eq, local_sub))
-        end
-
-        # Resolve V and I_ext for each compartment in this clone
-        for (c_idx, comp) in enumerate(cell.compartments)
-            comp_name = string(nameof(comp.sys))
-            lookup = comp_lookup[c_idx]
-
-            # Find V: search for capacitor voltage unknown directly
-            # After mtkcompile, V is eliminated through an observed chain:
-            # V -> capacitor.v -> capacitor.p.v - capacitor.n.v -> capacitor.p.v
-            cap_name = string(comp.interfaces.cap_name)
-            V_new = nothing
-            for u in unknowns(compiled_cell)
-                u_str = string(u)
-                if occursin("$(comp_name)₊$(cap_name)₊", u_str) && endswith(u_str, "v(t)")
-                    V_new = local_sub[u]
-                    break
-                end
-            end
-            if V_new !== nothing
-                all_defaults[V_new] = comp.interfaces.V_init
-            end
-
-            # Find I_ext in compiled inputs
-            I_ext_new = nothing
-            for inp in compiled_inputs
-                if endswith(string(inp), lookup.I_ext_str)
-                    I_ext_new = local_sub[inp]
-                    break
-                end
-            end
-
-            push!(nodes, (cell_idx=n_idx, comp_idx=c_idx, V=V_new, I_ext=I_ext_new))
-        end
-
-        # Clone continuous events
-        for event in continuous_events(compiled_cell)
-            event isa Pair || continue
-            root_eqs, affect = event.first, event.second
-            new_root = [fixpoint_sub(eq, local_sub) for eq in root_eqs]
-
-            if affect isa AbstractVector
-                push!(all_events, new_root => [fixpoint_sub(eq, local_sub) for eq in affect])
-            elseif affect isa ModelingToolkit.ImperativeAffect
-                new_mod = NamedTuple{keys(affect.modified)}([fixpoint_sub(v, local_sub) for v in affect.modified])
-                new_obs = NamedTuple{keys(affect.observed)}([fixpoint_sub(v, local_sub) for v in affect.observed])
-                push!(all_events, new_root => ModelingToolkit.ImperativeAffect(affect.f, new_mod, new_obs, affect.ctx))
+    # 2. Setup Driving Stimuli
+    for (target, stim) in drivers
+        idx = target isa Compartment ? findfirst(==(target), compartments) : target
+        push!(driven_compartments, idx)
+        
+        if stim isa System
+            push!(all_systems, stim)
+            push!(eqs, connect(stim.output, compartments[idx].sys.injector.I))
+        elseif stim isa AbstractVector
+            # Direct array injection for vectorized compartments
+            push!(eqs, compartments[idx].sys.injector.I.u ~ stim)
+        elseif stim isa Number
+            # Scalar injection (auto-broadcasts to vector if N is provided)
+            if isnothing(N)
+                push!(eqs, compartments[idx].sys.injector.I.u ~ stim)
+            else
+                push!(eqs, compartments[idx].sys.injector.I.u ~ fill(stim, N))
             end
         end
     end
 
-    # 3. Wire up synapses
-    syn_currents = Dict{Tuple{Int, Int}, Vector{Any}}()
-    for (s_idx, conn) in enumerate(synapse_connections)
-        pre_cell, pre_comp, post_cell, post_comp, gen = conn
-        syn = gen(name=Symbol(:syn_, s_idx))
-        push!(all_systems, syn)
-
-        V_pre = nodes[(nodes.cell_idx .== pre_cell) .& (nodes.comp_idx .== pre_comp), :V][1]
-        V_post = nodes[(nodes.cell_idx .== post_cell) .& (nodes.comp_idx .== post_comp), :V][1]
-
-        push!(all_eqs, syn.V_pre ~ V_pre)
-        push!(all_eqs, syn.V_post ~ V_post)
-
-        key = (post_cell, post_comp)
-        haskey(syn_currents, key) || (syn_currents[key] = Any[])
-        # Inline the I_syn expression instead of referencing syn.I_syn variable.
-        # This lets MTK cleanly eliminate I_syn as an observed variable
-        # rather than keeping it as an algebraic unknown that confuses tearing.
-        I_syn_expr = (syn.V_post - syn.E_rev) * syn.s * syn.g_max
-        push!(syn_currents[key], I_syn_expr)
-    end
-
-    # 4. Ground or expose unconnected inputs
-    final_inputs = SymbolicT[]
-    for row in eachrow(nodes)
-        key = (row.cell_idx, row.comp_idx)
-        I_ext = row.I_ext
-
-        if haskey(syn_currents, key)
-            push!(all_eqs, I_ext ~ sum(syn_currents[key]))
-        elseif ground_inputs
-            push!(all_eqs, I_ext ~ 0.0)
+    # 3. Ground undriven injectors and unconnected pins
+    for i in 1:num_compartments
+        if !(i in driven_compartments)
+            if isnothing(N)
+                push!(eqs, compartments[i].sys.injector.I.u ~ 0.0)
+            else
+                push!(eqs, zeros(Float64, N) ~ compartments[i].sys.injector.I.u)
+            end
+        end
+        
+        if isnothing(N)
+            push!(eqs, compartments[i].sys.axial_injector.I.u ~ 0.0)
         else
-            push!(final_inputs, I_ext)
+            push!(eqs, zeros(Float64, N) ~ compartments[i].sys.axial_injector.I.u)
+        end
+        
+        if !(i in connected_p_pins)
+            if isnothing(N)
+                push!(eqs, compartments[i].sys.p.i ~ 0.0)
+            else
+                push!(eqs, zeros(Float64, N) ~ compartments[i].sys.p.i)
+            end
         end
     end
 
-    net_sys = System(all_eqs, t, all_vars, all_params;
-                     initial_conditions=all_defaults,
-                     systems=all_systems,
-                     continuous_events=all_events,
-                     inputs=final_inputs,
-                     name=name)
-
-    return Network(net_sys, nodes, DataFrame(), final_inputs)
+    net_sys = System(eqs, t, SymbolicT[], SymbolicT[]; systems = all_systems, name = name)
+    return Network(net_sys, DataFrame(), DataFrame(), SymbolicT[])
 end
-````
+```
 
 ## File: src/MTKNeuralToolkit.jl
-````julia
+```julia
 module MTKNeuralToolkit
 
 using ModelingToolkit
 import ModelingToolkitStandardLibrary.Blocks: RealInput, Constant, RealOutput, RealInputArray, RealOutputArray
 import ModelingToolkitStandardLibrary.Electrical: Ground, OnePort, TwoPort, Pin
-using ModelingToolkit: t_nounits as t, D_nounits as D, connect, SymbolicT,ImperativeAffect
+using ModelingToolkit: t_nounits as t, D_nounits as D, connect, SymbolicT, ImperativeAffect
 using ModelingToolkit: mtkcompile, Pre
 using OrdinaryDiffEq
 using DynamicQuantities
@@ -1172,32 +878,26 @@ using DataFrames
 import SymbolicUtils: scalarize
 import Symbolics: Sym, Num
 
-
 include("BasicComponents.jl")
 export Ground, OnePort, Pin, Capacitor, SpikingCapacitor, CurrentSource, FixedReversal 
-export ChemicalSynapse, GapJunction, VectorizedAlphaSynapse, AlphaSynapse
+export ChemicalSynapse, GapJunction, AlphaSynapse
+
+export VectorizedPin, VectorizedOnePort
+export GenericChannel
 
 include("connections.jl")
-export build_channel, build_compartment, build_floating_compartment, Cell, Compartment, build_cell, build_network
-
-
-
+export build_compartment, Cell, Compartment, build_cell, build_network
 export build_synapse
-export build_electrical_network, build_vectorized_network, build_fully_vectorized_network
-# include("causal_connections.jl")
-# export CausalSynapseGate, build_causal_synapse, VectorSynapsePopulation
-
-
-
-
+export build_acausal_network 
 
 include("tempgates.jl")
 export GateSpec, GenericChannel
-export nagates,lgates,kgates
-export InlinedHHNeuron, VectorizedHHNeuron
+
+include("vectorization.jl")
+export vectorize_system
 
 include("loss_functions.jl")
 export build_loss
 
 end
-````
+```

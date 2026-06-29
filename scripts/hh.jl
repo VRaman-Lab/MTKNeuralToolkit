@@ -43,7 +43,8 @@ drivers = [
 ]
 
 # This returns a Network struct
-net = build_electrical_network([hh_neuron], []; drivers=drivers, name=:net)
+net = build_acausal_network([hh_neuron], [],[]; drivers=drivers, name=:net)
+# function build_acausal_network(compartments::Vector{Compartment}, axial_connections=[], synapse_connections=[]; drivers=[], name=:network)
 
 # 4. Compile and solve the network system
 net_compiled = mtkcompile(net.sys)

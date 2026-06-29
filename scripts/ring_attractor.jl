@@ -42,7 +42,7 @@ drivers = [(1, stim)]
 
 # 1. Time the Network Builder
 println("Building network...")
-t_build = @elapsed @named ring_system = build_electrical_network(neurons, connections; drivers=drivers)
+t_build = @elapsed @named ring_system = build_acausal_network(neurons, connections; drivers=drivers)
 println("   > Build Time: $(round(t_build, digits=2)) seconds")
 
 # 2. Time the Compiler

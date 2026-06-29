@@ -1,8 +1,7 @@
-using Symbolics: fixpoint_sub, SymbolicT, Num, isarraysymbolic
-using ModelingToolkit: unknowns, parameters, equations, @named, System, t_nounits as t, isparameter, is_derivative, getname, full_equations, continuous_events, observed, inputs, ImperativeAffect
-using ModelingToolkitStandardLibrary.Blocks: RealInput
-using ModelingToolkitStandardLibrary.Electrical: Ground
-using DataFrames: DataFrame
+# connections.jl
+
+using Symbolics: SymbolicT
+using ModelingToolkit: t_nounits as t, connect, Equation, System, @named, getproperty, nameof
 
 # =========================================================
 # 1. STRUCT DEFINITIONS
@@ -27,97 +26,128 @@ struct Network
     inputs::Vector{Any}
 end
 
+struct SynapseSpec
+    pre_V::SymbolicT
+    post_V::SymbolicT
+    post_I_syn::SymbolicT
+    synapse::System
+end
+
 # =========================================================
 # 2. COMPARTMENT & CELL BUILDERS
 # =========================================================
 
-function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0)
-    @named injector = CurrentSource()
-    @named axial_injector = CurrentSource()
-    @named p = Pin()
-    @named n = Pin()
+function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0, 
+                           N::Union{Int, Nothing}=nothing)
+    if isnothing(N)
+        @named injector  = CurrentSource()
+        @named syn_port  = SynapsePort()
+        @named p = Pin()
+        @named n = Pin()
+        init_v = V_init
+    else
+        @named injector  = CurrentSource(N=N)
+        @named syn_port  = SynapsePort(N=N)
+        @named p = VectorizedPin(N=N)
+        @named n = VectorizedPin(N=N)
+        init_v = fill(V_init, N)
+    end
 
     vars = SymbolicT[]
-    eqs = Equation[]
-    
-    # 1. Connect ALL negative terminals together (No local ground!)
-    n_pins = Any[capacitor.n, injector.n, axial_injector.n, n]
+    eqs  = Equation[]
+
+    # 1. Connect all negative terminals together
+    n_pins = Any[capacitor.n, injector.n, n]
     for c in channels
         push!(n_pins, c.n)
     end
     push!(eqs, connect(n_pins...))
-    
-    # 2. Connect all positive terminals of the components together
-    p_connections = System[capacitor, injector, axial_injector]
+
+    # 2. Connect all positive terminals together (incl. syn_port)
+    p_connections = System[capacitor, injector, syn_port]
     append!(p_connections, channels)
     push!(eqs, connect([sys.p for sys in p_connections]...))
-    
-    # 3. Expose boundary pins for acausal connections
+
+    # 3. Expose boundary pin for acausal connections (gap junctions)
     push!(eqs, connect(p, capacitor.p))
-    
-    all_systems = System[capacitor, injector, axial_injector, p, n]
+
+    all_systems = System[capacitor, injector, syn_port, p, n]
     append!(all_systems, channels)
 
-    sys = System(eqs, t, vars, SymbolicT[]; 
-                 systems = all_systems, 
-                 initial_conditions = Dict(capacitor.v => V_init), 
+    sys = System(eqs, t, vars, SymbolicT[];
+                 systems = all_systems,
+                 initial_conditions = Dict(capacitor.v => init_v),
                  name)
-    
+
     cap_name = nameof(capacitor)
-    V_state = getproperty(sys, cap_name).v
-    
+    V_state  = getproperty(sys, cap_name).v
+
     interfaces = (
-        V = V_state, 
-        p_pin = getproperty(sys, nameof(p)), 
-        n_pin = getproperty(sys, nameof(n)), 
-        I_ext = getproperty(sys, nameof(injector)).I.u,
-        I_axial = getproperty(sys, nameof(axial_injector)).I.u,
-        cap_name=cap_name
+        V       = V_state,
+        p_pin   = getproperty(sys, nameof(p)),
+        n_pin   = getproperty(sys, nameof(n)),
+        I_ext   = getproperty(sys, nameof(injector)).I.u,
+        I_syn   = getproperty(sys, nameof(syn_port)).I_syn,
+        cap_name = cap_name
     )
     return Compartment(sys, interfaces, V_init)
 end
 
-function build_cell(compartments::Vector{Compartment}, axial_connections; drivers=[], ground_undriven=true, name=:cell)
+function build_cell(compartments::Vector{Compartment}, axial_connections;
+                    drivers=[], ground_undriven=true, name=:cell)
     eqs = Equation[]
     all_systems = System[]
     driven_exts = Set{Int}()
+    gap_junctioned = Set{Int}()
     vars = SymbolicT[]
     cell_inputs = SymbolicT[]
-    
-    for (idx, comp) in enumerate(compartments)
+
+    for comp in compartments
         push!(all_systems, comp.sys)
     end
-    
-    # 1. Connect all n pins together to share a common reference
+
+    # 1. Connect all n pins together
     n_pins = [comp.interfaces.n_pin for comp in compartments]
-    push!(eqs, connect(n_pins...))
-    
-    # 2. Add a single global ground for the entire cell
+    if length(n_pins) > 1
+        push!(eqs, connect(n_pins...))
+    end
+
+    # 2. Global ground
     @named ground = Ground()
     push!(all_systems, ground)
     push!(eqs, connect(ground.g, compartments[1].interfaces.n_pin))
-    
-    # 3. Axial connections
-    for conn in axial_connections
+
+    # 3. Axial connections via GapJunction (replaces axial_injector)
+    for (i, conn) in enumerate(axial_connections)
         pre_idx, post_idx, R_val = conn
-        V_pre = compartments[pre_idx].interfaces.V
-        V_post = compartments[post_idx].interfaces.V
-        I_ax_pre = compartments[pre_idx].interfaces.I_axial
-        I_ax_post = compartments[post_idx].interfaces.I_axial
-        I_flow = (V_pre - V_post) / R_val
-        push!(eqs, I_ax_pre ~ -I_flow)
-        push!(eqs, I_ax_post ~ I_flow)
+        gj = GapJunction(R=R_val, name=Symbol(:gj_, i))
+        push!(all_systems, gj)
+
+        # Connect gap junction between the two compartments
+        push!(eqs, connect(compartments[pre_idx].interfaces.p_pin, gj.p1))
+        push!(eqs, connect(gj.n1, compartments[pre_idx].interfaces.n_pin))
+        push!(eqs, connect(compartments[post_idx].interfaces.p_pin, gj.p2))
+        push!(eqs, connect(gj.n2, compartments[post_idx].interfaces.n_pin))
+
+        push!(gap_junctioned, pre_idx, post_idx)
     end
-    
+
     # 4. Drivers
     for (target, stim) in drivers
         idx = target isa Int ? target : findfirst(==(target), compartments)
-        push!(all_systems, stim)
-        push!(eqs, compartments[idx].interfaces.I_ext ~ stim.output.u)
         push!(driven_exts, idx)
+
+        if stim isa System
+            push!(all_systems, stim)
+            push!(eqs, compartments[idx].interfaces.I_ext ~ stim.output.u)
+        elseif stim isa Number
+            push!(eqs, compartments[idx].interfaces.I_ext ~ stim)
+        elseif stim isa AbstractVector
+            push!(eqs, compartments[idx].interfaces.I_ext ~ stim)
+        end
     end
-    
-    # 5. Ground undriven injectors
+
+    # 5. Ground undriven I_ext
     if ground_undriven
         for (idx, comp) in enumerate(compartments)
             if !(idx in driven_exts)
@@ -131,305 +161,168 @@ function build_cell(compartments::Vector{Compartment}, axial_connections; driver
             end
         end
     end
-    
-    # 6. Ground the unused acausal boundary pins
+
+    # 6. Ground I_syn (no synapses at cell level)
     for comp in compartments
-        push!(eqs, comp.interfaces.p_pin.i ~ 0.0)
+        push!(eqs, comp.interfaces.I_syn ~ 0.0)
     end
-    
-    @named cell_sys = System(eqs, t, vars, SymbolicT[]; systems=all_systems, inputs=cell_inputs, name=name)
+
+    # 7. Ground p_pin for non-gap-junctioned compartments
+    for (idx, comp) in enumerate(compartments)
+        if !(idx in gap_junctioned)
+            push!(eqs, comp.interfaces.p_pin.i ~ 0.0)
+        end
+    end
+
+    @named cell_sys = System(eqs, t, vars, SymbolicT[];
+                             systems=all_systems,
+                             inputs=cell_inputs,
+                             name=name)
     return Cell(cell_sys, compartments, cell_inputs)
 end
 
 # =========================================================
-# 3. NETWORK BUILDERS (Acausal & Cloned)
+# 3. SYNAPSE WIRING
 # =========================================================
 
-function build_electrical_network(compartments::Vector{Compartment}, axial_connections=[], synapse_connections=[]; drivers=[], name=:network)
-    N = length(compartments)
+"""
+    wire_synapses!(eqs, systems, specs)
+
+Wires a collection of SynapseSpecs into the network equations.
+Pre-collects convergent synapses by target and writes one sum equation per target.
+Returns the set of driven I_syn targets (for grounding the rest).
+"""
+function wire_synapses!(eqs::Vector{Equation}, systems::Vector{System}, 
+                        specs::Vector{SynapseSpec})
+    syn_by_target = Dict{SymbolicT, Vector{SymbolicT}}()
+
+    for spec in specs
+        push!(systems, spec.synapse)
+        push!(eqs, spec.synapse.V_pre  ~ spec.pre_V)
+        push!(eqs, spec.synapse.V_post ~ spec.post_V)
+
+        key = spec.post_I_syn
+        haskey(syn_by_target, key) || (syn_by_target[key] = SymbolicT[])
+        push!(syn_by_target[key], spec.synapse.I_syn)
+    end
+
+    for (target, currents) in syn_by_target
+        push!(eqs, target ~ sum(currents))
+    end
+
+    return Set{SymbolicT}(keys(syn_by_target))
+end
+
+# =========================================================
+# 4. NETWORK BUILDER
+# =========================================================
+
+function build_acausal_network(compartments::Vector{Compartment};
+                                gap_junctions=[],
+                                synapse_specs=SynapseSpec[],
+                                drivers=[],
+                                name=:network,
+                                N::Union{Int, Nothing}=nothing)
+    num_compartments = length(compartments)
     eqs = Equation[]
     all_systems = System[]
-    
+
     for comp in compartments
         push!(all_systems, comp.sys)
     end
 
-    # 1. Tie all grounds together and add a single global ground
-    n_pins = [compartments[i].sys.n for i in 1:N]
-    push!(eqs, connect(n_pins...))
-    @named gnd = Ground()
+    # 1. Tie all grounds together
+    n_pins = [compartments[i].interfaces.n_pin for i in 1:num_compartments]
+    if length(n_pins) > 1
+        push!(eqs, connect(n_pins...))
+    end
+
+    if isnothing(N)
+        @named gnd = Ground()
+    else
+        @named gnd = Ground(N=N)
+    end
     push!(all_systems, gnd)
-    push!(eqs, connect(gnd.g, compartments[1].sys.n))
+    push!(eqs, connect(gnd.g, compartments[1].interfaces.n_pin))
 
     driven_compartments = Set{Int}()
-    connected_p_pins = Set{Int}()
+    gap_junctioned = Set{Int}()
 
-    # 2. Setup Driving Stimuli
+    # 2. Driving stimuli
     for (target, stim) in drivers
         idx = target isa Compartment ? findfirst(==(target), compartments) : target
         push!(driven_compartments, idx)
-        push!(all_systems, stim)
-        push!(eqs, connect(stim.output, compartments[idx].sys.injector.I))
-    end
 
-    # 3. Axial Connections
-    for conn in axial_connections
-        pre_target, post_target, gen = conn[1], conn[2], conn[3]
-        pre_idx = pre_target isa Compartment ? findfirst(==(pre_target), compartments) : pre_target
-        post_idx = post_target isa Compartment ? findfirst(==(post_target), compartments) : post_target
-        
-        ax_name = length(conn) == 4 ? conn[4] : Symbol(:axial_, pre_idx, :_, post_idx)
-        ax = gen(name=ax_name)
-        push!(all_systems, ax)
-        
-        push!(connected_p_pins, pre_idx)
-        push!(connected_p_pins, post_idx)
-        
-        if hasproperty(ax, :p1)
-            push!(eqs, connect(compartments[pre_idx].sys.p, ax.p1))
-            push!(eqs, connect(compartments[post_idx].sys.p, ax.p2))
-            push!(eqs, connect(compartments[pre_idx].sys.n, ax.n1))
-            push!(eqs, connect(compartments[post_idx].sys.n, ax.n2))
-        else
-            push!(eqs, connect(compartments[pre_idx].sys.p, ax.p))
-            push!(eqs, connect(compartments[post_idx].sys.p, ax.n))
-        end
-    end
-
-    # 4. Synaptic Connections
-    for conn in synapse_connections
-        pre_target, post_target, gen = conn[1], conn[2], conn[3]
-        pre_idx = pre_target isa Compartment ? findfirst(==(pre_target), compartments) : pre_target
-        post_idx = post_target isa Compartment ? findfirst(==(post_target), compartments) : post_target
-        
-        syn_name = length(conn) == 4 ? conn[4] : Symbol(:syn_, pre_idx, :_, post_idx)
-        syn = gen(name=syn_name)
-        push!(all_systems, syn)
-
-        push!(connected_p_pins, pre_idx)
-        push!(connected_p_pins, post_idx)
-
-        push!(eqs, connect(compartments[pre_idx].sys.p, syn.p1))
-        push!(eqs, connect(compartments[post_idx].sys.p, syn.p2))
-        push!(eqs, connect(compartments[pre_idx].sys.n, syn.n1))
-        push!(eqs, connect(compartments[post_idx].sys.n, syn.n2))
-
-        if hasproperty(syn, :V_pre_sense)
-            push!(eqs, syn.V_pre_sense.u ~ compartments[pre_idx].interfaces.V)
-        end
-        if hasproperty(syn, :V_post_sense)
-            push!(eqs, syn.V_post_sense.u ~ compartments[post_idx].interfaces.V)
-        end
-        if hasproperty(syn, :Ca_pre_sense) && haskey(compartments[pre_idx].interfaces, :Ca)
-            push!(eqs, syn.Ca_pre_sense.u ~ compartments[pre_idx].interfaces.Ca)
-        end
-    end
-
-    # 5. Ground undriven injectors and unconnected pins
-    for i in 1:N
-        if !(i in driven_compartments)
-            push!(eqs, compartments[i].sys.injector.I.u ~ 0.0)
-        end
-        push!(eqs, compartments[i].sys.axial_injector.I.u ~ 0.0)
-        if !(i in connected_p_pins)
-            push!(eqs, compartments[i].sys.p.i ~ 0.0)
-        end
-    end
-
-    net_sys = System(eqs, t, SymbolicT[], SymbolicT[]; systems = all_systems, name = name)
-    return Network(net_sys, DataFrame(), DataFrame(), SymbolicT[])
-end
-
-# =========================================================
-# 4. GENERIC CAUSAL CLONING ENGINE
-# =========================================================
-
-function find_compiled_var(compiled_sys, orig_var)
-    target_name = getname(orig_var)
-    for u in unknowns(compiled_sys)
-        getname(u) == target_name && return u
-    end
-    for p in parameters(compiled_sys)
-        getname(p) == target_name && return p
-    end
-    for inp in inputs(compiled_sys)
-        getname(inp) == target_name && return inp
-    end
-    for eq in observed(compiled_sys)
-        getname(eq.lhs) == target_name && return eq.lhs
-    end
-    error("Could not find interface variable $orig_var in compiled system.")
-end
-
-function clone_compiled_cell(compiled_cell::System, n_idx::Int)
-    sub = Dict{Any, Any}()
-    new_sts = SymbolicT[]
-    new_ps = SymbolicT[]
-    new_eqs = Equation[]
-    
-    function make_new_var(orig, is_param)
-        name = getname(orig)
-        new_name = Symbol(:n_, n_idx, :_, name)
-        if isarraysymbolic(orig)
-            dims = size(orig)
-            return is_param ? only(@parameters $new_name[dims...]) : only(@variables $new_name(t)[dims...])
-        else
-            return is_param ? only(@parameters $new_name) : only(@variables $new_name(t))
-        end
-    end
-
-    function clone_var(orig, is_param)
-        if haskey(sub, orig)
-            return sub[orig]
-        end
-        new_var = make_new_var(orig, is_param)
-        sub[orig] = new_var
-        if is_param
-            push!(new_ps, new_var)
-        else
-            push!(new_sts, new_var)
-        end
-        return new_var
-    end
-
-    # 1. Clone unknowns, inputs, and parameters
-    for u in unknowns(compiled_cell); clone_var(u, false); end
-    for inp in inputs(compiled_cell); clone_var(inp, false); end
-    for p in parameters(compiled_cell); clone_var(p, true); end
-
-    # 2. Clone observed variables as unknowns and their equations
-    for eq in observed(compiled_cell)
-        if haskey(sub, eq.lhs)
-            continue
-        end
-        new_lhs = clone_var(eq.lhs, false) # This correctly adds it to new_sts
-        push!(new_eqs, new_lhs ~ fixpoint_sub(eq.rhs, sub))
-    end
-    
-
-    # 3. Substitute and collect main equations
-    append!(new_eqs, [fixpoint_sub(eq, sub) for eq in full_equations(compiled_cell)])
-
-    # 4. Defaults (Initial conditions and bindings)
-    new_defaults = Dict{Any, Any}()
-    for (k, v) in ModelingToolkit.initial_conditions(compiled_cell)
-        if haskey(sub, k); new_defaults[sub[k]] = v; end
-    end
-    for (k, v) in ModelingToolkit.bindings(compiled_cell)
-        if haskey(sub, k); new_defaults[sub[k]] = v; end
-    end
-
-    # 5. Events
-    new_events = []
-    for ev in continuous_events(compiled_cell)
-        root = [fixpoint_sub(eq, sub) for eq in ev.first]
-        if ev.second isa AbstractVector
-            affect = [fixpoint_sub(eq, sub) for eq in ev.second]
-        elseif ev.second isa ImperativeAffect
-            new_mod = NamedTuple{keys(ev.second.modified)}([fixpoint_sub(v, sub) for v in ev.second.modified])
-            new_obs = NamedTuple{keys(ev.second.observed)}([fixpoint_sub(v, sub) for v in ev.second.observed])
-            affect = ImperativeAffect(ev.second.f, new_mod, new_obs, ev.second.ctx)
-        end
-        push!(new_events, root => affect)
-    end
-
-    return new_eqs, new_sts, new_ps, sub, new_defaults, new_events
-end
-
-function build_network(cell::Cell, N::Int; synapse_connections=[], ground_inputs=true, name=:network)
-    compiled_cell = mtkcompile(cell.sys, inputs=cell.inputs)
-
-    all_eqs = Equation[]
-    all_vars = SymbolicT[]
-    all_params = SymbolicT[]
-    all_systems = System[]
-    all_defaults = Dict{Any, Any}()
-    all_events = []
-    final_network_inputs = SymbolicT[]
-    
-    nodes = DataFrame(cell_idx=Int[], comp_idx=Int[], V=Any[], I_ext=Any[], Ca=Any[])
-    
-    driven_keys = Set{Tuple{Int,Int}}()
-    for conn in synapse_connections
-        post_cell, post_comp = conn[3], conn[4]
-        push!(driven_keys, (post_cell, post_comp))
-    end
-
-    for n_idx in 1:N
-        eqs, vars, ps, sub, defaults, events = clone_compiled_cell(compiled_cell, n_idx)
-        append!(all_eqs, eqs)
-        append!(all_vars, vars)
-        append!(all_params, ps)
-        merge!(all_defaults, defaults)
-        append!(all_events, events)
-        
-        for (c_idx, comp) in enumerate(cell.compartments)
-            V_orig = find_compiled_var(compiled_cell, comp.interfaces.V)
-            I_ext_orig = find_compiled_var(compiled_cell, comp.interfaces.I_ext)
-            
-            V_new = sub[V_orig]
-            I_ext_new = sub[I_ext_orig]
-            
-            all_defaults[V_new] = comp.V_init
-            
-            Ca_new = nothing
-            if haskey(comp.interfaces, :Ca)
-                Ca_orig = find_compiled_var(compiled_cell, comp.interfaces.Ca)
-                Ca_new = sub[Ca_orig]
+        if stim isa System
+            push!(all_systems, stim)
+            push!(eqs, compartments[idx].interfaces.I_ext ~ stim.output.u)
+        elseif stim isa AbstractVector
+            push!(eqs, compartments[idx].interfaces.I_ext ~ stim)
+        elseif stim isa Number
+            if isnothing(N)
+                push!(eqs, compartments[idx].interfaces.I_ext ~ stim)
+            else
+                push!(eqs, compartments[idx].interfaces.I_ext ~ fill(stim, N))
             end
-            
-            push!(nodes, (cell_idx=n_idx, comp_idx=c_idx, V=V_new, I_ext=I_ext_new, Ca=Ca_new))
-            
-            if !((n_idx, c_idx) in driven_keys)
-                if ground_inputs
-                    push!(all_eqs, I_ext_new ~ 0.0)
-                else
-                    push!(final_network_inputs, I_ext_new)
+        end
+    end
+
+    # 3. Ground undriven I_ext
+    for i in 1:num_compartments
+        if !(i in driven_compartments)
+            if isnothing(N)
+                push!(eqs, compartments[i].interfaces.I_ext ~ 0.0)
+            else
+                push!(eqs, compartments[i].interfaces.I_ext ~ zeros(Float64, N))
+            end
+        end
+    end
+
+    # 4. Wire gap junctions via p_pin
+    for (i, gj_spec) in enumerate(gap_junctions)
+        comp_i, comp_j, R = gj_spec
+        gj = GapJunction(R=R, name=Symbol(:gj_, i))
+        push!(all_systems, gj)
+
+        push!(eqs, connect(compartments[comp_i].interfaces.p_pin, gj.p1))
+        push!(eqs, connect(gj.n1, compartments[comp_i].interfaces.n_pin))
+        push!(eqs, connect(compartments[comp_j].interfaces.p_pin, gj.p2))
+        push!(eqs, connect(gj.n2, compartments[comp_j].interfaces.n_pin))
+
+        push!(gap_junctioned, comp_i, comp_j)
+    end
+
+    # 5. Wire synapses (pre-collects by target, handles convergence)
+    driven_syn_targets = wire_synapses!(eqs, all_systems, synapse_specs)
+
+    # 6. Ground non-synapsed I_syn
+    for comp in compartments
+        if isnothing(N)
+            if !(comp.interfaces.I_syn in driven_syn_targets)
+                push!(eqs, comp.interfaces.I_syn ~ 0.0)
+            end
+        else
+            for i in 1:N
+                i_syn_i = comp.interfaces.I_syn[i]
+                if !(i_syn_i in driven_syn_targets)
+                    push!(eqs, i_syn_i ~ 0.0)
                 end
             end
         end
     end
 
-    syn_currents = Dict{Tuple{Int, Int}, Vector{Any}}()
-    for (s_idx, conn) in enumerate(synapse_connections)
-        pre_cell, pre_comp, post_cell, post_comp, gen = conn
-        syn = gen(name=Symbol(:syn_, s_idx))
-        push!(all_systems, syn)
-
-        V_pre = nodes[(nodes.cell_idx .== pre_cell) .& (nodes.comp_idx .== pre_comp), :V][1]
-        V_post = nodes[(nodes.cell_idx .== post_cell) .& (nodes.comp_idx .== post_comp), :V][1]
-
-        push!(all_eqs, syn.V_pre ~ V_pre)
-        push!(all_eqs, syn.V_post ~ V_post)
-
-        if hasproperty(syn, :Ca_pre_sense)
-            Ca_pre = nodes[(nodes.cell_idx .== pre_cell) .& (nodes.comp_idx .== pre_comp), :Ca][1]
-            if Ca_pre !== nothing
-                push!(all_eqs, syn.Ca_pre_sense.u ~ Ca_pre)
+    # 7. Ground non-gap-junctioned p_pin.i
+    for i in 1:num_compartments
+        if !(i in gap_junctioned)
+            if isnothing(N)
+                push!(eqs, compartments[i].interfaces.p_pin.i ~ 0.0)
+            else
+                push!(eqs, compartments[i].interfaces.p_pin.i ~ zeros(Float64, N))
             end
         end
-
-        key = (post_cell, post_comp)
-        haskey(syn_currents, key) || (syn_currents[key] = Any[])
-        
-        if hasproperty(syn, :I_syn)
-            push!(syn_currents[key], syn.I_syn)
-        else
-            push!(syn_currents[key], (syn.V_post - syn.E_rev) * syn.s * syn.g_max)
-        end
     end
 
-    for (key, currents) in syn_currents
-        I_ext = nodes[(nodes.cell_idx .== key[1]) .& (nodes.comp_idx .== key[2]), :I_ext][1]
-        push!(all_eqs, I_ext ~ sum(currents))
-    end
-
-    net_sys = System(all_eqs, t, all_vars, all_params;
-                     initial_conditions=all_defaults,
-                     systems=all_systems,
-                     continuous_events=all_events,
-                     inputs=final_network_inputs,
-                     name=name)
-
-    return Network(net_sys, nodes, DataFrame(), final_network_inputs)
+    net_sys = System(eqs, t, SymbolicT[], SymbolicT[];
+                     systems = all_systems, name = name)
+    return Network(net_sys, DataFrame(), DataFrame(), SymbolicT[])
 end

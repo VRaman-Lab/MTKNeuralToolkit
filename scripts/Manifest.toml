@@ -1618,7 +1618,7 @@ version = "1.17.10"
     oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [[deps.MTKNeuralToolkit]]
-deps = ["DataFrames", "DiffEqCallbacks", "DifferentiationInterface", "Distributions", "DynamicQuantities", "ModelingToolkit", "ModelingToolkitNeuralNets", "ModelingToolkitStandardLibrary", "OrdinaryDiffEq", "PreallocationTools", "PrecompileTools", "Random", "SciMLStructures", "SymbolicIndexingInterface", "SymbolicUtils", "Symbolics"]
+deps = ["DataFrames", "DiffEqCallbacks", "DifferentiationInterface", "Distributions", "DynamicQuantities", "MacroTools", "ModelingToolkit", "ModelingToolkitNeuralNets", "ModelingToolkitStandardLibrary", "OrdinaryDiffEq", "PreallocationTools", "PrecompileTools", "Random", "SciMLStructures", "SymbolicIndexingInterface", "SymbolicUtils", "Symbolics"]
 path = ".."
 uuid = "88376828-b154-4662-bcd7-a3562b4741f6"
 version = "0.0.1-DEV"

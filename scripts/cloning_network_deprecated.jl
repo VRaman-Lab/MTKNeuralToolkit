@@ -1,3 +1,9 @@
+"""
+   This works, but the approach of manually cloning MTK networks is clunky and vectorisation is better. 
+"""
+
+
+
 using MTKNeuralToolkit
 using ModelingToolkit: mtkcompile, @named, System, t_nounits as t, D_nounits as D
 using OrdinaryDiffEq
@@ -29,24 +35,10 @@ synapses = [(1, 1, 2, 1, (; name) -> AlphaSynapse(name=name, g_max=5.0))]
 
 println("Building Network...")
 # ground_inputs=false exposes the un-synapsed I_ext variables as MTK inputs
-net = build_network(cell, 200; synapse_connections=synapses, ground_inputs=false, name=:pop)
+net = build_network(cell, 100; synapse_connections=synapses, ground_inputs=false, name=:pop)
 
 println("Checking for nothing or type issues in equations:")
-for eq in equations(net.sys)
-    if occursin("nothing", string(eq))
-        println("FOUND NOTHING: ", eq)
-    end
-end
 
-println("\nNetwork Unknowns (first 5):")
-for u in unknowns(net.sys)[1:min(5, end)]
-    println(u, " -> Type: ", typeof(u))
-end
-
-println("\nNetwork Parameters (first 5):")
-for p in parameters(net.sys)[1:min(5, end)]
-    println(p, " -> Type: ", typeof(p))
-end
 
 # 5. Compile the Network ONCE
 println("Compiling Network...")

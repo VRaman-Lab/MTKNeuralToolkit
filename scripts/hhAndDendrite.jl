@@ -71,7 +71,7 @@ synapse_conns = [
 drivers = [(1, stim)] # Drive Soma1
 
 println("Building multi-compartment network...")
-@named net = build_electrical_network(compartments, axial_conns, synapse_conns; drivers=drivers)
+@named net = build_acausal_network(compartments, axial_conns, synapse_conns; drivers=drivers)
 
 println("Compiling (this may take a moment)...")
 # Conservative tearing is much faster for circuits!

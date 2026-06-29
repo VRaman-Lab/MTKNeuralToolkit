@@ -90,7 +90,7 @@ drivers = [(1, stim)] # Target the first neuron by index
 
 # 4. Build the complete mixed network using the explicit acausal builder
 println("Building mixed acausal network...")
-@named net = build_electrical_network(neurons, all_connections; drivers=drivers)
+@named net = build_acausal_network(neurons, all_connections; drivers=drivers)
 
 # Note: conservative=true and simplify=false drastically speed up compilation for circuits!
 net_compiled = mtkcompile(net; conservative=true, simplify=false)

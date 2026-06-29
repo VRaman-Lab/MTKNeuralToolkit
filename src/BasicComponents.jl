@@ -1,63 +1,39 @@
-"""
-Soma Component: Represents a pure physical lipid bilayer membrane patch.
-"""
-@component function Capacitor(; name, C = 1.0)
-    @named oneport = OnePort()
-    @unpack v, i = oneport
-    @parameters begin
-        C = C
+@component function Ground(; name, N::Union{Int, Nothing}=nothing)
+    if isnothing(N)
+        @named g = Pin()
+        eqs = [g.v ~ 0]
+    else
+        @named g = VectorizedPin(N=N)
+        eqs = [g.v ~ zeros(Float64, N)]
     end
-    params = SymbolicT[]
-    push!(params, C)
-    
-    vars = SymbolicT[]
-    
-    eqs = Equation[]
-    push!(eqs, D(v) ~ i / C)
-    
-    cap_sys = System(
-        eqs, 
-        t, 
-        vars, 
-        params; 
-        systems = System[], 
-        name
-    )
-    return extend(cap_sys, oneport)
+    return System(eqs, t, SymbolicT[], SymbolicT[]; systems=[g], name=name)
 end
 
+@component function Capacitor(; name, C = 1.0, N::Union{Int, Nothing}=nothing)
+    if isnothing(N)
+        @named oneport = OnePort()
+    else
+        @named oneport = VectorizedOnePort(N=N)
+    end
+    @unpack v, i = oneport
+    @parameters C=C
+    # ./ works on both scalars and arrays natively in Symbolics
+    eqs = Equation[D(v) ~ i ./ C]
+    return extend(System(eqs, t, SymbolicT[], [C]; systems=System[], name=name), oneport)
+end
 
-
-"""
-CurrentSource Component: Converts a causal RealInput signal (u) 
-into an acausal electrical current (i) injecting into a physical Node.
-"""
-@component function CurrentSource(; name)
-    @named oneport = OnePort()
+@component function CurrentSource(; name, N::Union{Int, Nothing}=nothing)
+    if isnothing(N)
+        @named oneport = OnePort()
+        @named I = RealInput()
+    else
+        @named oneport = VectorizedOnePort(N=N)
+        @named I = RealInputArray(nin=N)
+    end
     @unpack i = oneport
-    @named I = RealInput()
     
-    vars = SymbolicT[]
-    params = SymbolicT[]
-    eqs = Equation[]
-    push!(eqs, i ~ -I.u)
-    initial_conditions = Dict{SymbolicT, SymbolicT}()
-    guesses = Dict{SymbolicT, SymbolicT}()
-    # We cast 'I' into a Vector{System} instead of leaving it as an untyped literal array
-    subsystems = System[]
-    push!(subsystems, I)
-    
-    source_sys = System(
-        eqs, 
-        t, 
-        vars, 
-        params; 
-        systems = subsystems, 
-        initial_conditions, 
-        guesses, 
-        name
-    )
-    return extend(source_sys, oneport)
+    eqs = Equation[i ~ -I.u]
+    return extend(System(eqs, t, SymbolicT[], SymbolicT[]; systems=[I], name=name), oneport)
 end
 
 """
@@ -143,8 +119,6 @@ end
     vars = SymbolicT[]
 
     eqs = Equation[]
-    # The current flowing into port 1 is driven by the voltage difference.
-    # By conservation of current, what goes into port 1 must come out of port 2.
     push!(eqs, i1 ~ (v1 - v2) / R)
     push!(eqs, i2 ~ -i1)
 
@@ -221,49 +195,114 @@ function spike_affect!(mod, obs, ctx, integ)
     return (; S = S_new)
 end
 
-@component function VectorizedAlphaSynapse(; name, N::Int, W::Matrix{Float64}, tau::Matrix{Float64}, g_max::Matrix{Float64},
-E_rev=0.0, v_th=-20.0)
-    # I_inj has NO default value, because it is an algebraic variable
-    @variables V_vec(t)[1:N] I_inj(t)[1:N] S(t)[1:N, 1:N]=zeros(Float64, N, N)
-    @parameters tau_p[1:N, 1:N]=tau g_max_p[1:N, 1:N]=g_max E_rev_p=E_rev v_th_p=v_th
+# ==========================================
+# VECTORIZED ELECTRICAL COMPONENTS
+# ==========================================
 
-    eqs = Equation[]
-    push!(eqs, D(S) ~ -S ./ tau_p)
-
-    for i in 1:N
-        rhs = Num(0.0)
-        for j in 1:N
-            rhs += (V_vec[i] - E_rev_p) * S[j, i] * g_max_p[j, i]
-        end
-        push!(eqs, I_inj[i] ~ rhs)
+@connector function VectorizedPin(; name, N::Int, v = nothing, i = nothing)
+    vars = @variables begin
+        v(t)[1:N] = v
+        i(t)[1:N] = i, [connect = Flow]
     end
-
-    events = Any[]
-    for j in 1:N
-        event = [V_vec[j] ~ v_th_p] => ImperativeAffect(
-            spike_affect!,
-            modified = (; S),
-            observed = (;),
-            ctx = (j=j, W=W, N=N)
-        )
-        push!(events, event)
-    end
-
-    # Type-stable SymbolicT[] vectors for fast precompilation
-    vars = SymbolicT[]
-    push!(vars, S)
-    push!(vars, I_inj)
-    push!(vars, V_vec)
-
-    params = SymbolicT[]
-    push!(params, tau_p)
-    push!(params, g_max_p)
-    push!(params, E_rev_p)
-    push!(params, v_th_p)
-
-    # No guesses needed, the system is perfectly balanced
-    return System(eqs, t, vars, params;
-                  continuous_events=events,
-                  systems = System[],
-                  name)
+    return System(Equation[], t, vars, SymbolicT[]; name=name)
 end
+
+@component function VectorizedOnePort(; name, N::Int, v = nothing, i = nothing)
+    pars = @parameters begin
+    end
+    systems = @named begin
+        p = VectorizedPin(N=N)
+        n = VectorizedPin(N=N)
+    end
+    vars = @variables begin
+        v(t)[1:N] = v
+        i(t)[1:N] = i
+    end
+    equations = Equation[
+        v ~ p.v - n.v,
+        collect(p.i .+ n.i .~ 0.0)...,  # splat the collected equations
+        i ~ p.i,
+    ]
+
+    return System(equations, t, vars, pars; name, systems)
+end
+
+@component function SynapsePort(; name, N::Union{Int, Nothing}=nothing)
+    if isnothing(N)
+        @named p = Pin()
+        @variables I_syn(t)
+        vars = SymbolicT[I_syn]
+        eqs = Equation[p.i ~ I_syn]
+    else
+        @named p = VectorizedPin(N=N)
+        @variables I_syn(t)[1:N]
+        vars = SymbolicT[I_syn]
+        eqs = Equation[p.i ~ I_syn]
+    end
+    return System(eqs, t, vars, SymbolicT[]; systems=[p], name=name)
+end
+
+
+struct SynapseSpec
+    pre_V::SymbolicT        # concrete variable from pre compartment
+    post_I_syn::SymbolicT   # concrete variable from post compartment  
+    post_V::SymbolicT       # for voltage-dependent synapses (NMDA)
+    synapse::System         # the synapse component
+end
+
+function wire_synapse!(eqs, systems, spec::SynapseSpec)
+    syn = spec.synapse
+    push!(systems, syn)
+    push!(eqs, syn.V_pre  ~ spec.pre_V)
+    push!(eqs, syn.V_post ~ spec.post_V)
+    # Accumulate — doesn't override, adds to whatever's already there
+    push!(eqs, spec.post_I_syn ~ spec.post_I_syn + syn.I_syn)
+end
+
+@component function ExpSynapse(; name, g_max=1.0, τ=5.0, E_rev=0.0, V_th=-20.0, slope=2.0)
+    @variables s(t)=0.0 I_syn(t) V_pre(t) V_post(t)
+    @parameters g_max=g_max τ=τ E_rev=E_rev V_th=V_th slope=slope
+
+    # Sigmoidal activation — smooth, no events needed
+    σ(x) = 1.0 / (1.0 + exp(-x/slope))
+    
+    eqs = [
+        D(s) ~ -s / τ + σ(V_pre - V_th),
+        I_syn ~ g_max * s * (V_post - E_rev)
+    ]
+    return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, V_th, slope]; 
+                  systems=System[], name=name)
+end
+
+@component function AlphaSynapse(; name, g_max=1.0, τ=5.0, E_rev=0.0, V_th=-20.0, slope=2.0)
+    @variables s1(t)=0.0 s2(t)=0.0 I_syn(t) V_pre(t) V_post(t)
+    @parameters g_max=g_max τ=τ E_rev=E_rev V_th=V_th slope=slope
+
+    σ(x) = 1.0 / (1.0 + exp(-x/slope))
+    
+    eqs = [
+        D(s1) ~ -s1 / τ + σ(V_pre - V_th),
+        D(s2) ~ -s2 / τ + s1,           # cascaded low-pass → alpha shape
+        I_syn ~ g_max * s2 * (V_post - E_rev)
+    ]
+    return System(eqs, t, [s1, s2, I_syn, V_pre, V_post], 
+                  [g_max, τ, E_rev, V_th, slope]; systems=System[], name=name)
+end
+
+@component function NMDASynapse(; name, g_max=1.0, τ=100.0, E_rev=0.0, V_th=-20.0, 
+                                  Mg_conc=1.0, slope=2.0)
+    @variables s(t)=0.0 I_syn(t) V_pre(t) V_post(t)
+    @parameters g_max=g_max τ=τ E_rev=E_rev V_th=V_th Mg_conc=Mg_conc slope=slope
+
+    σ(x) = 1.0 / (1.0 + exp(-x/slope))
+    # Mg block is a function of V_post — still fully causal
+    mg_block(V) = 1.0 / (1.0 + Mg_conc * exp(-0.062 * V))
+    
+    eqs = [
+        D(s) ~ -s / τ + σ(V_pre - V_th),
+        I_syn ~ g_max * s * mg_block(V_post) * (V_post - E_rev)
+    ]
+    return System(eqs, t, [s, I_syn, V_pre, V_post], 
+                  [g_max, τ, E_rev, V_th, Mg_conc, slope]; systems=System[], name=name)
+end
+
