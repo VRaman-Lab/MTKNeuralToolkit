@@ -117,7 +117,7 @@ function build_cell(compartments::Vector{Compartment}, axial_connections;
     push!(all_systems, ground)
     push!(eqs, connect(ground.g, compartments[1].interfaces.n_pin))
 
-    # 3. Axial connections via GapJunction (replaces axial_injector)
+    # 3. Axial connections via GapJunction 
     for (i, conn) in enumerate(axial_connections)
         pre_idx, post_idx, R_val = conn
         gj = GapJunction(R=R_val, name=Symbol(:gj_, i))
@@ -192,7 +192,7 @@ Wires a collection of SynapseSpecs into the network equations.
 Pre-collects convergent synapses by target and writes one sum equation per target.
 Returns the set of driven I_syn targets (for grounding the rest).
 """
-function wire_synapses!(eqs::Vector{Equation}, systems::Vector{System}, 
+function wire_synapses!(eqs::Vector{Equation}, systems::Vector{System},
                         specs::Vector{SynapseSpec})
     syn_by_target = Dict{SymbolicT, Vector{SymbolicT}}()
 
@@ -201,9 +201,19 @@ function wire_synapses!(eqs::Vector{Equation}, systems::Vector{System},
         push!(eqs, spec.synapse.V_pre  ~ spec.pre_V)
         push!(eqs, spec.synapse.V_post ~ spec.post_V)
 
-        key = spec.post_I_syn
-        haskey(syn_by_target, key) || (syn_by_target[key] = SymbolicT[])
-        push!(syn_by_target[key], spec.synapse.I_syn)
+        if spec.post_I_syn isa AbstractArray
+            # Block synapse: expand array to individual elements
+            for i in 1:length(spec.post_I_syn)
+                key = spec.post_I_syn[i]
+                haskey(syn_by_target, key) || (syn_by_target[key] = SymbolicT[])
+                push!(syn_by_target[key], spec.synapse.I_syn[i])
+            end
+        else
+            # Scalar synapse
+            key = spec.post_I_syn
+            haskey(syn_by_target, key) || (syn_by_target[key] = SymbolicT[])
+            push!(syn_by_target[key], spec.synapse.I_syn)
+        end
     end
 
     for (target, currents) in syn_by_target
@@ -212,6 +222,8 @@ function wire_synapses!(eqs::Vector{Equation}, systems::Vector{System},
 
     return Set{SymbolicT}(keys(syn_by_target))
 end
+
+
 
 # =========================================================
 # 4. NETWORK BUILDER
@@ -326,3 +338,14 @@ function build_acausal_network(compartments::Vector{Compartment};
                      systems = all_systems, name = name)
     return Network(net_sys, DataFrame(), DataFrame(), SymbolicT[])
 end
+
+
+function build_synapse_block(pre_comp, post_comp, W; name, 
+                             synapse_type=VectorizedExpSynapse, kwargs...)
+    N_pre  = size(W, 2)
+    N_post = size(W, 1)
+    syn = synapse_type(N_pre=N_pre, N_post=N_post, W=W; name=name, kwargs...)
+    return SynapseSpec(pre_comp.interfaces.V, post_comp.interfaces.V,
+                       post_comp.interfaces.I_syn, syn)
+end
+

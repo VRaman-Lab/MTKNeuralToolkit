@@ -306,3 +306,33 @@ end
                   [g_max, τ, E_rev, V_th, Mg_conc, slope]; systems=System[], name=name)
 end
 
+
+
+@component function VectorizedExpSynapse(; name, N_pre, N_post, W,
+                                            g_max=1.0, τ=5.0, E_rev=0.0,
+                                            V_th=-20.0, slope=2.0)
+    @variables s(t)[1:N_pre] I_syn(t)[1:N_post] V_pre(t)[1:N_pre] V_post(t)[1:N_post]
+    @parameters g_max=g_max τ=τ E_rev=E_rev V_th=V_th slope=slope
+
+    eqs = Equation[]
+
+    # State dynamics: one ODE per pre-synaptic neuron
+    for i in 1:N_pre
+        push!(eqs, D(s[i]) ~ -s[i] / τ + 1.0 / (1.0 + exp(-(V_pre[i] - V_th) / slope)))
+    end
+
+    # Current output — only iterate non-zero W entries
+    for j in 1:N_post
+        nz_cols = findall(!iszero, @view W[j, :])
+        if isempty(nz_cols)
+            push!(eqs, I_syn[j] ~ 0.0)
+        else
+            synaptic_drive = sum(W[j, i] * s[i] for i in nz_cols)
+            push!(eqs, I_syn[j] ~ g_max * (V_post[j] - E_rev) * synaptic_drive)
+        end
+    end
+
+    return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, V_th, slope];
+                  systems=System[], name=name)
+end
+

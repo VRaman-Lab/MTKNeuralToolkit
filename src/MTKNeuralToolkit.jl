@@ -21,12 +21,12 @@ export GenericChannel
 include("connections.jl")
 export build_compartment, Cell, Compartment, build_cell, build_network
 export build_synapse
-export build_acausal_network 
+export build_acausal_network, build_synapse_block
 
 include("tempgates.jl")
 export GateSpec, GenericChannel
 
-export ExpSynapse
+export ExpSynapse, VectorizedExpSynapse
 
 include("vectorization.jl")
 export vectorize_system

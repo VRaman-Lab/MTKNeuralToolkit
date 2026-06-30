@@ -48,6 +48,7 @@ drivers = [(1, 10.0)]
 
 cell = build_cell([soma, dend], axial; drivers=drivers, name=:cell)
 
+
 cell_compiled = mtkcompile(cell.sys)
 prob = ODEProblem(cell_compiled, [], (0.0, 100.0))
 sol = solve(prob, Rosenbrock23())
