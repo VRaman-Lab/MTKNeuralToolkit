@@ -53,11 +53,11 @@ synapse_specs = [
 drivers = [(1, collect(Float64, 1:N))]
 
 # === Build via refactored build_acausal_network ===
-net = build_acausal_network([hh]; synapse_specs=synapse_specs, drivers=drivers, N=N)
+net = build_acausal_network([hh]; synapse_specs=synapse_specs, drivers=drivers)
 
-net_compiled = mtkcompile(net.sys)
+@time net_compiled = mtkcompile(net.sys)
 prob = ODEProblem(net_compiled, [], (0.0, 50.0))
-sol = solve(prob, Rosenbrock23())
+@time sol = solve(prob, Rosenbrock23())
 
 # === Plot ===
 p1 = plot(sol, idxs=[net_compiled.hh.soma.v...],

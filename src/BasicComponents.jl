@@ -152,37 +152,6 @@ end
     return extend(System(eqs, t, vars, params; systems=System[], continuous_events=events, name=name), twoport)
 end
 
-@component function AlphaSynapse(; name, g_max=3.0, τ=5.0, E_rev=0.0, v_th=-20.0, w=1.0)
-    @variables s(t)=0.0 I_syn(t) V_pre(t) V_post(t)
-    @parameters g_max=g_max τ=τ E_rev=E_rev v_th=v_th w=w
-
-    vars = SymbolicT[]
-    push!(vars, s, I_syn, V_pre, V_post)
-
-    params = SymbolicT[]
-    push!(params, g_max, τ, E_rev, v_th, w)
-
-    eqs = Equation[]
-    push!(eqs, D(s) ~ -s / τ)
-    push!(eqs, I_syn ~ (V_post - E_rev) * s * g_max)
-
-    # Build event equations as explicitly typed Equation[] vectors
-    root_eqs = Equation[]
-    push!(root_eqs, V_pre ~ v_th)
-
-    affect = Equation[]
-    push!(affect, s ~ Pre(s) + w)
-    push!(affect, V_pre ~ Pre(V_pre))   # Lock pre-synaptic voltage
-    push!(affect, V_post ~ Pre(V_post)) # Lock post-synaptic voltage
-
-    events = Any[] 
-    push!(events, root_eqs => affect)
-
-    # Explicitly pass systems=System[]
-    return System(eqs, t, vars, params; systems=System[], continuous_events=events, name=name)
-end
-
-
 function spike_affect!(mod, obs, ctx, integ)
     j = ctx.j
     W = ctx.W
@@ -306,33 +275,27 @@ end
                   [g_max, τ, E_rev, V_th, Mg_conc, slope]; systems=System[], name=name)
 end
 
-
-
 @component function VectorizedExpSynapse(; name, N_pre, N_post, W,
                                             g_max=1.0, τ=5.0, E_rev=0.0,
                                             V_th=-20.0, slope=2.0)
     @variables s(t)[1:N_pre] I_syn(t)[1:N_post] V_pre(t)[1:N_pre] V_post(t)[1:N_post]
     @parameters g_max=g_max τ=τ E_rev=E_rev V_th=V_th slope=slope
 
-    eqs = Equation[]
-
-    # State dynamics: one ODE per pre-synaptic neuron
-    for i in 1:N_pre
-        push!(eqs, D(s[i]) ~ -s[i] / τ + 1.0 / (1.0 + exp(-(V_pre[i] - V_th) / slope)))
-    end
-
-    # Current output — only iterate non-zero W entries
-    for j in 1:N_post
-        nz_cols = findall(!iszero, @view W[j, :])
-        if isempty(nz_cols)
-            push!(eqs, I_syn[j] ~ 0.0)
-        else
-            synaptic_drive = sum(W[j, i] * s[i] for i in nz_cols)
-            push!(eqs, I_syn[j] ~ g_max * (V_post[j] - E_rev) * synaptic_drive)
-        end
-    end
-
+    # Native vectorized dynamics
+    σ(V) = 1.0 ./ (1.0 .+ exp.(-(V .- V_th) ./ slope))
+    synaptic_drive = W * s
+    
+    eqs = [
+        D(s) ~ -s ./ τ .+ σ(V_pre),
+        I_syn ~ g_max .* (V_post .- E_rev) .* synaptic_drive
+    ]
+    
+    # Only provide initial conditions for the differential state variable
+    init_conds = Dict(s => zeros(N_pre))
+    
     return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, V_th, slope];
-                  systems=System[], name=name)
+                  systems=System[], 
+                  initial_conditions=init_conds, 
+                  name=name)
 end
 

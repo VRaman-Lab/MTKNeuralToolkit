@@ -33,23 +33,32 @@ potassium_gates = [GateSpec(:n, 4, 0.0, hh_k_n)]
 @named dend_k    = GenericChannel(g=1.0,   E_rev=-77.0, gates=potassium_gates)
 @named dend_leak = GenericChannel(g=0.1,   E_rev=-54.4, gates=GateSpec[])
 
-soma = build_compartment(soma_cap, [soma_na, soma_k, soma_leak];
-                          name=:soma, V_init=-65.0)
-dend = build_compartment(dend_cap, [dend_na, dend_k, dend_leak];
-                          name=:dend, V_init=-65.0)
-
 # === Build cell with GapJunction axial connection ===
-# axial_connections: [(pre_idx, post_idx, R)]
-# R=10.0 is the axial resistance between soma and dendrite
-axial = [(1, 2, 10.0)]
+
+# 1. Explicitly create the gap junction component
+@named gj_1 = GapJunction(R=10.0)
+
+# 2. Define the coupling spec using the actual Compartment objects
+coupling_specs = [
+    CouplingSpec(soma, dend, gj_1)
+]
 
 # Constant 10 mA current injection on soma
 drivers = [(1, 10.0)]
 
-cell = build_cell([soma, dend], axial; drivers=drivers, name=:cell)
+# 3. Build the network
+cell_net = build_acausal_network([soma, dend];
+                                 coupling_specs=coupling_specs,
+                                 drivers=drivers,
+                                 name=:cell)
+
+cell_compiled = mtkcompile(cell_net.sys)
+prob = ODEProblem(cell_compiled, [], (0.0, 100.0))
+sol = solve(prob, Rosenbrock23())
 
 
-cell_compiled = mtkcompile(cell.sys)
+
+cell_compiled = mtkcompile(cell_net.sys)
 prob = ODEProblem(cell_compiled, [], (0.0, 100.0))
 sol = solve(prob, Rosenbrock23())
 

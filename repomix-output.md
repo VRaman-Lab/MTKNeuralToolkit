@@ -556,37 +556,6 @@ end
     return extend(System(eqs, t, vars, params; systems=System[], continuous_events=events, name=name), twoport)
 end
 
-@component function AlphaSynapse(; name, g_max=3.0, τ=5.0, E_rev=0.0, v_th=-20.0, w=1.0)
-    @variables s(t)=0.0 I_syn(t) V_pre(t) V_post(t)
-    @parameters g_max=g_max τ=τ E_rev=E_rev v_th=v_th w=w
-
-    vars = SymbolicT[]
-    push!(vars, s, I_syn, V_pre, V_post)
-
-    params = SymbolicT[]
-    push!(params, g_max, τ, E_rev, v_th, w)
-
-    eqs = Equation[]
-    push!(eqs, D(s) ~ -s / τ)
-    push!(eqs, I_syn ~ (V_post - E_rev) * s * g_max)
-
-    # Build event equations as explicitly typed Equation[] vectors
-    root_eqs = Equation[]
-    push!(root_eqs, V_pre ~ v_th)
-
-    affect = Equation[]
-    push!(affect, s ~ Pre(s) + w)
-    push!(affect, V_pre ~ Pre(V_pre))   # Lock pre-synaptic voltage
-    push!(affect, V_post ~ Pre(V_post)) # Lock post-synaptic voltage
-
-    events = Any[] 
-    push!(events, root_eqs => affect)
-
-    # Explicitly pass systems=System[]
-    return System(eqs, t, vars, params; systems=System[], continuous_events=events, name=name)
-end
-
-
 function spike_affect!(mod, obs, ctx, integ)
     j = ctx.j
     W = ctx.W
@@ -710,34 +679,28 @@ end
                   [g_max, τ, E_rev, V_th, Mg_conc, slope]; systems=System[], name=name)
 end
 
-
-
 @component function VectorizedExpSynapse(; name, N_pre, N_post, W,
                                             g_max=1.0, τ=5.0, E_rev=0.0,
                                             V_th=-20.0, slope=2.0)
     @variables s(t)[1:N_pre] I_syn(t)[1:N_post] V_pre(t)[1:N_pre] V_post(t)[1:N_post]
     @parameters g_max=g_max τ=τ E_rev=E_rev V_th=V_th slope=slope
 
-    eqs = Equation[]
-
-    # State dynamics: one ODE per pre-synaptic neuron
-    for i in 1:N_pre
-        push!(eqs, D(s[i]) ~ -s[i] / τ + 1.0 / (1.0 + exp(-(V_pre[i] - V_th) / slope)))
-    end
-
-    # Current output — only iterate non-zero W entries
-    for j in 1:N_post
-        nz_cols = findall(!iszero, @view W[j, :])
-        if isempty(nz_cols)
-            push!(eqs, I_syn[j] ~ 0.0)
-        else
-            synaptic_drive = sum(W[j, i] * s[i] for i in nz_cols)
-            push!(eqs, I_syn[j] ~ g_max * (V_post[j] - E_rev) * synaptic_drive)
-        end
-    end
-
+    # Native vectorized dynamics
+    σ(V) = 1.0 ./ (1.0 .+ exp.(-(V .- V_th) ./ slope))
+    synaptic_drive = W * s
+    
+    eqs = [
+        D(s) ~ -s ./ τ .+ σ(V_pre),
+        I_syn ~ g_max .* (V_post .- E_rev) .* synaptic_drive
+    ]
+    
+    # Only provide initial conditions for the differential state variable
+    init_conds = Dict(s => zeros(N_pre))
+    
     return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, V_th, slope];
-                  systems=System[], name=name)
+                  systems=System[], 
+                  initial_conditions=init_conds, 
+                  name=name)
 end
 ```
 
@@ -756,12 +719,7 @@ struct Compartment
     sys::System
     interfaces::NamedTuple
     V_init::Float64
-end
-
-struct Cell
-    sys::System
-    compartments::Vector{Compartment}
-    inputs::Vector{Any}
+    N::Union{Int, Nothing}  
 end
 
 struct Network
@@ -776,7 +734,19 @@ struct SynapseSpec
     post_V::SymbolicT
     post_I_syn::SymbolicT
     synapse::System
+    post_comp::Union{Compartment, Nothing} 
 end
+
+# Backward-compatible constructor
+SynapseSpec(pre_V, post_V, post_I_syn, synapse) = SynapseSpec(pre_V, post_V, post_I_syn, synapse, nothing)
+
+
+struct CouplingSpec
+    comp_i::Compartment
+    comp_j::Compartment
+    coupling::System
+end
+
 
 # =========================================================
 # 2. COMPARTMENT & CELL BUILDERS
@@ -786,13 +756,13 @@ function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0,
                            N::Union{Int, Nothing}=nothing)
     if isnothing(N)
         @named injector  = CurrentSource()
-        @named syn_port  = SynapsePort()
+        @named syn_injector = CurrentSource()
         @named p = Pin()
         @named n = Pin()
         init_v = V_init
     else
         @named injector  = CurrentSource(N=N)
-        @named syn_port  = SynapsePort(N=N)
+        @named syn_injector = CurrentSource(N=N)
         @named p = VectorizedPin(N=N)
         @named n = VectorizedPin(N=N)
         init_v = fill(V_init, N)
@@ -802,21 +772,21 @@ function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0,
     eqs  = Equation[]
 
     # 1. Connect all negative terminals together
-    n_pins = Any[capacitor.n, injector.n, n]
+    n_pins = Any[capacitor.n, injector.n, syn_injector.n, n]
     for c in channels
         push!(n_pins, c.n)
     end
     push!(eqs, connect(n_pins...))
 
-    # 2. Connect all positive terminals together (incl. syn_port)
-    p_connections = System[capacitor, injector, syn_port]
+    # 2. Connect all positive terminals together
+    p_connections = System[capacitor, injector, syn_injector]
     append!(p_connections, channels)
     push!(eqs, connect([sys.p for sys in p_connections]...))
 
     # 3. Expose boundary pin for acausal connections (gap junctions)
     push!(eqs, connect(p, capacitor.p))
 
-    all_systems = System[capacitor, injector, syn_port, p, n]
+    all_systems = System[capacitor, injector, syn_injector, p, n]
     append!(all_systems, channels)
 
     sys = System(eqs, t, vars, SymbolicT[];
@@ -832,99 +802,16 @@ function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0,
         p_pin   = getproperty(sys, nameof(p)),
         n_pin   = getproperty(sys, nameof(n)),
         I_ext   = getproperty(sys, nameof(injector)).I.u,
-        I_syn   = getproperty(sys, nameof(syn_port)).I_syn,
+        I_syn   = getproperty(sys, nameof(syn_injector)).I.u,
         cap_name = cap_name
     )
-    return Compartment(sys, interfaces, V_init)
+    return Compartment(sys, interfaces, V_init, N)
 end
 
-function build_cell(compartments::Vector{Compartment}, axial_connections;
-                    drivers=[], ground_undriven=true, name=:cell)
-    eqs = Equation[]
-    all_systems = System[]
-    driven_exts = Set{Int}()
-    gap_junctioned = Set{Int}()
-    vars = SymbolicT[]
-    cell_inputs = SymbolicT[]
 
-    for comp in compartments
-        push!(all_systems, comp.sys)
-    end
 
-    # 1. Connect all n pins together
-    n_pins = [comp.interfaces.n_pin for comp in compartments]
-    if length(n_pins) > 1
-        push!(eqs, connect(n_pins...))
-    end
 
-    # 2. Global ground
-    @named ground = Ground()
-    push!(all_systems, ground)
-    push!(eqs, connect(ground.g, compartments[1].interfaces.n_pin))
 
-    # 3. Axial connections via GapJunction (replaces axial_injector)
-    for (i, conn) in enumerate(axial_connections)
-        pre_idx, post_idx, R_val = conn
-        gj = GapJunction(R=R_val, name=Symbol(:gj_, i))
-        push!(all_systems, gj)
-
-        # Connect gap junction between the two compartments
-        push!(eqs, connect(compartments[pre_idx].interfaces.p_pin, gj.p1))
-        push!(eqs, connect(gj.n1, compartments[pre_idx].interfaces.n_pin))
-        push!(eqs, connect(compartments[post_idx].interfaces.p_pin, gj.p2))
-        push!(eqs, connect(gj.n2, compartments[post_idx].interfaces.n_pin))
-
-        push!(gap_junctioned, pre_idx, post_idx)
-    end
-
-    # 4. Drivers
-    for (target, stim) in drivers
-        idx = target isa Int ? target : findfirst(==(target), compartments)
-        push!(driven_exts, idx)
-
-        if stim isa System
-            push!(all_systems, stim)
-            push!(eqs, compartments[idx].interfaces.I_ext ~ stim.output.u)
-        elseif stim isa Number
-            push!(eqs, compartments[idx].interfaces.I_ext ~ stim)
-        elseif stim isa AbstractVector
-            push!(eqs, compartments[idx].interfaces.I_ext ~ stim)
-        end
-    end
-
-    # 5. Ground undriven I_ext
-    if ground_undriven
-        for (idx, comp) in enumerate(compartments)
-            if !(idx in driven_exts)
-                push!(eqs, comp.interfaces.I_ext ~ 0.0)
-            end
-        end
-    else
-        for (idx, comp) in enumerate(compartments)
-            if !(idx in driven_exts)
-                push!(cell_inputs, comp.interfaces.I_ext)
-            end
-        end
-    end
-
-    # 6. Ground I_syn (no synapses at cell level)
-    for comp in compartments
-        push!(eqs, comp.interfaces.I_syn ~ 0.0)
-    end
-
-    # 7. Ground p_pin for non-gap-junctioned compartments
-    for (idx, comp) in enumerate(compartments)
-        if !(idx in gap_junctioned)
-            push!(eqs, comp.interfaces.p_pin.i ~ 0.0)
-        end
-    end
-
-    @named cell_sys = System(eqs, t, vars, SymbolicT[];
-                             systems=all_systems,
-                             inputs=cell_inputs,
-                             name=name)
-    return Cell(cell_sys, compartments, cell_inputs)
-end
 
 # =========================================================
 # 3. SYNAPSE WIRING
@@ -940,24 +827,34 @@ Returns the set of driven I_syn targets (for grounding the rest).
 function wire_synapses!(eqs::Vector{Equation}, systems::Vector{System},
                         specs::Vector{SynapseSpec})
     syn_by_target = Dict{SymbolicT, Vector{SymbolicT}}()
+    driven_syn_targets = Set{SymbolicT}()
+    block_driven_targets = Set{SymbolicT}()
 
     for spec in specs
         push!(systems, spec.synapse)
-        push!(eqs, spec.synapse.V_pre  ~ spec.pre_V)
-        push!(eqs, spec.synapse.V_post ~ spec.post_V)
+        
+        if hasproperty(spec.synapse, :V_pre)
+            push!(eqs, spec.synapse.V_pre ~ spec.pre_V)
+        end
+        if hasproperty(spec.synapse, :V_post)
+            push!(eqs, spec.synapse.V_post ~ spec.post_V)
+        end
 
         if spec.post_I_syn isa AbstractArray
-            # Block synapse: expand array to individual elements
+            # Block synapse: equate arrays directly
+            push!(eqs, spec.post_I_syn ~ spec.synapse.I_syn)
+            push!(block_driven_targets, spec.post_I_syn) # Track the whole array!
+            
+            # Still add elements to driven_syn_targets for safety
             for i in 1:length(spec.post_I_syn)
-                key = spec.post_I_syn[i]
-                haskey(syn_by_target, key) || (syn_by_target[key] = SymbolicT[])
-                push!(syn_by_target[key], spec.synapse.I_syn[i])
+                push!(driven_syn_targets, spec.post_I_syn[i])
             end
         else
             # Scalar synapse
             key = spec.post_I_syn
             haskey(syn_by_target, key) || (syn_by_target[key] = SymbolicT[])
             push!(syn_by_target[key], spec.synapse.I_syn)
+            push!(driven_syn_targets, key)
         end
     end
 
@@ -965,8 +862,12 @@ function wire_synapses!(eqs::Vector{Equation}, systems::Vector{System},
         push!(eqs, target ~ sum(currents))
     end
 
-    return Set{SymbolicT}(keys(syn_by_target))
+    return driven_syn_targets, block_driven_targets
 end
+
+
+
+
 
 
 
@@ -975,11 +876,11 @@ end
 # =========================================================
 
 function build_acausal_network(compartments::Vector{Compartment};
-                                gap_junctions=[],
+                                coupling_specs=CouplingSpec[],
                                 synapse_specs=SynapseSpec[],
                                 drivers=[],
-                                name=:network,
-                                N::Union{Int, Nothing}=nothing)
+                                name=:network)
+
     num_compartments = length(compartments)
     eqs = Equation[]
     all_systems = System[]
@@ -988,93 +889,124 @@ function build_acausal_network(compartments::Vector{Compartment};
         push!(all_systems, comp.sys)
     end
 
-    # 1. Tie all grounds together
-    n_pins = [compartments[i].interfaces.n_pin for i in 1:num_compartments]
-    if length(n_pins) > 1
-        push!(eqs, connect(n_pins...))
-    end
-
-    if isnothing(N)
-        @named gnd = Ground()
-    else
-        @named gnd = Ground(N=N)
-    end
-    push!(all_systems, gnd)
-    push!(eqs, connect(gnd.g, compartments[1].interfaces.n_pin))
-
     driven_compartments = Set{Int}()
     gap_junctioned = Set{Int}()
+
+    # 1. Ground each compartment individually
+    for (i, comp) in enumerate(compartments)
+        if haskey(comp.interfaces, :n_pin)
+            gnd_name = Symbol(:gnd_, i)
+            if isnothing(comp.N)
+                gnd = Ground(name=gnd_name)
+            else
+                gnd = Ground(N=comp.N, name=gnd_name)
+            end
+            push!(all_systems, gnd)
+            push!(eqs, connect(gnd.g, comp.interfaces.n_pin))
+        end
+    end
 
     # 2. Driving stimuli
     for (target, stim) in drivers
         idx = target isa Compartment ? findfirst(==(target), compartments) : target
         push!(driven_compartments, idx)
+        comp = compartments[idx]
 
-        if stim isa System
-            push!(all_systems, stim)
-            push!(eqs, compartments[idx].interfaces.I_ext ~ stim.output.u)
-        elseif stim isa AbstractVector
-            push!(eqs, compartments[idx].interfaces.I_ext ~ stim)
-        elseif stim isa Number
-            if isnothing(N)
-                push!(eqs, compartments[idx].interfaces.I_ext ~ stim)
-            else
-                push!(eqs, compartments[idx].interfaces.I_ext ~ fill(stim, N))
+        if haskey(comp.interfaces, :I_ext)
+            if stim isa System
+                push!(all_systems, stim)
+                push!(eqs, comp.interfaces.I_ext ~ stim.output.u)
+            elseif stim isa AbstractVector
+                push!(eqs, comp.interfaces.I_ext ~ stim)
+            elseif stim isa Number
+                if isnothing(comp.N)
+                    push!(eqs, comp.interfaces.I_ext ~ stim)
+                else
+                    push!(eqs, comp.interfaces.I_ext ~ fill(stim, comp.N))
+                end
             end
         end
     end
 
     # 3. Ground undriven I_ext
     for i in 1:num_compartments
-        if !(i in driven_compartments)
-            if isnothing(N)
-                push!(eqs, compartments[i].interfaces.I_ext ~ 0.0)
+        comp = compartments[i]
+        if haskey(comp.interfaces, :I_ext) && !(i in driven_compartments)
+            if isnothing(comp.N)
+                push!(eqs, comp.interfaces.I_ext ~ 0.0)
             else
-                push!(eqs, compartments[i].interfaces.I_ext ~ zeros(Float64, N))
+                push!(eqs, comp.interfaces.I_ext ~ zeros(Float64, comp.N))
             end
         end
     end
 
     # 4. Wire gap junctions via p_pin
-    for (i, gj_spec) in enumerate(gap_junctions)
-        comp_i, comp_j, R = gj_spec
-        gj = GapJunction(R=R, name=Symbol(:gj_, i))
-        push!(all_systems, gj)
-
-        push!(eqs, connect(compartments[comp_i].interfaces.p_pin, gj.p1))
-        push!(eqs, connect(gj.n1, compartments[comp_i].interfaces.n_pin))
-        push!(eqs, connect(compartments[comp_j].interfaces.p_pin, gj.p2))
-        push!(eqs, connect(gj.n2, compartments[comp_j].interfaces.n_pin))
-
-        push!(gap_junctioned, comp_i, comp_j)
+    for (i, spec) in enumerate(coupling_specs)
+        push!(all_systems, spec.coupling)
+        
+        # Defensive check for pins
+        if haskey(spec.comp_i.interfaces, :p_pin) && hasproperty(spec.coupling, :p1)
+            push!(eqs, connect(spec.comp_i.interfaces.p_pin, spec.coupling.p1))
+            push!(eqs, connect(spec.coupling.n1, spec.comp_i.interfaces.n_pin))
+        end
+        
+        if haskey(spec.comp_j.interfaces, :p_pin) && hasproperty(spec.coupling, :p2)
+            push!(eqs, connect(spec.comp_j.interfaces.p_pin, spec.coupling.p2))
+            push!(eqs, connect(spec.coupling.n2, spec.comp_j.interfaces.n_pin))
+        end
+        
+        # Mark as gap junctioned so p_pin.i isn't grounded
+        push!(gap_junctioned, findfirst(==(spec.comp_i), compartments))
+        push!(gap_junctioned, findfirst(==(spec.comp_j), compartments))
     end
 
-    # 5. Wire synapses (pre-collects by target, handles convergence)
-    driven_syn_targets = wire_synapses!(eqs, all_systems, synapse_specs)
-
-    # 6. Ground non-synapsed I_syn
-    for comp in compartments
-        if isnothing(N)
-            if !(comp.interfaces.I_syn in driven_syn_targets)
-                push!(eqs, comp.interfaces.I_syn ~ 0.0)
+        # 5. Identify block-synapsed compartments by index using the Compartment object
+    block_synapsed_compartments = Set{Int}()
+    for spec in synapse_specs
+        if spec.post_I_syn isa AbstractArray && spec.post_comp !== nothing
+            idx = findfirst(==(spec.post_comp), compartments)
+            if idx !== nothing
+                push!(block_synapsed_compartments, idx)
             end
-        else
-            for i in 1:N
-                i_syn_i = comp.interfaces.I_syn[i]
-                if !(i_syn_i in driven_syn_targets)
-                    push!(eqs, i_syn_i ~ 0.0)
+        end
+    end
+
+    # 6. Wire synapses
+    driven_syn_targets, _ = wire_synapses!(eqs, all_systems, synapse_specs)
+
+    # 7. Ground non-synapsed I_syn
+    for i in 1:num_compartments
+        comp = compartments[i]
+        if haskey(comp.interfaces, :I_syn)
+            # Skip entirely if driven by a block synapse (reliable integer check)
+            if i in block_synapsed_compartments
+                continue
+            end
+            
+            if isnothing(comp.N)
+                if !(comp.interfaces.I_syn in driven_syn_targets)
+                    push!(eqs, comp.interfaces.I_syn ~ 0.0)
+                end
+            else
+                for j in 1:comp.N
+                    i_syn_j = comp.interfaces.I_syn[j]
+                    if !(i_syn_j in driven_syn_targets)
+                        push!(eqs, i_syn_j ~ 0.0)
+                    end
                 end
             end
         end
     end
 
-    # 7. Ground non-gap-junctioned p_pin.i
+
+    # 8. Ground non-gap-junctioned p_pin.i
     for i in 1:num_compartments
-        if !(i in gap_junctioned)
-            if isnothing(N)
-                push!(eqs, compartments[i].interfaces.p_pin.i ~ 0.0)
+        comp = compartments[i]
+        if haskey(comp.interfaces, :p_pin) && !(i in gap_junctioned)
+            if isnothing(comp.N)
+                push!(eqs, comp.interfaces.p_pin.i ~ 0.0)
             else
-                push!(eqs, compartments[i].interfaces.p_pin.i ~ zeros(Float64, N))
+                push!(eqs, comp.interfaces.p_pin.i ~ zeros(Float64, comp.N))
             end
         end
     end
@@ -1085,13 +1017,19 @@ function build_acausal_network(compartments::Vector{Compartment};
 end
 
 
+
+
+
+
+
+
 function build_synapse_block(pre_comp, post_comp, W; name, 
                              synapse_type=VectorizedExpSynapse, kwargs...)
     N_pre  = size(W, 2)
     N_post = size(W, 1)
     syn = synapse_type(N_pre=N_pre, N_post=N_post, W=W; name=name, kwargs...)
     return SynapseSpec(pre_comp.interfaces.V, post_comp.interfaces.V,
-                       post_comp.interfaces.I_syn, syn)
+                       post_comp.interfaces.I_syn, syn, post_comp) # Pass post_comp here
 end
 ```
 
@@ -1120,7 +1058,7 @@ export GenericChannel
 include("connections.jl")
 export build_compartment, Cell, Compartment, build_cell, build_network
 export build_synapse
-export build_acausal_network, build_synapse_block
+export build_acausal_network, build_synapse_block, CouplingSpec
 
 include("tempgates.jl")
 export GateSpec, GenericChannel

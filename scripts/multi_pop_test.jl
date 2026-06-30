@@ -2,6 +2,7 @@ using MTKNeuralToolkit
 using ModelingToolkit: mtkcompile, @named
 using OrdinaryDiffEq
 using Plots
+using Random
 
 # === Shared gate definitions ===
 hh_na_m = v -> (
@@ -19,10 +20,6 @@ hh_k_n = v -> (
     -0.002 .* (v .- 25.0) ./ (1.0 .- exp.((v .- 25.0) ./ 9.0))
 )
 potassium_gates = [GateSpec(:n, 4, 0.0, hh_k_n)]
-
-Na = (N) -> GenericChannel(N=N, g=120.0, E_rev=50.0,  gates=sodium_gates)
-K  = (N) -> GenericChannel(N=N, g=36.0,  E_rev=-77.0, gates=potassium_gates)
-Leak = (N) -> GenericChannel(N=N, g=0.3,   E_rev=-54.4, gates=GateSpec[])
 
 # === Population A: 20 excitatory neurons ===
 Na = 20
@@ -43,6 +40,7 @@ Nb = 15
 popB = build_compartment(somaB, [naB, kB, leakB]; name=:popB, V_init=-65.0, N=Nb)
 
 # === Connectivity matrices ===
+Random.seed!(42)
 
 # Intra-A: ring (neuron i → neuron i+1)
 W_AA = zeros(Na, Na)
@@ -53,8 +51,6 @@ W_AA[1, Na] = 1.0
 
 # A → B: random sparse, each B neuron receives from ~3 A neurons
 W_AB = zeros(Nb, Na)
-using Random
-Random.seed!(42)
 for j in 1:Nb
     pres = randperm(Na)[1:3]  # 3 random pre neurons
     for p in pres
@@ -78,7 +74,6 @@ drivers = [(1, collect(Float64, 1:Na))]  # popA (compartment 1) gets graded curr
 net = build_acausal_network([popA, popB];
                             synapse_specs=[syn_intra_A, syn_A_to_B],
                             drivers=drivers)
-
 
 net_compiled = mtkcompile(net.sys)
 prob = ODEProblem(net_compiled, [], (0.0, 50.0))
