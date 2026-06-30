@@ -1,34 +1,35 @@
-@component function Ground(; name, N::Union{Int, Nothing}=nothing)
-    if isnothing(N)
+# BasicComponents.jl
+
+@component function Ground(; name, topology=Scalar())
+    if topology isa Scalar
         @named g = Pin()
         eqs = [g.v ~ 0]
     else
-        @named g = VectorizedPin(N=N)
-        eqs = [g.v ~ zeros(Float64, N)]
+        @named g = VectorizedPin(N=topology.N)
+        eqs = [g.v ~ zeros(Float64, topology.N)]
     end
     return System(eqs, t, SymbolicT[], SymbolicT[]; systems=[g], name=name)
 end
 
-@component function Capacitor(; name, C = 1.0, N::Union{Int, Nothing}=nothing)
-    if isnothing(N)
+@component function Capacitor(; name, C = 1.0, topology=Scalar())
+    if topology isa Scalar
         @named oneport = OnePort()
     else
-        @named oneport = VectorizedOnePort(N=N)
+        @named oneport = VectorizedOnePort(N=topology.N)
     end
     @unpack v, i = oneport
     @parameters C=C
-    # ./ works on both scalars and arrays natively in Symbolics
     eqs = Equation[D(v) ~ i ./ C]
     return extend(System(eqs, t, SymbolicT[], [C]; systems=System[], name=name), oneport)
 end
 
-@component function CurrentSource(; name, N::Union{Int, Nothing}=nothing)
-    if isnothing(N)
+@component function CurrentSource(; name, topology=Scalar())
+    if topology isa Scalar
         @named oneport = OnePort()
         @named I = RealInput()
     else
-        @named oneport = VectorizedOnePort(N=N)
-        @named I = RealInputArray(nin=N)
+        @named oneport = VectorizedOnePort(N=topology.N)
+        @named I = RealInputArray(nin=topology.N)
     end
     @unpack i = oneport
     
@@ -78,11 +79,9 @@ SpikingCapacitor Component: Capacitor that automatically resets its voltage when
     push!(params, C, V_th, V_reset)
     
     @variables begin
-        # Bind the incoming V_init default directly to the true differential state
         v(t) = V_init
         V(t)
     end
-    # Include both v and V in the structural variables array
     vars = SymbolicT[]
     push!(vars, v, V)
 
@@ -142,7 +141,6 @@ end
     push!(eqs, D(s) ~ -s / τ)
     push!(eqs, i2 ~ (v2 - E_rev) * s * g_max)
 
-    # Events should also be built cleanly
     root_eqs = Equation[]
     push!(root_eqs, v1 ~ v_th)
     affect = Equation[]
@@ -184,15 +182,15 @@ end
     return System(equations, t, vars, pars; name, systems)
 end
 
-@component function SynapsePort(; name, N::Union{Int, Nothing}=nothing)
-    if isnothing(N)
+@component function SynapsePort(; name, topology=Scalar())
+    if topology isa Scalar
         @named p = Pin()
         @variables I_syn(t)
         vars = SymbolicT[I_syn]
         eqs = Equation[p.i ~ I_syn]
     else
-        @named p = VectorizedPin(N=N)
-        @variables I_syn(t)[1:N]
+        @named p = VectorizedPin(N=topology.N)
+        @variables I_syn(t)[1:topology.N]
         vars = SymbolicT[I_syn]
         eqs = Equation[p.i ~ I_syn]
     end
@@ -203,7 +201,6 @@ end
     @variables s(t)=0.0 I_syn(t) V_pre(t) V_post(t)
     @parameters g_max=g_max τ=τ E_rev=E_rev V_th=V_th slope=slope
 
-    # Sigmoidal activation — smooth, no events needed
     σ(x) = 1.0 / (1.0 + exp(-x/slope))
     
     eqs = [
@@ -222,7 +219,7 @@ end
     
     eqs = [
         D(s1) ~ -s1 / τ + σ(V_pre - V_th),
-        D(s2) ~ -s2 / τ + s1,           # cascaded low-pass → alpha shape
+        D(s2) ~ -s2 / τ + s1,
         I_syn ~ g_max * s2 * (V_post - E_rev)
     ]
     return System(eqs, t, [s1, s2, I_syn, V_pre, V_post], 
@@ -235,7 +232,6 @@ end
     @parameters g_max=g_max τ=τ E_rev=E_rev V_th=V_th Mg_conc=Mg_conc slope=slope
 
     σ(x) = 1.0 / (1.0 + exp(-x/slope))
-    # Mg block is a function of V_post — still fully causal
     mg_block(V) = 1.0 / (1.0 + Mg_conc * exp(-0.062 * V))
     
     eqs = [
@@ -252,9 +248,9 @@ end
     @variables s(t)[1:N_pre] I_syn(t)[1:N_post] V_pre(t)[1:N_pre] V_post(t)[1:N_post]
     @parameters g_max=g_max τ=τ E_rev=E_rev V_th=V_th slope=slope
 
+    # Make W a symbolic parameter!
     @parameters W[1:N_post, 1:N_pre]=W
-    
-    # Native vectorized dynamics
+
     σ(V) = 1.0 ./ (1.0 .+ exp.(-(V .- V_th) ./ slope))
     synaptic_drive = W * s
     
@@ -263,13 +259,10 @@ end
         I_syn ~ g_max .* (V_post .- E_rev) .* synaptic_drive
     ]
     
-    # Only provide initial conditions for the differential state variable
     init_conds = Dict(s => zeros(N_pre))
     
-    # Note: W is now included in the parameters vector
     return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, V_th, slope, W];
                   systems=System[], 
                   initial_conditions=init_conds, 
                   name=name)
 end
-

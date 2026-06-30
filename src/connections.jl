@@ -1,4 +1,4 @@
-# connections.jl
+# connections.jl (Replace the helper functions at the top with these)
 
 using Symbolics: SymbolicT
 using ModelingToolkit: t_nounits as t, connect, Equation, System, @named, getproperty, nameof
@@ -12,7 +12,7 @@ struct Vectorized
     N::Int
 end
 
-# Dispatch helpers for topology
+# Topology helper functions
 get_N(::Scalar) = nothing
 get_N(v::Vectorized) = v.N
 
@@ -33,15 +33,41 @@ function create_injectors(::Scalar)
     return (injector, syn_injector)
 end
 function create_injectors(v::Vectorized)
-    @named injector = CurrentSource(N=v.N); @named syn_injector = CurrentSource(N=v.N)
+    @named injector = CurrentSource(topology=v)
+    @named syn_injector = CurrentSource(topology=v)
     return (injector, syn_injector)
+end
+
+# Network grounding helpers
+create_ground(::Scalar, name) = Ground(name=name)
+create_ground(v::Vectorized, name) = Ground(topology=v, name=name)
+
+ground_current(::Scalar) = 0.0
+ground_current(v::Vectorized) = zeros(Float64, v.N)
+
+broadcast_stim(::Scalar, stim) = stim
+broadcast_stim(v::Vectorized, stim) = fill(stim, v.N)
+
+# Synapse grounding helpers
+function ground_undriven_syn!(eqs, ::Scalar, I_syn, driven_syn_targets)
+    if !(I_syn in driven_syn_targets)
+        push!(eqs, I_syn ~ 0.0)
+    end
+end
+function ground_undriven_syn!(eqs, v::Vectorized, I_syn, driven_syn_targets)
+    for j in 1:v.N
+        i_syn_j = I_syn[j]
+        if !(i_syn_j in driven_syn_targets)
+            push!(eqs, i_syn_j ~ 0.0)
+        end
+    end
 end
 
 struct Compartment
     sys::System
     interfaces::NamedTuple
     V_init::Float64
-    N::Union{Int, Nothing}  
+    topology::Union{Scalar, Vectorized}
 end
 
 struct Network
@@ -74,7 +100,6 @@ end
 function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0, 
                            topology=Scalar())
     
-    # Dispatch topology to get the correct components
     p, n = create_pins(topology)
     injector, syn_injector = create_injectors(topology)
     init_v = init_voltage(topology, V_init)
@@ -116,7 +141,7 @@ function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0,
         I_syn   = getproperty(sys, nameof(syn_injector)).I.u,
         cap_name = cap_name
     )
-    return Compartment(sys, interfaces, V_init, get_N(topology))
+    return Compartment(sys, interfaces, V_init, topology)
 end
 
 
@@ -161,7 +186,6 @@ function wire_synapses!(eqs::Vector{Equation}, systems::Vector{System},
         if length(currents) == 1
             push!(eqs, target ~ currents[1])
         else
-            # reduce(+, ...) correctly sums both scalar and array symbolic variables
             push!(eqs, target ~ reduce(+, currents))
         end
     end
@@ -191,15 +215,10 @@ function build_acausal_network(compartments::Vector{Compartment};
     driven_compartments = Set{Int}()
     gap_junctioned = Set{Int}()
 
-    # 1. Ground each compartment individually
+    # 1. Ground each compartment individually (Dispatches on topology)
     for (i, comp) in enumerate(compartments)
         if haskey(comp.interfaces, :n_pin)
-            gnd_name = Symbol(:gnd_, i)
-            if isnothing(comp.N)
-                gnd = Ground(name=gnd_name)
-            else
-                gnd = Ground(N=comp.N, name=gnd_name)
-            end
+            gnd = create_ground(comp.topology, Symbol(:gnd_, i))
             push!(all_systems, gnd)
             push!(eqs, connect(gnd.g, comp.interfaces.n_pin))
         end
@@ -218,11 +237,7 @@ function build_acausal_network(compartments::Vector{Compartment};
             elseif stim isa AbstractVector
                 push!(eqs, comp.interfaces.I_ext ~ stim)
             elseif stim isa Number
-                if isnothing(comp.N)
-                    push!(eqs, comp.interfaces.I_ext ~ stim)
-                else
-                    push!(eqs, comp.interfaces.I_ext ~ fill(stim, comp.N))
-                end
+                push!(eqs, comp.interfaces.I_ext ~ broadcast_stim(comp.topology, stim))
             end
         end
     end
@@ -231,11 +246,7 @@ function build_acausal_network(compartments::Vector{Compartment};
     for i in 1:num_compartments
         comp = compartments[i]
         if haskey(comp.interfaces, :I_ext) && !(i in driven_compartments)
-            if isnothing(comp.N)
-                push!(eqs, comp.interfaces.I_ext ~ 0.0)
-            else
-                push!(eqs, comp.interfaces.I_ext ~ zeros(Float64, comp.N))
-            end
+            push!(eqs, comp.interfaces.I_ext ~ ground_current(comp.topology))
         end
     end
 
@@ -243,7 +254,6 @@ function build_acausal_network(compartments::Vector{Compartment};
     for (i, spec) in enumerate(coupling_specs)
         push!(all_systems, spec.coupling)
         
-        # Defensive check for pins
         if haskey(spec.comp_i.interfaces, :p_pin) && hasproperty(spec.coupling, :p1)
             push!(eqs, connect(spec.comp_i.interfaces.p_pin, spec.coupling.p1))
             push!(eqs, connect(spec.coupling.n1, spec.comp_i.interfaces.n_pin))
@@ -254,12 +264,11 @@ function build_acausal_network(compartments::Vector{Compartment};
             push!(eqs, connect(spec.coupling.n2, spec.comp_j.interfaces.n_pin))
         end
         
-        # Mark as gap junctioned so p_pin.i isn't grounded
         push!(gap_junctioned, findfirst(==(spec.comp_i), compartments))
         push!(gap_junctioned, findfirst(==(spec.comp_j), compartments))
     end
 
-        # 5. Identify block-synapsed compartments by index using the Compartment object
+    # 5. Identify block-synapsed compartments by index
     block_synapsed_compartments = Set{Int}()
     for spec in synapse_specs
         if spec.post_I_syn isa AbstractArray && spec.post_comp !== nothing
@@ -273,27 +282,14 @@ function build_acausal_network(compartments::Vector{Compartment};
     # 6. Wire synapses
     driven_syn_targets, block_driven_targets = wire_synapses!(eqs, all_systems, synapse_specs)
 
-    # 7. Ground non-synapsed I_syn
+    # 7. Ground non-synapsed I_syn (Dispatches on topology)
     for i in 1:num_compartments
         comp = compartments[i]
         if haskey(comp.interfaces, :I_syn)
-            # Skip entirely if driven by a block (vectorized) synapse
             if comp.interfaces.I_syn in block_driven_targets
                 continue
             end
-            
-            if isnothing(comp.N)
-                if !(comp.interfaces.I_syn in driven_syn_targets)
-                    push!(eqs, comp.interfaces.I_syn ~ 0.0)
-                end
-            else
-                for j in 1:comp.N
-                    i_syn_j = comp.interfaces.I_syn[j]
-                    if !(i_syn_j in driven_syn_targets)
-                        push!(eqs, i_syn_j ~ 0.0)
-                    end
-                end
-            end
+            ground_undriven_syn!(eqs, comp.topology, comp.interfaces.I_syn, driven_syn_targets)
         end
     end
 
@@ -301,11 +297,7 @@ function build_acausal_network(compartments::Vector{Compartment};
     for i in 1:num_compartments
         comp = compartments[i]
         if haskey(comp.interfaces, :p_pin) && !(i in gap_junctioned)
-            if isnothing(comp.N)
-                push!(eqs, comp.interfaces.p_pin.i ~ 0.0)
-            else
-                push!(eqs, comp.interfaces.p_pin.i ~ zeros(Float64, comp.N))
-            end
+            push!(eqs, comp.interfaces.p_pin.i ~ ground_current(comp.topology))
         end
     end
 
@@ -322,5 +314,5 @@ function build_synapse_block(pre_comp, post_comp, W; name,
     N_post = size(W, 1)
     syn = synapse_type(N_pre=N_pre, N_post=N_post, W=W; name=name, kwargs...)
     return SynapseSpec(pre_comp.interfaces.V, post_comp.interfaces.V,
-                       post_comp.interfaces.I_syn, syn, post_comp) # Pass post_comp here
+                       post_comp.interfaces.I_syn, syn, post_comp)
 end

@@ -20,23 +20,27 @@ hh_k_n = v -> (
 )
 potassium_gates = [GateSpec(:n, 4, 0.0, hh_k_n)]
 
-# === Build Excitatory Population (N=30) ===
+# === Define Topologies ===
 N_E = 30
-@named cap_E = Capacitor(N=N_E, C=1.0)
-@named na_E = GenericChannel(N=N_E, g=120.0, E_rev=50.0, gates=sodium_gates)
-@named k_E  = GenericChannel(N=N_E, g=36.0, E_rev=-77.0, gates=potassium_gates)
-@named leak_E = GenericChannel(N=N_E, g=0.3, E_rev=-54.4, gates=GateSpec[])
-
-pop_E = build_compartment(cap_E, [na_E, k_E, leak_E]; name=:pop_E, V_init=-65.0,topology=Vectorized(30))
-
-# === Build Inhibitory Population (N=10) ===
 N_I = 10
-@named cap_I = Capacitor(N=N_I, C=1.0)
-@named na_I = GenericChannel(N=N_I, g=120.0, E_rev=50.0, gates=sodium_gates)
-@named k_I  = GenericChannel(N=N_I, g=36.0, E_rev=-77.0, gates=potassium_gates)
-@named leak_I = GenericChannel(N=N_I, g=0.3, E_rev=-54.4, gates=GateSpec[])
+top_E = Vectorized(N_E)
+top_I = Vectorized(N_I)
 
-pop_I = build_compartment(cap_I, [na_I, k_I, leak_I]; name=:pop_I, V_init=-65.0, topology=Vectorized(N_I))
+# === Build Excitatory Population ===
+@named cap_E = Capacitor(topology=top_E, C=1.0)
+@named na_E = GenericChannel(topology=top_E, g=120.0, E_rev=50.0, gates=sodium_gates)
+@named k_E  = GenericChannel(topology=top_E, g=36.0, E_rev=-77.0, gates=potassium_gates)
+@named leak_E = GenericChannel(topology=top_E, g=0.3, E_rev=-54.4, gates=GateSpec[])
+
+pop_E = build_compartment(cap_E, [na_E, k_E, leak_E]; name=:pop_E, V_init=-65.0, topology=top_E)
+
+# === Build Inhibitory Population ===
+@named cap_I = Capacitor(topology=top_I, C=1.0)
+@named na_I = GenericChannel(topology=top_I, g=120.0, E_rev=50.0, gates=sodium_gates)
+@named k_I  = GenericChannel(topology=top_I, g=36.0, E_rev=-77.0, gates=potassium_gates)
+@named leak_I = GenericChannel(topology=top_I, g=0.3, E_rev=-54.4, gates=GateSpec[])
+
+pop_I = build_compartment(cap_I, [na_I, k_I, leak_I]; name=:pop_I, V_init=-65.0, topology=top_I)
 
 # === Define Connectivity Matrices ===
 W_EE = 0.05 .* rand(N_E, N_E)   # E -> E
@@ -53,8 +57,6 @@ syn_II = build_synapse_block(pop_I, pop_I, W_II; name=:syn_II, E_rev=-80.0)
 synapse_specs = [syn_EE, syn_EI, syn_IE, syn_II]
 
 # === Drivers ===
-# Drive only the Excitatory population (index 1) with a constant 10.0
-# build_acausal_network will broadcast the scalar to the whole N_E population
 drivers = [(1, 15.0)]
 
 # === Build Network ===
@@ -65,7 +67,6 @@ prob = ODEProblem(net_compiled, [], (0.0, 100.0))
 @time sol = solve(prob, Rosenbrock23())
 
 # === Plot ===
-# Note the fix: cap_E and cap_I instead of soma
 p1 = plot(sol, idxs=[net_compiled.pop_E.cap_E.v...], title="Excitatory Population", legend=false)
 p2 = plot(sol, idxs=[net_compiled.pop_I.cap_I.v...], title="Inhibitory Population", legend=false)
 

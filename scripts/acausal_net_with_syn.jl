@@ -3,10 +3,11 @@ using ModelingToolkit: mtkcompile, @named
 using OrdinaryDiffEq
 using Plots
 
-N = 30
+N = 100
+top = Vectorized(N)
 
 # === Build vectorized HH compartment ===
-@named soma = Capacitor(N=N, C=1.0)
+@named soma = Capacitor(topology=top, C=1.0)
 
 hh_na_m = v -> (
     0.182 .* (v .+ 35.0) ./ (1.0 .- exp.(-(v .+ 35.0) ./ 9.0)),
@@ -24,12 +25,12 @@ hh_k_n = v -> (
 )
 potassium_gates = [GateSpec(:n, 4, 0.0, hh_k_n)]
 
-@named sodium_channel = GenericChannel(N=N, g=120.0, E_rev=50.0, gates=sodium_gates)
-@named potassium_channel = GenericChannel(N=N, g=36.0, E_rev=-77.0, gates=potassium_gates)
-@named leak_channel = GenericChannel(N=N, g=0.3, E_rev=-54.4, gates=GateSpec[])
+@named sodium_channel = GenericChannel(topology=top, g=120.0, E_rev=50.0, gates=sodium_gates)
+@named potassium_channel = GenericChannel(topology=top, g=36.0, E_rev=-77.0, gates=potassium_gates)
+@named leak_channel = GenericChannel(topology=top, g=0.3, E_rev=-54.4, gates=GateSpec[])
 
 hh = build_compartment(soma, [sodium_channel, potassium_channel, leak_channel];
-                        name=:hh, V_init=-65.0, topology=Vectorized(N))
+                        name=:hh, V_init=-65.0, topology=top)
 
 # === Create synapses ===
 @named syn_1to2 = ExpSynapse(g_max=2.0,  τ=5.0,  E_rev=0.0,   V_th=-20.0, slope=2.0)

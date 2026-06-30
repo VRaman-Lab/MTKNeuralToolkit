@@ -1,16 +1,17 @@
+# tempgates.jl
+
 struct GateSpec{I<:Integer, T<:AbstractFloat, F<:Function}
     name::Symbol
     power::I
     ic::T
-    # A function taking voltage `v` and returning a tuple: (alpha_expr, beta_expr)
     dynamics::F 
 end
 
-@component function GenericChannel(; name, g, E_rev, gates::Vector{<:GateSpec}, N::Union{Int, Nothing}=nothing)
-    if isnothing(N)
+@component function GenericChannel(; name, g, E_rev, gates::Vector{<:GateSpec}, topology=Scalar())
+    if topology isa Scalar
         @named oneport = OnePort()
     else
-        @named oneport = VectorizedOnePort(N=N)
+        @named oneport = VectorizedOnePort(N=topology.N)
     end
     @unpack v, i = oneport
     
@@ -20,26 +21,24 @@ end
     init_conds = Dict{Any, Any}()
     
     if isempty(gates)
-        # Pure leak channel (avoids broadcasting edge cases with empty gates)
         push!(eqs, i ~ g .* (v .- E_rev))
     else
         conductance_factor = true
         
         for gate in gates
-            if isnothing(N)
+            if topology isa Scalar
                 gate_var = only(@variables $(gate.name)(t))
                 alpha_var = only(@variables $(Symbol(gate.name, :_alpha))(t))
                 beta_var = only(@variables $(Symbol(gate.name, :_beta))(t))
                 init_conds[gate_var] = gate.ic
             else
-                gate_var = only(@variables $(gate.name)(t)[1:N])
-                alpha_var = only(@variables $(Symbol(gate.name, :_alpha))(t)[1:N])
-                beta_var = only(@variables $(Symbol(gate.name, :_beta))(t)[1:N])
-                init_conds[gate_var] = fill(gate.ic, N)
+                gate_var = only(@variables $(gate.name)(t)[1:topology.N])
+                alpha_var = only(@variables $(Symbol(gate.name, :_alpha))(t)[1:topology.N])
+                beta_var = only(@variables $(Symbol(gate.name, :_beta))(t)[1:topology.N])
+                init_conds[gate_var] = fill(gate.ic, topology.N)
             end
             
             push!(vars, gate_var, alpha_var, beta_var)
-            
             alpha_expr, beta_expr = gate.dynamics(v)
             
             push!(eqs, alpha_var ~ alpha_expr)

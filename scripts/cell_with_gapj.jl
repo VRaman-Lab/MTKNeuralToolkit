@@ -20,22 +20,24 @@ hh_k_n = v -> (
 )
 potassium_gates = [GateSpec(:n, 4, 0.0, hh_k_n)]
 
-# === Build two scalar compartments: soma + dendrite ===
-@named soma_cap = Capacitor(C=1.0)
-@named dend_cap = Capacitor(C=0.5)
+top = Scalar()
 
-@named soma_na   = GenericChannel(g=120.0, E_rev=50.0,  gates=sodium_gates)
-@named soma_k    = GenericChannel(g=36.0,  E_rev=-77.0, gates=potassium_gates)
-@named soma_leak = GenericChannel(g=0.3,   E_rev=-54.4, gates=GateSpec[])
+# === Build two scalar compartments: soma + dendrite ===
+@named soma_cap = Capacitor(topology=top, C=1.0)
+@named dend_cap = Capacitor(topology=top, C=0.5)
+
+@named soma_na   = GenericChannel(topology=top, g=120.0, E_rev=50.0,  gates=sodium_gates)
+@named soma_k    = GenericChannel(topology=top, g=36.0,  E_rev=-77.0, gates=potassium_gates)
+@named soma_leak = GenericChannel(topology=top, g=0.3,   E_rev=-54.4, gates=GateSpec[])
 
 # Dendrite has fewer channels (reduced density)
-@named dend_na   = GenericChannel(g=5.0,   E_rev=50.0,  gates=sodium_gates)
-@named dend_k    = GenericChannel(g=1.0,   E_rev=-77.0, gates=potassium_gates)
-@named dend_leak = GenericChannel(g=0.1,   E_rev=-54.4, gates=GateSpec[])
+@named dend_na   = GenericChannel(topology=top, g=5.0,   E_rev=50.0,  gates=sodium_gates)
+@named dend_k    = GenericChannel(topology=top, g=1.0,   E_rev=-77.0, gates=potassium_gates)
+@named dend_leak = GenericChannel(topology=top, g=0.1,   E_rev=-54.4, gates=GateSpec[])
 
 # === Build the Compartment structs ===
-soma = build_compartment(soma_cap, [soma_na, soma_k, soma_leak]; name=:soma, V_init=-65.0)
-dend = build_compartment(dend_cap, [dend_na, dend_k, dend_leak]; name=:dend, V_init=-65.0)
+soma = build_compartment(soma_cap, [soma_na, soma_k, soma_leak]; name=:soma, V_init=-65.0, topology=top)
+dend = build_compartment(dend_cap, [dend_na, dend_k, dend_leak]; name=:dend, V_init=-65.0, topology=top)
 
 # === Build cell with GapJunction axial connection ===
 
