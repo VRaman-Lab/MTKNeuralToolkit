@@ -22,15 +22,17 @@ struct Network
 end
 
 struct SynapseSpec
-    pre_V::SymbolicT
-    post_V::SymbolicT
-    post_I_syn::SymbolicT
-    synapse::System
+    pre_V
+    post_V
+    post_I_syn
+    synapse
     post_comp::Union{Compartment, Nothing} 
 end
 
 # Backward-compatible constructor
 SynapseSpec(pre_V, post_V, post_I_syn, synapse) = SynapseSpec(pre_V, post_V, post_I_syn, synapse, nothing)
+
+
 
 
 struct CouplingSpec

@@ -74,7 +74,7 @@ SpikingCapacitor Component: Capacitor that automatically resets its voltage when
         V_th = V_th
         V_reset = V_reset
     end
-    params = params = SymbolicT[]
+    params = SymbolicT[]
     push!(params, C, V_th, V_reset)
     
     @variables begin
@@ -209,23 +209,6 @@ end
         eqs = Equation[p.i ~ I_syn]
     end
     return System(eqs, t, vars, SymbolicT[]; systems=[p], name=name)
-end
-
-
-struct SynapseSpec
-    pre_V::SymbolicT        # concrete variable from pre compartment
-    post_I_syn::SymbolicT   # concrete variable from post compartment  
-    post_V::SymbolicT       # for voltage-dependent synapses (NMDA)
-    synapse::System         # the synapse component
-end
-
-function wire_synapse!(eqs, systems, spec::SynapseSpec)
-    syn = spec.synapse
-    push!(systems, syn)
-    push!(eqs, syn.V_pre  ~ spec.pre_V)
-    push!(eqs, syn.V_post ~ spec.post_V)
-    # Accumulate — doesn't override, adds to whatever's already there
-    push!(eqs, spec.post_I_syn ~ spec.post_I_syn + syn.I_syn)
 end
 
 @component function ExpSynapse(; name, g_max=1.0, τ=5.0, E_rev=0.0, V_th=-20.0, slope=2.0)

@@ -33,6 +33,10 @@ potassium_gates = [GateSpec(:n, 4, 0.0, hh_k_n)]
 @named dend_k    = GenericChannel(g=1.0,   E_rev=-77.0, gates=potassium_gates)
 @named dend_leak = GenericChannel(g=0.1,   E_rev=-54.4, gates=GateSpec[])
 
+# === Build the Compartment structs ===
+soma = build_compartment(soma_cap, [soma_na, soma_k, soma_leak]; name=:soma, V_init=-65.0)
+dend = build_compartment(dend_cap, [dend_na, dend_k, dend_leak]; name=:dend, V_init=-65.0)
+
 # === Build cell with GapJunction axial connection ===
 
 # 1. Explicitly create the gap junction component
@@ -51,12 +55,6 @@ cell_net = build_acausal_network([soma, dend];
                                  coupling_specs=coupling_specs,
                                  drivers=drivers,
                                  name=:cell)
-
-cell_compiled = mtkcompile(cell_net.sys)
-prob = ODEProblem(cell_compiled, [], (0.0, 100.0))
-sol = solve(prob, Rosenbrock23())
-
-
 
 cell_compiled = mtkcompile(cell_net.sys)
 prob = ODEProblem(cell_compiled, [], (0.0, 100.0))

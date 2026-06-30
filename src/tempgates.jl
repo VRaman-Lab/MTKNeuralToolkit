@@ -1,5 +1,3 @@
-using Symbolics: variable
-
 struct GateSpec{I<:Integer, T<:AbstractFloat, F<:Function}
     name::Symbol
     power::I

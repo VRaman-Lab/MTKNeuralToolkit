@@ -16,10 +16,9 @@ export Ground, OnePort, Pin, Capacitor, SpikingCapacitor, CurrentSource, FixedRe
 export ChemicalSynapse, GapJunction, AlphaSynapse, SynapseSpec
 
 export VectorizedPin, VectorizedOnePort
-export GenericChannel
 
 include("connections.jl")
-export build_compartment, Compartment, build_network
+export build_compartment, Compartment
 export build_synapse
 export build_acausal_network, build_synapse_block, CouplingSpec
 
@@ -27,11 +26,5 @@ include("tempgates.jl")
 export GateSpec, GenericChannel
 
 export ExpSynapse, VectorizedExpSynapse
-
-include("vectorization.jl")
-export vectorize_system
-
-include("loss_functions.jl")
-export build_loss
 
 end
