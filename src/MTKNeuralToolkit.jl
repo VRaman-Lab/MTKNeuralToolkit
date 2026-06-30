@@ -6,8 +6,6 @@ import ModelingToolkitStandardLibrary.Electrical: OnePort, TwoPort, Pin
 using ModelingToolkit: t_nounits as t, D_nounits as D, connect, SymbolicT, ImperativeAffect
 using ModelingToolkit: mtkcompile, Pre
 using OrdinaryDiffEq
-using DynamicQuantities
-using DataFrames
 import SymbolicUtils: scalarize
 import Symbolics: Sym, Num
 
@@ -29,13 +27,25 @@ include("network.jl")
 export build_compartment, build_acausal_network, build_synapse_block
 
 export Compartment, Network, SynapseSpec, CouplingSpec
-export CaVChannel, KCaChannel, CalciumPool, CalciumTracker, NoCalcium
+export CaVChannel, KCaChannel, CalciumPool, CalciumTracker, NoCalcium, CaPort
 export ExpSynapse, VectorizedExpSynapse
+
+export ContinuousLIFChannel
+export InfTau, InfTauCa
 
 # ==========================================
 # 2. Standard Model Library (Submodules)
 # ==========================================
 include("library/HodgkinHuxley.jl")
 export HodgkinHuxley
+
+include("library/ContinuousSpikers.jl")
+export ContinuousSpikers
+
+include("library/LiuCalciumNeuron.jl")
+export LiuCalciumNeuron
+
+include("library/PrinzCalciumNeuron.jl") 
+export PrinzCalciumNeuron                  
 
 end

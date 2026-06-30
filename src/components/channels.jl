@@ -7,6 +7,12 @@ struct GateSpec{I<:Integer, T<:AbstractFloat, F<:Function}
     dynamics::F 
 end
 
+# Convert (inf, tau) -> (alpha, beta) where alpha = inf/tau and beta = (1-inf)/tau
+
+InfTau(inf_fn, tau_fn) = v -> (inf_fn(v) ./ tau_fn(v), (1.0 .- inf_fn(v)) ./ tau_fn(v))
+InfTauCa(inf_fn, tau_fn) = (v, ca) -> (inf_fn(v, ca) ./ tau_fn(v), (1.0 .- inf_fn(v, ca)) ./ tau_fn(v))
+
+
 @component function GenericChannel(; name, g, E_rev, gates::Vector{<:GateSpec}, topology=Scalar())
     if topology isa Scalar
         @named oneport = OnePort()
@@ -56,3 +62,47 @@ end
                        initial_conditions=init_conds, 
                        name=name), oneport)
 end
+
+
+@component function ContinuousLIFChannel(; name, g_L=0.1, E_L=-70.0, V_th=-50.0, Δ_T=2.0, topology=Scalar())
+    if topology isa Scalar
+        @named oneport = OnePort()
+        @unpack v, i = oneport
+        
+        @parameters g_L=g_L E_L=E_L V_th=V_th Δ_T=Δ_T
+        params = SymbolicT[g_L, E_L, V_th, Δ_T]
+        
+        vars = SymbolicT[]
+        
+        # Standard scalar math
+        reset_current = g_L * Δ_T * exp((v - V_th) / Δ_T)
+        eqs = Equation[
+            i ~ g_L * (v - E_L) + reset_current
+        ]
+        
+        return extend(System(eqs, t, vars, params; systems=System[], name=name), oneport)
+    else
+        N = topology.N
+        @named oneport = VectorizedOnePort(N=N)
+        @unpack v, i = oneport
+        
+        @parameters g_L=g_L E_L=E_L V_th=V_th Δ_T=Δ_T
+        params = SymbolicT[g_L, E_L, V_th, Δ_T]
+        
+        vars = SymbolicT[]
+        
+        # Use scalar * array (g_L * ...) instead of broadcast (g_L .* ...) 
+        # to avoid Symbolics BroadcastBuffer errors.
+        diff = v .- V_th
+        leak_current = g_L * (v .- E_L)
+        reset_current = (g_L * Δ_T) * exp.(diff ./ Δ_T)
+        
+        eqs = Equation[
+            i ~ leak_current .+ reset_current
+        ]
+        
+        return extend(System(eqs, t, vars, params; systems=System[], name=name), oneport)
+    end
+end
+
+

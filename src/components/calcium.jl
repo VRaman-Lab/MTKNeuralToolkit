@@ -62,7 +62,7 @@ end
     @parameters g=g conversion_factor=conversion_factor
     vars = SymbolicT[]
     eqs = Equation[]
-    init_conds = Dict{Any, Any}()
+    init_conds = Dict{SymbolicT, Any}()
     
     params = SymbolicT[g, conversion_factor]
     
@@ -125,7 +125,7 @@ end
     @parameters g=g E_rev=E_rev
     vars = SymbolicT[]
     eqs = Equation[]
-    init_conds = Dict{Any, Any}()
+    init_conds = Dict{SymbolicT, Any}()
     
     # It senses calcium but doesn't contribute to the pool
     push!(eqs, ca_port.J_Ca ~ ground_current(topology))
