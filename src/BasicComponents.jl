@@ -152,18 +152,6 @@ end
     return extend(System(eqs, t, vars, params; systems=System[], continuous_events=events, name=name), twoport)
 end
 
-function spike_affect!(mod, obs, ctx, integ)
-    j = ctx.j
-    W = ctx.W
-    N = ctx.N
-
-    S_new = copy(mod.S)
-    for i in 1:N
-        S_new[j, i] += W[j, i]
-    end
-    return (; S = S_new)
-end
-
 # ==========================================
 # VECTORIZED ELECTRICAL COMPONENTS
 # ==========================================
@@ -264,6 +252,8 @@ end
     @variables s(t)[1:N_pre] I_syn(t)[1:N_post] V_pre(t)[1:N_pre] V_post(t)[1:N_post]
     @parameters g_max=g_max τ=τ E_rev=E_rev V_th=V_th slope=slope
 
+    @parameters W[1:N_post, 1:N_pre]=W
+    
     # Native vectorized dynamics
     σ(V) = 1.0 ./ (1.0 .+ exp.(-(V .- V_th) ./ slope))
     synaptic_drive = W * s
@@ -276,7 +266,8 @@ end
     # Only provide initial conditions for the differential state variable
     init_conds = Dict(s => zeros(N_pre))
     
-    return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, V_th, slope];
+    # Note: W is now included in the parameters vector
+    return System(eqs, t, [s, I_syn, V_pre, V_post], [g_max, τ, E_rev, V_th, slope, W];
                   systems=System[], 
                   initial_conditions=init_conds, 
                   name=name)
