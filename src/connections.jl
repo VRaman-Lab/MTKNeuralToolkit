@@ -4,8 +4,38 @@ using Symbolics: SymbolicT
 using ModelingToolkit: t_nounits as t, connect, Equation, System, @named, getproperty, nameof
 
 # =========================================================
-# 1. STRUCT DEFINITIONS
+# 1. STRUCT DEFINITIONS & TOPOLOGY HELPERS
 # =========================================================
+
+struct Scalar end
+struct Vectorized
+    N::Int
+end
+
+# Dispatch helpers for topology
+get_N(::Scalar) = nothing
+get_N(v::Vectorized) = v.N
+
+init_voltage(::Scalar, V_init) = V_init
+init_voltage(v::Vectorized, V_init) = fill(V_init, v.N)
+
+function create_pins(::Scalar)
+    @named p = Pin(); @named n = Pin()
+    return (p, n)
+end
+function create_pins(v::Vectorized)
+    @named p = VectorizedPin(N=v.N); @named n = VectorizedPin(N=v.N)
+    return (p, n)
+end
+
+function create_injectors(::Scalar)
+    @named injector = CurrentSource(); @named syn_injector = CurrentSource()
+    return (injector, syn_injector)
+end
+function create_injectors(v::Vectorized)
+    @named injector = CurrentSource(N=v.N); @named syn_injector = CurrentSource(N=v.N)
+    return (injector, syn_injector)
+end
 
 struct Compartment
     sys::System
@@ -30,9 +60,6 @@ end
 # Backward-compatible constructor
 SynapseSpec(pre_V, post_V, post_I_syn, synapse) = SynapseSpec(pre_V, post_V, post_I_syn, synapse, nothing)
 
-
-
-
 struct CouplingSpec
     comp_i::Compartment
     comp_j::Compartment
@@ -45,21 +72,13 @@ end
 # =========================================================
 
 function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0, 
-                           N::Union{Int, Nothing}=nothing)
-    if isnothing(N)
-        @named injector  = CurrentSource()
-        @named syn_injector = CurrentSource()
-        @named p = Pin()
-        @named n = Pin()
-        init_v = V_init
-    else
-        @named injector  = CurrentSource(N=N)
-        @named syn_injector = CurrentSource(N=N)
-        @named p = VectorizedPin(N=N)
-        @named n = VectorizedPin(N=N)
-        init_v = fill(V_init, N)
-    end
-
+                           topology=Scalar())
+    
+    # Dispatch topology to get the correct components
+    p, n = create_pins(topology)
+    injector, syn_injector = create_injectors(topology)
+    init_v = init_voltage(topology, V_init)
+    
     vars = SymbolicT[]
     eqs  = Equation[]
 
@@ -97,12 +116,8 @@ function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0,
         I_syn   = getproperty(sys, nameof(syn_injector)).I.u,
         cap_name = cap_name
     )
-    return Compartment(sys, interfaces, V_init, N)
+    return Compartment(sys, interfaces, V_init, get_N(topology))
 end
-
-
-
-
 
 
 # =========================================================
@@ -256,7 +271,6 @@ function build_acausal_network(compartments::Vector{Compartment};
     end
 
     # 6. Wire synapses
-    # FIX 1: Capture block_driven_targets instead of discarding it with `_`
     driven_syn_targets, block_driven_targets = wire_synapses!(eqs, all_systems, synapse_specs)
 
     # 7. Ground non-synapsed I_syn
@@ -298,16 +312,8 @@ function build_acausal_network(compartments::Vector{Compartment};
     net_sys = System(eqs, t, SymbolicT[], SymbolicT[];
                      systems = all_systems, name = name)
                      
-    # FIX 2: Match the updated Network struct definition
     return Network(net_sys, SymbolicT[])
 end
-
-
-
-
-
-
-
 
 
 function build_synapse_block(pre_comp, post_comp, W; name, 
@@ -318,5 +324,3 @@ function build_synapse_block(pre_comp, post_comp, W; name,
     return SynapseSpec(pre_comp.interfaces.V, post_comp.interfaces.V,
                        post_comp.interfaces.I_syn, syn, post_comp) # Pass post_comp here
 end
-
-

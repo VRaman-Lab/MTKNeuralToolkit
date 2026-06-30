@@ -27,7 +27,7 @@ N_E = 30
 @named k_E  = GenericChannel(N=N_E, g=36.0, E_rev=-77.0, gates=potassium_gates)
 @named leak_E = GenericChannel(N=N_E, g=0.3, E_rev=-54.4, gates=GateSpec[])
 
-pop_E = build_compartment(cap_E, [na_E, k_E, leak_E]; name=:pop_E, V_init=-65.0, N=N_E)
+pop_E = build_compartment(cap_E, [na_E, k_E, leak_E]; name=:pop_E, V_init=-65.0,topology=Vectorized(30))
 
 # === Build Inhibitory Population (N=10) ===
 N_I = 10
@@ -36,7 +36,7 @@ N_I = 10
 @named k_I  = GenericChannel(N=N_I, g=36.0, E_rev=-77.0, gates=potassium_gates)
 @named leak_I = GenericChannel(N=N_I, g=0.3, E_rev=-54.4, gates=GateSpec[])
 
-pop_I = build_compartment(cap_I, [na_I, k_I, leak_I]; name=:pop_I, V_init=-65.0, N=N_I)
+pop_I = build_compartment(cap_I, [na_I, k_I, leak_I]; name=:pop_I, V_init=-65.0, topology=Vectorized(N_I))
 
 # === Define Connectivity Matrices ===
 W_EE = 0.05 .* rand(N_E, N_E)   # E -> E

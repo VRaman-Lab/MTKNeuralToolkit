@@ -29,7 +29,7 @@ potassium_gates = [GateSpec(:n, 4, 0.0, hh_k_n)]
 @named leak_channel = GenericChannel(N=N, g=0.3, E_rev=-54.4, gates=GateSpec[])
 
 hh = build_compartment(soma, [sodium_channel, potassium_channel, leak_channel];
-                        name=:hh, V_init=-65.0, N=N)
+                        name=:hh, V_init=-65.0, topology=Vectorized(N))
 
 # === Create synapses ===
 @named syn_1to2 = ExpSynapse(g_max=2.0,  τ=5.0,  E_rev=0.0,   V_th=-20.0, slope=2.0)

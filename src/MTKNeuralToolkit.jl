@@ -21,6 +21,8 @@ include("connections.jl")
 export build_compartment, Compartment
 export build_synapse
 export build_acausal_network, build_synapse_block, CouplingSpec
+export Vectorized, Scalar
+
 
 include("tempgates.jl")
 export GateSpec, GenericChannel
