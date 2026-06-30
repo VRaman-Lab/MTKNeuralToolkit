@@ -1,5 +1,3 @@
-# calcium.jl
-
 @connector function CaPort(; name, topology=Scalar())
     if topology isa Scalar
         vars = @variables begin
