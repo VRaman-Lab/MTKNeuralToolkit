@@ -1,9 +1,12 @@
-struct Compartment
+struct Compartment{M<:AbstractMorphology,G<:AbstractGeometry, F<:AbstractFloat}
     sys::System
     interfaces::NamedTuple
-    V_init::Float64
+    V_init::F
     topology::Union{Scalar, Vectorized}
+    geometry::G
+    morphology::M
 end
+
 
 struct Network
     sys::System
@@ -20,9 +23,9 @@ end
 
 SynapseSpec(pre_V, post_V, post_I_syn, synapse) = SynapseSpec(pre_V, post_V, post_I_syn, synapse, nothing)
 
-struct CouplingSpec
-    comp_i::Compartment
-    comp_j::Compartment
+struct CouplingSpec{C1<:Compartment, C2<:Compartment}
+    comp_i::C1
+    comp_j::C2
     coupling::System
 end
 
@@ -58,7 +61,7 @@ end
 # =========================================================
 
 function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0, 
-                           topology=Scalar(), ion_config=NoCalcium())
+                           topology=Scalar(), ion_config=NoCalcium(), geometry = NoGeometry(), morphology=NoMorphology())
     
     p, n = create_pins(topology)
     injector, syn_injector = create_injectors(topology)
@@ -104,7 +107,7 @@ function build_compartment(capacitor, channels; name=:compartment, V_init=-65.0,
         I_syn   = getproperty(sys, nameof(syn_injector)).I.u,
         cap_name = cap_name
     )
-    return Compartment(sys, interfaces, V_init, topology)
+    return Compartment(sys, interfaces, V_init, topology, geometry, morphology)
 end
 
 
@@ -162,7 +165,7 @@ end
 # 4. NETWORK BUILDER
 # =========================================================
 
-function build_acausal_network(compartments::Vector{Compartment};
+function build_acausal_network(compartments::Vector{<:Compartment};
                                 coupling_specs=CouplingSpec[],
                                 synapse_specs=SynapseSpec[],
                                 drivers=[],

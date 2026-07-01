@@ -1,5 +1,3 @@
-# tempgates.jl
-
 struct GateSpec{I<:Integer, T<:AbstractFloat, F<:Function}
     name::Symbol
     power::I
@@ -12,8 +10,9 @@ end
 InfTau(inf_fn, tau_fn) = v -> (inf_fn(v) ./ tau_fn(v), (1.0 .- inf_fn(v)) ./ tau_fn(v))
 InfTauCa(inf_fn, tau_fn) = (v, ca) -> (inf_fn(v, ca) ./ tau_fn(v), (1.0 .- inf_fn(v, ca)) ./ tau_fn(v))
 
-
-@component function GenericChannel(; name, g, E_rev, gates::Vector{<:GateSpec}, topology=Scalar())
+@component function GenericChannel(; name, g, E_rev, gates::Vector{<:GateSpec}, topology=Scalar(), geometry=NoGeometry())
+    g_val = get_conductance(g, geometry) # Dispatch handles the math
+    
     if topology isa Scalar
         @named oneport = OnePort()
     else
@@ -21,7 +20,7 @@ InfTauCa(inf_fn, tau_fn) = (v, ca) -> (inf_fn(v, ca) ./ tau_fn(v), (1.0 .- inf_f
     end
     @unpack v, i = oneport
     
-    @parameters g=g E_rev=E_rev
+    @parameters g=g_val E_rev=E_rev
     vars = SymbolicT[]
     eqs = Equation[]
     init_conds = Dict{Any, Any}()

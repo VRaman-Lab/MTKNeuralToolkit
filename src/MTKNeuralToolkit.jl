@@ -15,6 +15,8 @@ import Symbolics: Sym, Num
 include("topology.jl")
 export Scalar, Vectorized
 
+include("geometry.jl")
+export AbstractMorphology, NoMorphology, Morphology
 include("components/electrical.jl")
 
 include("components/channels.jl")
@@ -22,16 +24,20 @@ export Ground, Capacitor, CurrentSource, GenericChannel, GateSpec
 
 include("components/calcium.jl")
 include("components/synapses.jl")
+
 include("network.jl")
+
 
 export build_compartment, build_acausal_network, build_synapse_block
 
 export Compartment, Network, SynapseSpec, CouplingSpec
 export CaVChannel, KCaChannel, CalciumPool, CalciumTracker, NoCalcium, CaPort
-export ExpSynapse, VectorizedExpSynapse
+export ExpSynapse, VectorizedExpSynapse, CholSynapse, GlutSynapse, GapJunction
 
 export ContinuousLIFChannel
 export InfTau, InfTauCa
+export AbstractGeometry, NoGeometry, Geometry
+export get_capacitance, get_conductance, get_ca_conversion_factor
 
 # ==========================================
 # 2. Standard Model Library (Submodules)

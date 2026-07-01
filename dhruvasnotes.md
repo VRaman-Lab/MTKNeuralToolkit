@@ -1,3 +1,50 @@
+1. Geometry and Scaling
+In  STG script, had to manually calculate Prinz_conv = Cm / Area and multiply every single conductance by it. Should provide Geometry struct and build_cell wrapper that handles this automatically. Should be able to pass specific conductances (e.g., $\mu$S/mm$^2$) and let the toolkit scale them.
+
+```julia
+struct Geometry
+    area::Float64
+    volume::Float64
+end
+
+# Convenience constructors
+Sphere(radius) = Geometry(4 * pi * radius^2, (4/3) * pi * radius^3)
+Cylinder(length, radius) = Geometry(2 * pi * radius * length + 2 * pi * radius^2, pi * radius^2 * length)
+
+export Geometry, Sphere, Cylinder
+```
+
+```julia
+function build_cell(geometry::Geometry, Cm_specific, channels::Vector{<:Tuple}; name, V_init=-65.0)
+    # channels is a list of (ChannelConstructor, g_specific, args...)
+    # automatically multiplies g_specific by geometry.area
+end
+```
+
+2. Stimulus blocks? Import from MTK but add script showing how
+
+
+```julia
+# In network.jl
+function build_synapses_from_matrix(compartments::Vector{Compartment}, W::Matrix{Float64}, synapse_type; kwargs...)
+    specs = SynapseSpec[]
+    for i in 1:size(W, 1) # pre
+        for j in 1:size(W, 2) # post
+            if W[j, i] > 0 # j receives from i
+                syn = synapse_type(g_max=W[j, i]; name=Symbol(:syn_, i, :_, j), kwargs...)
+                push!(specs, SynapseSpec(compartments[i].interfaces.V, compartments[j].interfaces.V, compartments[j].interfaces.I_syn, syn))
+            end
+        end
+    end
+    return specs
+end
+export build_synapses_from_matrix
+```
+
+
+
+
+
 Project Context: MTKNeuralToolkit
 MTKNeuralToolkit is a Julia package for building biophysical Spiking Neural Networks (SNNs) using ModelingToolkit.jl (MTK) and Symbolics.jl. The target audience is computational neuroscientists who need biological accuracy, heterogeneous microcircuits, and SciML integration (e.g., parameter optimization via ForwardDiff), rather than pure brain-scale throughput.
 

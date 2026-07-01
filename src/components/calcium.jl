@@ -16,7 +16,6 @@ end
 @component function CalciumPool(; name, decay=100.0, Ca_init=0.0, topology=Scalar())
     @named port = CaPort(topology=topology)
     
-    # If it's a function, we don't need the parameter, so we create a dummy.
     @parameters tau_Ca = (decay isa Function ? 0.0 : decay)
     
     if topology isa Scalar
@@ -29,7 +28,6 @@ end
         init_conds = Dict(Ca => fill(Ca_init, topology.N))
     end
 
-    # Dispatch the decay term based on type
     if decay isa Function
         decay_term = decay(Ca)
     else
@@ -41,7 +39,6 @@ end
         port.Ca ~ Ca
     ]
     
-    # Only include the parameter if it was actually used
     params = decay isa Function ? SymbolicT[] : SymbolicT[tau_Ca]
     
     return System(eqs, t, vars, params; systems=[port], initial_conditions=init_conds, name=name)
@@ -49,7 +46,12 @@ end
 
 
 @component function CaVChannel(; name, g, gates::Vector{<:GateSpec}, topology=Scalar(), 
-                               conversion_factor=1.0, E_rev=nothing, Ca_out=3000.0, nernst_factor=13.0)
+                               conversion_factor=1.0, E_rev=nothing, Ca_out=3000.0, nernst_factor=13.0,
+                               geometry=NoGeometry(), tauCa=nothing)
+    # 1. Scale geometry
+    g_val = get_conductance(g, geometry)
+    conv_val = get_ca_conversion_factor(conversion_factor, geometry, tauCa)
+    
     if topology isa Scalar
         @named oneport = OnePort()
         @named ca_port = CaPort(topology=topology)
@@ -59,17 +61,15 @@ end
     end
     @unpack v, i = oneport
     
-    @parameters g=g conversion_factor=conversion_factor
+    @parameters g=g_val conversion_factor=conv_val
     vars = SymbolicT[]
     eqs = Equation[]
     init_conds = Dict{SymbolicT, Any}()
     
     params = SymbolicT[g, conversion_factor]
     
-    # Handle E_rev (fixed vs dynamic Nernst)
     if isnothing(E_rev)
         @parameters Ca_out=Ca_out nernst_factor=nernst_factor
-        # E_Ca = nernst_factor * ln(Ca_out / Ca_in)
         E_rev_expr = nernst_factor .* log.(Ca_out ./ ca_port.Ca)
         push!(params, Ca_out, nernst_factor)
     else
@@ -101,9 +101,8 @@ end
         conductance_factor = conductance_factor .* (gate_var .^ gate.power)
     end
     
-    # Electrical current uses the dynamic E_rev_expr
+    # Ensure we use the symbolic `g` and `conversion_factor`
     push!(eqs, i ~ g .* conductance_factor .* (v .- E_rev_expr))
-    # Calcium flux (opposite sign to electrical current, scaled by factor)
     push!(eqs, ca_port.J_Ca ~ conversion_factor .* i)
     
     return extend(System(eqs, t, vars, params; 
@@ -112,7 +111,10 @@ end
                        name=name), oneport)
 end
 
-@component function KCaChannel(; name, g, E_rev, gates::Vector{<:GateSpec}, topology=Scalar())
+@component function KCaChannel(; name, g, E_rev, gates::Vector{<:GateSpec}, topology=Scalar(), geometry=NoGeometry())
+    # 1. Scale geometry
+    g_val = get_conductance(g, geometry)
+    
     if topology isa Scalar
         @named oneport = OnePort()
         @named ca_port = CaPort(topology=topology)
@@ -122,12 +124,11 @@ end
     end
     @unpack v, i = oneport
     
-    @parameters g=g E_rev=E_rev
+    @parameters g=g_val E_rev=E_rev
     vars = SymbolicT[]
     eqs = Equation[]
     init_conds = Dict{SymbolicT, Any}()
     
-    # It senses calcium but doesn't contribute to the pool
     push!(eqs, ca_port.J_Ca ~ ground_current(topology))
     
     conductance_factor = true
@@ -146,7 +147,6 @@ end
         
         push!(vars, gate_var, alpha_var, beta_var)
         
-        # Note: gate.dynamics now takes (v, Ca)
         alpha_expr, beta_expr = gate.dynamics(v, ca_port.Ca)
         
         push!(eqs, alpha_var ~ alpha_expr)
@@ -155,6 +155,7 @@ end
         conductance_factor = conductance_factor .* (gate_var .^ gate.power)
     end
     
+    # Ensure we use the symbolic `g`
     push!(eqs, i ~ g .* conductance_factor .* (v .- E_rev))
     
     return extend(System(eqs, t, vars, [g, E_rev]; 

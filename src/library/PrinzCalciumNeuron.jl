@@ -1,7 +1,24 @@
 module PrinzNeuron
     using ..MTKNeuralToolkit: GateSpec, GenericChannel, CaVChannel, KCaChannel, CalciumTracker, Capacitor, build_compartment, Scalar
+    import ..MTKNeuralToolkit: AbstractGeometry, get_capacitance, get_conductance, get_ca_conversion_factor, get_synaptic_conductance
     import ..MTKNeuralToolkit: InfTau, InfTauCa
     using ModelingToolkit: @named
+
+
+    # Prinz uses a custom conversion factor to go from geometry to calcium flow so we recreate it
+    Base.@kwdef struct PrinzGeometry <: AbstractGeometry
+        C_m::Float64 = 10.0
+        area::Float64 = 0.0628
+    end
+
+    # Replicate the exact math of the original script
+    get_capacitance(C, geom::PrinzGeometry) = geom.C_m
+    get_conductance(g, geom::PrinzGeometry) = g * (geom.C_m / geom.area)
+    get_ca_conversion_factor(conv, geom::PrinzGeometry, tauCa) = 0.94 / (geom.C_m * tauCa)
+    get_synaptic_conductance(g, geom::PrinzGeometry) = g * (1e-3 / geom.area^2)
+
+ 
+    
 
     # 1. Define Inf and Tau functions based on Prinz equations
     # Na channel
@@ -52,37 +69,35 @@ module PrinzNeuron
     const h_gates = [GateSpec(:mH, 1, 0.0, InfTau(H_m_inf, H_tau_m))]
 
     # 2. Build function
-    function build_prinz_neuron(; name=:Prinz_Neuron, Cm=1.0, tauCa=200.0, Ca_inf=0.05, V_init=-50.0,
+    function build_prinz_neuron(; name=:Prinz_Neuron, tauCa=200.0, Ca_inf=0.05, V_init=-50.0,
                                  gNa=100.0, gCaS=4.0, gCaT=2.0, gKa=10.0, gKCa=5.0, gKdr=10.0, gH=0.1, gleak=0.01,
-                                 ENa=50.0, EK=-80.0, EH=-20.0, Eleak=-50.0)
+                                 ENa=50.0, EK=-80.0, EH=-20.0, Eleak=-50.0, geom=PrinzGeometry())
         top = Scalar()
         nernst_factor = 500.0 * 8.6174e-5 * 283.15
-        
-        # calc_multiplier in your old code = 14.96 * 0.0628 = 0.939488 (~0.94)
-        # D(Ca) = (1/tauCa) * (-Ca + Ca_inf + (0.94 * I_Ca / Cm))
-        # Which means the conversion_factor for J_Ca = 0.94 / (Cm * tauCa)
-        conv = 0.94 / (Cm * tauCa)
 
-        @named na_ch  = GenericChannel(topology=top, g=gNa, E_rev=ENa, gates=na_gates)
-        @named cas_ch = CaVChannel(topology=top, g=gCaS, conversion_factor=conv, gates=cas_gates, Ca_out=3000.0, nernst_factor=nernst_factor)
-        @named cat_ch = CaVChannel(topology=top, g=gCaT, conversion_factor=conv, gates=cat_gates, Ca_out=3000.0, nernst_factor=nernst_factor)
-        @named ka_ch  = GenericChannel(topology=top, g=gKa, E_rev=EK, gates=ka_gates)
-        @named kca_ch = KCaChannel(topology=top, g=gKCa, E_rev=EK, gates=kca_gates)
-        @named kdr_ch = GenericChannel(topology=top, g=gKdr, E_rev=EK, gates=kdr_gates)
-        @named h_ch   = GenericChannel(topology=top, g=gH, E_rev=EH, gates=h_gates)
-        @named leak   = GenericChannel(topology=top, g=gleak, E_rev=Eleak, gates=GateSpec[])
+        # Pass geom and tauCa to everything! The dispatch handles the math.
+        @named na_ch  = GenericChannel(topology=top, g=gNa, E_rev=ENa, gates=na_gates, geometry=geom)
+        @named cas_ch = CaVChannel(topology=top, g=gCaS, gates=cas_gates, Ca_out=3000.0, 
+                                   nernst_factor=nernst_factor, geometry=geom, tauCa=tauCa)
+        @named cat_ch = CaVChannel(topology=top, g=gCaT, gates=cat_gates, Ca_out=3000.0, 
+                                   nernst_factor=nernst_factor, geometry=geom, tauCa=tauCa)
+        @named ka_ch  = GenericChannel(topology=top, g=gKa, E_rev=EK, gates=ka_gates, geometry=geom)
+        @named kca_ch = KCaChannel(topology=top, g=gKCa, E_rev=EK, gates=kca_gates, geometry=geom)
+        @named kdr_ch = GenericChannel(topology=top, g=gKdr, E_rev=EK, gates=kdr_gates, geometry=geom)
+        @named h_ch   = GenericChannel(topology=top, g=gH, E_rev=EH, gates=h_gates, geometry=geom)
+        @named leak   = GenericChannel(topology=top, g=gleak, E_rev=Eleak, gates=GateSpec[], geometry=geom)
 
-        @named cap = Capacitor(topology=top, C=Cm)
+        @named cap = Capacitor(topology=top, geometry=geom)
         channels = [na_ch, cas_ch, cat_ch, ka_ch, kca_ch, kdr_ch, h_ch, leak]
 
         decay_fn = ca -> (Ca_inf .- ca) ./ tauCa
         ion_config = CalciumTracker(decay=decay_fn, Ca_init=Ca_inf)
-
-        # Prinz neurons typically start at -50mV
-        comp = build_compartment(cap, channels; name=name, V_init=-50.0, topology=top, ion_config=ion_config)
+        comp = build_compartment(cap, channels; name=name, V_init=V_init, topology=top, ion_config=ion_config)
         
         return comp
     end
 
-    export build_prinz_neuron
+    export build_prinz_neuron, PrinzGeometry, na_gates, cas_gates, cat_gates, ka_gates, kca_gates, kdr_gates, h_gates
 end
+
+

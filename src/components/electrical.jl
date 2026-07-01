@@ -1,5 +1,3 @@
-# hi
-
 @component function Ground(; name, topology=Scalar())
     if topology isa Scalar
         @named g = Pin()
@@ -11,17 +9,20 @@
     return System(eqs, t, SymbolicT[], SymbolicT[]; systems=[g], name=name)
 end
 
-@component function Capacitor(; name, C = 1.0, topology=Scalar())
+@component function Capacitor(; name, C = 1.0, topology=Scalar(), geometry=NoGeometry())
+    C_val = get_capacitance(C, geometry) # Dispatch handles the math
+    
     if topology isa Scalar
         @named oneport = OnePort()
     else
         @named oneport = VectorizedOnePort(N=topology.N)
     end
     @unpack v, i = oneport
-    @parameters C=C
+    @parameters C=C_val
     eqs = Equation[D(v) ~ i ./ C]
     return extend(System(eqs, t, SymbolicT[], [C]; systems=System[], name=name), oneport)
 end
+
 
 @component function CurrentSource(; name, topology=Scalar())
     if topology isa Scalar
