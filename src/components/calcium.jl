@@ -59,12 +59,16 @@ end
         @named oneport = VectorizedOnePort(N=topology.N)
         @named ca_port = CaPort(topology=topology)
         if g_val isa AbstractArray
-            @parameters g[1:topology.N]=g_val
+            @parameters begin
+                g[1:topology.N] = g_val
+            end
         else
             @parameters g=g_val
         end
         if conv_val isa AbstractArray
-            @parameters conversion_factor[1:topology.N]=conv_val
+            @parameters begin
+                conversion_factor[1:topology.N] = conv_val
+            end
         else
             @parameters conversion_factor=conv_val
         end
@@ -86,7 +90,9 @@ end
             @parameters E_rev=E_rev
         else
             if E_rev isa AbstractArray
-                @parameters E_rev[1:topology.N]=E_rev
+                @parameters begin
+                    E_rev[1:topology.N] = E_rev
+                end
             else
                 @parameters E_rev=E_rev
             end
@@ -118,7 +124,6 @@ end
         conductance_factor = conductance_factor .* (gate_var .^ gate.power)
     end
     
-    # Ensure we use the symbolic `g` and `conversion_factor`
     push!(eqs, i ~ g .* conductance_factor .* (v .- E_rev_expr))
     push!(eqs, ca_port.J_Ca ~ conversion_factor .* i)
     
@@ -129,19 +134,32 @@ end
 end
 
 @component function KCaChannel(; name, g, E_rev, gates::Vector{<:GateSpec}, topology=Scalar(), geometry=NoGeometry())
-    # 1. Scale geometry
     g_val = get_conductance(g, geometry)
     
     if topology isa Scalar
         @named oneport = OnePort()
         @named ca_port = CaPort(topology=topology)
+        @parameters g=g_val E_rev=E_rev
     else
         @named oneport = VectorizedOnePort(N=topology.N)
         @named ca_port = CaPort(topology=topology)
+        if g_val isa AbstractArray
+            @parameters begin
+                g[1:topology.N] = g_val
+            end
+        else
+            @parameters g=g_val
+        end
+        if E_rev isa AbstractArray
+            @parameters begin
+                E_rev[1:topology.N] = E_rev
+            end
+        else
+            @parameters E_rev=E_rev
+        end
     end
     @unpack v, i = oneport
     
-    @parameters g=g_val E_rev=E_rev
     vars = SymbolicT[]
     eqs = Equation[]
     init_conds = Dict{SymbolicT, Any}()
@@ -172,7 +190,6 @@ end
         conductance_factor = conductance_factor .* (gate_var .^ gate.power)
     end
     
-    # Ensure we use the symbolic `g`
     push!(eqs, i ~ g .* conductance_factor .* (v .- E_rev))
     
     return extend(System(eqs, t, vars, [g, E_rev]; 
@@ -180,3 +197,4 @@ end
                        initial_conditions=init_conds, 
                        name=name), oneport)
 end
+
