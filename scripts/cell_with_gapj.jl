@@ -1,0 +1,75 @@
+using MTKNeuralToolkit
+using ModelingToolkit: mtkcompile, @named
+using OrdinaryDiffEq
+using Plots
+
+# === Scalar gate definitions (same functions, works on scalars too) ===
+hh_na_m = v -> (
+    0.182 .* (v .+ 35.0) ./ (1.0 .- exp.(-(v .+ 35.0) ./ 9.0)),
+    -0.124 .* (v .+ 35.0) ./ (1.0 .- exp.((v .+ 35.0) ./ 9.0))
+)
+hh_na_h = v -> (
+    0.25 .* exp.(-(v .+ 90.0) ./ 12.0),
+    0.25 .* (exp.((v .+ 62.0) ./ 6.0)) ./ exp.(-(v .+ 90.0) ./ 12.0)
+)
+sodium_gates = [GateSpec(:m, 3, 0.0, hh_na_m), GateSpec(:h, 1, 0.0, hh_na_h)]
+
+hh_k_n = v -> (
+    0.02 .* (v .- 25.0) ./ (1.0 .- exp.(-(v .- 25.0) ./ 9.0)),
+    -0.002 .* (v .- 25.0) ./ (1.0 .- exp.((v .- 25.0) ./ 9.0))
+)
+potassium_gates = [GateSpec(:n, 4, 0.0, hh_k_n)]
+
+top = Scalar()
+
+# === Build two scalar compartments: soma + dendrite ===
+@named soma_cap = Capacitor(topology=top, C=1.0)
+@named dend_cap = Capacitor(topology=top, C=0.5)
+
+@named soma_na   = GenericChannel(topology=top, g=120.0, E_rev=50.0,  gates=sodium_gates)
+@named soma_k    = GenericChannel(topology=top, g=36.0,  E_rev=-77.0, gates=potassium_gates)
+@named soma_leak = GenericChannel(topology=top, g=0.3,   E_rev=-54.4, gates=GateSpec[])
+
+# Dendrite has fewer channels (reduced density)
+@named dend_na   = GenericChannel(topology=top, g=5.0,   E_rev=50.0,  gates=sodium_gates)
+@named dend_k    = GenericChannel(topology=top, g=1.0,   E_rev=-77.0, gates=potassium_gates)
+@named dend_leak = GenericChannel(topology=top, g=0.1,   E_rev=-54.4, gates=GateSpec[])
+
+# === Build the Compartment structs ===
+soma = build_compartment(soma_cap, [soma_na, soma_k, soma_leak]; name=:soma, V_init=-65.0, topology=top)
+dend = build_compartment(dend_cap, [dend_na, dend_k, dend_leak]; name=:dend, V_init=-65.0, topology=top)
+
+# === Build cell with GapJunction axial connection ===
+
+# 1. Explicitly create the gap junction component
+@named gj_1 = GapJunction(R=10.0)
+
+# 2. Define the coupling spec using the actual Compartment objects
+coupling_specs = [
+    CouplingSpec(soma, dend, gj_1)
+]
+
+# Constant 10 mA current injection on soma
+drivers = [(1, 10.0)]
+
+# 3. Build the network
+cell_net = build_acausal_network([soma, dend];
+                                 coupling_specs=coupling_specs,
+                                 drivers=drivers,
+                                 name=:cell)
+
+cell_compiled = mtkcompile(cell_net.sys)
+prob = ODEProblem(cell_compiled, [], (0.0, 100.0))
+sol = solve(prob, Rosenbrock23())
+
+# === Plot ===
+p1 = plot(sol, idxs=[cell_compiled.soma.soma_cap.v, cell_compiled.dend.dend_cap.v],
+          label=["Soma" "Dendrite"],
+          title="2-compartment cell (GapJunction axial, R=10)",
+          xlabel="Time", ylabel="V (mV)")
+
+p2 = plot(sol, idxs=[cell_compiled.gj_1.v1, cell_compiled.gj_1.v2],
+          label=["V_pre (soma side)" "V_post (dend side)"],
+          title="GapJunction voltages", xlabel="Time", ylabel="V (mV)")
+
+plot(p1, p2, layout=(2,1), size=(800,500))
