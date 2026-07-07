@@ -7,7 +7,9 @@
 
 # Building Your Own Neurons & Components in MTKNeuralToolkit
 
-MTKNeuralToolkit is a framework for wiring up your own custom biophysical components using acausal modeling. The pre-built stuff like `GenericChannel` and `GateSpec` is there to save you time, but everything is just an MTK `System`. If a pre-built component doesn't fit your weird new ion channel, you are fully empowered to build your own from scratch.
+MTKNeuralToolkit is a framework for wiring up your own custom biophysical components using acausal modeling. The pre-built stuff like `GenericChannel` and `GateSpec` is there to save you time, but everything is just an MTK `System`. If a pre-built component doesn't fit your e.g. custom strange ion channel, you are fully empowered to build your own from scratch.
+
+The examples repository has an ordered set of tutorials. Go through them to learn by example.
 
 Here’s how the plumbing works, and a few traps to watch out for along the way.
 

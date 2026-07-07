@@ -69,8 +69,8 @@ using ModelingToolkitStandardLibrary.Blocks: Sine
 @named post_driver = Sine(amplitude=8.0, frequency=0.2, offset=8.0, phase=0.0)
 
 drivers = [
-    (1, pre_driver),  #Pre fires second
-    (2, post_driver)  #Post fires first -> causes LTD
+    (1, pre_driver),  # Pre fires second
+    (2, post_driver)  # Post fires first -> causes LTD
 ]
 
 

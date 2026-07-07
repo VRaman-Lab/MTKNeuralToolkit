@@ -82,7 +82,7 @@ neuron = build_compartment(cap, [na, k, leak, cav, kca];
 # ------------------------------------------------------------------------------
 # 3. Build and Simulate the Network
 # ------------------------------------------------------------------------------
-drivers = [(1, 15.0)] #Current to elicit spikes and Calcium transients
+drivers = [(1, 15.0)] # Current to elicit spikes and Calcium transients
 net = build_acausal_network([neuron]; drivers=drivers, name=:ca_neuron)
 
 println("Compiling Calcium neuron...")

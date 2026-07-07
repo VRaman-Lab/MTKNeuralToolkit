@@ -58,7 +58,7 @@ module LiuCalciumNeuron
     
     const kdr_gates = [GateSpec(:mKdr, 4, 0.0, InfTau(Kdr_m_inf, Kdr_tau_m))]
 
-    # 3. Build function (Removed @component! It's just a regular function)
+    # 3. Build function 
     function build_liu_neuron(; name=:Liu_AB_Neuron)
         top = Scalar()
         nernst_factor = 500.0 * 8.6174e-5 * 283.15

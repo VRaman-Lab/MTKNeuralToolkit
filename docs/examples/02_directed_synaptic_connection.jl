@@ -26,7 +26,7 @@ top = Scalar()
 # potentials (E_rev) without rewriting the gating dynamics from scratch. Of course, you could get rid of these kwargs and use the defaults!
 function build_hh_neuron(name::Symbol; gNa=120.0, ENa=50.0, gK=36.0, EK=-77.0, 
                                        gleak=0.3, Eleak=-54.4)
-    @named cap  = Capacitor(topology=top, C=1.0) #Standard library channels accept `g` and `E_rev` as keyword arguments
+    @named cap  = Capacitor(topology=top, C=1.0) #= Standard library channels accept `g` and `E_rev` as keyword arguments
     @named na   = SodiumChannel(topology=top, g=gNa, E_rev=ENa)
     @named k    = PotassiumChannel(topology=top, g=gK, E_rev=EK)
     @named leak = LeakChannel(topology=top, g=gleak, E_rev=Eleak)
@@ -67,7 +67,7 @@ post_neuron = build_hh_neuron(:post_neuron; gNa=80.0, ENa=45.0, gleak=0.5)
 synapse_specs = [
     SynapseSpec(
         pre_neuron.interfaces.V,  #Presynaptic voltage
-        post_neuron.interfaces.V, #Postsynaptic voltage
+        post_neuron.interfaces.V, Postsynaptic voltage
         post_neuron.interfaces.I_syn, #Target current in post neuron
         excitatory_synapse
     )

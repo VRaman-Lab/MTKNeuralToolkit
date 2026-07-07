@@ -50,6 +50,7 @@ top_I = Vectorized(N_I)
 
 function build_population(name::Symbol, top)
     gNa_heterogeneous = collect(range(119.0, 121.0, length=top.N)) #Generate a heterogeneous sodium conductance array matching the topology size
+    
     @named cap = Capacitor(topology=top, C=1.0)
     @named na  = GenericChannel(topology=top, g=gNa_heterogeneous, E_rev=50.0,  gates=sodium_gates)
     @named k   = GenericChannel(topology=top, g=36.0,  E_rev=-77.0, gates=potassium_gates)

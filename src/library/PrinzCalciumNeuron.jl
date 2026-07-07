@@ -14,11 +14,10 @@ module PrinzNeuron
     # Replicate the exact math of the original script
     get_capacitance(C, geom::PrinzGeometry) = geom.C_m
     get_conductance(g, geom::PrinzGeometry) = g * (geom.C_m / geom.area)
-    get_ca_conversion_factor(conv, geom::PrinzGeometry, tauCa) = 0.94 / (geom.C_m * tauCa)
+    # get_ca_conversion_factor(conv, geom::PrinzGeometry, tauCa) = (0.94 * geom.area) / (geom.C_m * tauCa) This seems more correct, but isn't what I was given on provided scripts and doesn't produce the stg bursting
+    get_ca_conversion_factor(conv, geom::PrinzGeometry, tauCa) = (0.94) / (geom.C_m * tauCa)
     get_synaptic_conductance(g, geom::PrinzGeometry) = g * (1e-3 / geom.area^2)
 
- 
-    
 
     # 1. Define Inf and Tau functions based on Prinz equations
     # Na channel

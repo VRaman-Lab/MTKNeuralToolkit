@@ -23,7 +23,10 @@ top = Scalar()
 areas = [0.0628, 0.0314, 0.0157, 0.0078, 0.0039] #cm^2
 
 function build_passive_compartment(name::Symbol, area::Float64)
-    geom = Geometry(area=area, C_m=1.0) #Geometry struct handles the biophysical scaling automatically!
+    # Geometry struct handles the biophysical scaling automatically!
+    geom = Geometry(area=area, C_m=1.0)
+    
+    # Base capacitance and conductance are specific values, scaled by `geom`
     @named cap  = Capacitor(topology=top, C=1.0, geometry=geom)
     @named leak = GenericChannel(topology=top, g=0.3, E_rev=-65.0, gates=GateSpec[], geometry=geom)
     
@@ -40,14 +43,16 @@ cable = [build_passive_compartment(Symbol(:comp, i), areas[i]) for i in 1:N]
 # The axial resistance between two compartments is R = (R_i * L) / A.
 # For demonstration, we'll calculate a simple R based on the areas.
 # Smaller areas = higher axial resistance = more attenuation.
-# Let's say internal resistivity R_i * length L = 1.0.
-# We use the average area of the two connected compartments.
+
 coupling_specs = CouplingSpec[]
 for i in 1:(N-1)
-
+    # Let's say internal resistivity R_i * length L = 1.0.
+    # We use the average area of the two connected compartments.
     avg_area = (areas[i] + areas[i+1]) / 2.0
     R_axial = 1.0 / avg_area 
-    gj = GapJunction(R=R_axial; name=Symbol(:gj_, i))  #Must give unique names to systems created in a loop!
+    
+    # Must give unique names to systems created in a loop!
+    gj = GapJunction(R=R_axial; name=Symbol(:gj_, i)) 
     push!(coupling_specs, CouplingSpec(cable[i], cable[i+1], gj))
 end
 
