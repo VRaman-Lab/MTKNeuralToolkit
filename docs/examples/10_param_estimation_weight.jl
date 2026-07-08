@@ -1,6 +1,4 @@
-# ==============================================================================
-# Example 10: Parameter Estimation of a Synaptic Weight
-# ==============================================================================
+# # Example 10: Parameter Estimation of a Synaptic Weight
 
 using MTKNeuralToolkit
 using MTKNeuralToolkit.HodgkinHuxley: SodiumChannel, PotassiumChannel, LeakChannel
@@ -123,4 +121,4 @@ plot!(p1, timesteps, opt_sol[5, :], label="Fitted Post-synaptic V", ls=:dash, lw
 title!(p1, "Parameter Estimation of Synaptic Weight")
 xlabel!("Time (ms)")
 ylabel!("V (mV)")
-display(p1)
+p1

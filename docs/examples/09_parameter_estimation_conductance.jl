@@ -1,6 +1,4 @@
-# ==============================================================================
-# Example 9: Parameter Estimation of Ion Channel Conductances
-# ==============================================================================
+# # Example 9: Parameter Estimation of Ion Channel Conductances
 
 using MTKNeuralToolkit
 using MTKNeuralToolkit.HodgkinHuxley: SodiumChannel, PotassiumChannel, LeakChannel
@@ -107,4 +105,4 @@ plot!(p1, timesteps, opt_sol[1, :], label="Fitted Voltage", ls=:dash, lw=2, colo
 title!(p1, "Parameter Estimation of HH Conductances")
 xlabel!("Time (ms)")
 ylabel!("V (mV)")
-display(p1)
+p1

@@ -1,27 +1,34 @@
-using MTKNeuralToolkit
-using Test
+using SafeTestsets
+using SciMLTesting
 
-@testset "MTKNeuralToolkit.jl" begin
-    # Write your tests here.
-end
-
-@testset "Plot Scripts" begin
-    # Find all plot*.jl files in scripts directory
-    scripts_dir = joinpath(dirname(@__DIR__), "scripts")
-    plot_files = filter(f -> startswith(f, "plot") && endswith(f, ".jl"), readdir(scripts_dir))
-    
-    if isempty(plot_files)
-        @warn "No plot*.jl files found in scripts directory"
-    else
-        println("Found $(length(plot_files)) plot scripts to test")
-        
-        for script in plot_files
-            @testset "Testing $script" begin
-                script_path = joinpath(scripts_dir, script)
-                
-                result = run(`julia $script_path`)
-                @test success(result)
-            end
+run_tests(;
+    core = function ()
+        @safetestset "Core Channels & Custom Components" begin
+            include(joinpath(@__DIR__, "test_channels.jl"))
         end
-    end
-end
+        @safetestset "Directed Synapses & STDP" begin
+            include(joinpath(@__DIR__, "test_synapses.jl"))
+        end
+        @safetestset "Acausal Couplings & Gap Junctions" begin
+            include(joinpath(@__DIR__, "test_couplings.jl"))
+        end
+        @safetestset "Vectorized & Mixed Topologies" begin
+            include(joinpath(@__DIR__, "test_topologies.jl"))
+        end
+        @safetestset "Calcium Dynamics & Nernst Potentials" begin
+            include(joinpath(@__DIR__, "test_calcium.jl"))
+        end
+        @safetestset "Standard Model Libraries & STG" begin
+            include(joinpath(@__DIR__, "test_libraries.jl"))
+        end
+        return @safetestset "Explicit Imports Compliance" begin
+            include(joinpath(@__DIR__, "explicit_imports.jl"))
+        end
+    end,
+    groups = Dict(
+        "Opt" => joinpath(@__DIR__, "test_optimization.jl"),
+        "ExplicitImports" => joinpath(@__DIR__, "explicit_imports.jl"),
+    ),
+    qa = (; env = joinpath(@__DIR__, "qa"), body = joinpath(@__DIR__, "qa", "qa.jl")),
+    all = ["Core", "Opt"],
+)

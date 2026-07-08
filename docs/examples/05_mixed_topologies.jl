@@ -1,6 +1,4 @@
-# ==============================================================================
-# Example 5: Mixed Topologies (Scalar Hub and Vectorized Populations)
-# ============================================================================== 
+# # Example 5: Mixed Topologies (Scalar Hub and Vectorized Populations)
 # 
 # This example demonstrates the flexibility of MTKNeuralToolkit's symbolic 
 # interfaces. You can seamlessly mix `Scalar` and `Vectorized` topologies in the 

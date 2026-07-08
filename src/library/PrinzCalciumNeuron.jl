@@ -11,7 +11,6 @@ module PrinzNeuron
         area::Float64 = 0.0628
     end
 
-    # Replicate the exact math of the original script
     get_capacitance(C, geom::PrinzGeometry) = geom.C_m
     get_conductance(g, geom::PrinzGeometry) = g * (geom.C_m / geom.area)
     # get_ca_conversion_factor(conv, geom::PrinzGeometry, tauCa) = (0.94 * geom.area) / (geom.C_m * tauCa) This seems more correct, but isn't what I was given on provided scripts and doesn't produce the stg bursting

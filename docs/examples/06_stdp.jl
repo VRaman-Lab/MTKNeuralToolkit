@@ -1,6 +1,4 @@
-# ==============================================================================
-# Example 8: Spike-Timing-Dependent Plasticity (STDP)
-# ==============================================================================
+# # Example 6: Spike-Timing-Dependent Plasticity (STDP)
 # 
 # This example introduces learning and plasticity. We connect two neurons using 
 # the `STDPSynapse`, a continuous, smooth approximation of STDP. 

@@ -1,6 +1,4 @@
-# ==============================================================================
-# Example 6: Calcium Dynamics & Nernst Potentials
-# ==============================================================================
+# # Example 7: Calcium Dynamics & Nernst Potentials
 # 
 # This example introduces the Calcium dynamics machinery of MTKNeuralToolkit. 
 # Real neurons maintain low intracellular Calcium, but voltage-gated Calcium 

@@ -1,3 +1,54 @@
+# ==========================================
+# CORE SCALAR CONNECTORS (Custom)
+# ==========================================
+
+@connector function Pin(; name)
+    vars = @variables begin
+        v(t)
+        i(t), [connect = Flow]
+    end
+    return System(Equation[], t, vars, SymbolicT[]; name=name)
+end
+
+@component function OnePort(; name)
+    systems = @named begin
+        p = Pin()
+        n = Pin()
+    end
+    vars = @variables begin
+        v(t)
+        i(t)
+    end
+    equations = Equation[
+        v ~ p.v - n.v,
+        0 ~ p.i + n.i,
+        i ~ p.i,
+    ]
+    return System(equations, t, vars, SymbolicT[]; name=name, systems=systems)
+end
+
+@component function TwoPort(; name)
+    systems = @named begin
+        p1 = Pin()
+        n1 = Pin()
+        p2 = Pin()
+        n2 = Pin()
+    end
+    vars = @variables begin
+        v1(t), i1(t)
+        v2(t), i2(t)
+    end
+    equations = Equation[
+        v1 ~ p1.v - n1.v,
+        0 ~ p1.i + n1.i,
+        i1 ~ p1.i,
+        v2 ~ p2.v - n2.v,
+        0 ~ p2.i + n2.i,
+        i2 ~ p2.i,
+    ]
+    return System(equations, t, vars, SymbolicT[]; name=name, systems=systems)
+end
+
 @component function Ground(; name, topology=Scalar())
     if topology isa Scalar
         @named g = Pin()

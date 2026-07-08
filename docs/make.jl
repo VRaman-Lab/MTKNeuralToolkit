@@ -7,7 +7,7 @@ DocMeta.setdocmeta!(MTKNeuralToolkit, :DocTestSetup, :(using MTKNeuralToolkit); 
 # ---------------------------------------------------------
 # 1. Process Examples with Literate.jl
 # ---------------------------------------------------------
-examples_in = joinpath(@__DIR__, "..", "examples")   # Looks in the root examples/ folder
+examples_in = joinpath(@__DIR__, "examples")   # Looks in the root examples/ folder
 examples_out = joinpath(@__DIR__, "src", "examples") # Outputs .md files here for Documenter
 mkpath(examples_out) # Create the folder if it doesn't exist
 

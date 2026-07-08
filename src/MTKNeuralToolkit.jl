@@ -2,7 +2,6 @@ module MTKNeuralToolkit
 
 using ModelingToolkit
 import ModelingToolkitStandardLibrary.Blocks: RealInput, Constant, RealOutput, RealInputArray
-import ModelingToolkitStandardLibrary.Electrical: OnePort, TwoPort, Pin
 using ModelingToolkit: t_nounits as t, D_nounits as D, connect, SymbolicT, ImperativeAffect
 using ModelingToolkit: mtkcompile, Pre
 using OrdinaryDiffEq
@@ -38,6 +37,7 @@ export ContinuousLIFChannel
 export InfTau, InfTauCa
 export AbstractGeometry, NoGeometry, Geometry
 export get_capacitance, get_conductance, get_ca_conversion_factor
+export Pin, OnePort, TwoPort, VectorizedPin, VectorizedOnePort
 
 # ==========================================
 # 2. Standard Model Library (Submodules)

@@ -1,6 +1,4 @@
-# ==============================================================================
-# Example 7: Stomatogastric Ganglion (STG) Network
-# ==============================================================================
+# # Example 8: Stomatogastric Ganglion (STG) Network
 # 
 # This example reconstructs a simplified 3-neuron network (AB, LP, PY) based on 
 # the classic stomatogastric ganglion models (e.g., Prinz et al., 2004). 
@@ -17,6 +15,7 @@ using OrdinaryDiffEq, Plots
 # ------------------------------------------------------------------------------
 # Prinz uses a custom geometry to scale capacitance, conductances, and calcium 
 # flow. We instantiate it here and define shared Calcium parameters.
+# Note that the custom geometry occupies < 10 lines of code in the src/library/PrinzCalciumNeuron.jl file. Geometries are easy to make.
 const geom = PrinzGeometry(area=0.0628, C_m=10.0)
 const tauCa = 200.0
 const Ca_inf = 0.05

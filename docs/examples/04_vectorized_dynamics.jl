@@ -1,17 +1,18 @@
-# ==============================================================================
-# Example 4: Vectorized Populations (E/I Network)
-# ==============================================================================
+# # Example 4: Vectorized Populations (E/I Network)
 # 
-# This example demonstrates how to scale up to population-level models. Instead 
-# of building thousands of individual scalar systems, we use the `Vectorized` 
-# topology. A single `GenericChannel` with a vectorized topology automatically 
-# expands to N elements. We wire dense excitatory/inhibitory populations together 
-# using a weight matrix and the `build_synapse_block` helper.
+# Let's scale up to population-level models. Instead of building thousands of 
+# individual scalar systems, we can use the `Vectorized` topology. A single 
+# `GenericChannel` with a vectorized topology expands to N elements. We wire dense 
+# excitatory/inhibitory populations together using a weight matrix and the 
+# `build_synapse_block` helper.
 #
-# NOTE: The primary purpose of the `Vectorized` topology is to drastically 
-# reduce `mtkcompile` time. Compiling 1,000 scalar systems requires MTK to 
-# process 1,000 separate symbolic graphs. Compiling 1 `Vectorized(1000)` 
-# system collapses the entire population into fast array operations 
+# The main benefit of the `Vectorized` topology is that it saves compile time. 
+# Compiling 1,000 scalar systems requires MTK to process 1,000 separate symbolic 
+# graphs. Using `Vectorized(1000)` collapses the entire population into a single 
+# system that uses array operations.
+#
+# !!! note
+#     An annoyance is the need to build both scalar and vector definitions for the components. It would be nice (and maybe exists?) for MTK to have some automatic way of turning a scalar component into a vectorised one? I spent some time attempting this with postwalk, and got it running. But it was messy and dependeng on the MTK internal API so decided to demand a separate set of equations for a vectorised component.
 
 using MTKNeuralToolkit
 using ModelingToolkit: mtkcompile, @named
@@ -43,13 +44,14 @@ potassium_gates = [GateSpec(:n, 4, 0.0, hh_k_n)]
 # ------------------------------------------------------------------------------
 # 2. Define Topologies and Build Populations
 # ------------------------------------------------------------------------------
-N_E = 15  #Excitatory population size
-N_I = 5   #Inhibitory population size
+N_E = 15 
+N_I = 5  
 top_E = Vectorized(N_E)
 top_I = Vectorized(N_I)
 
 function build_population(name::Symbol, top)
-    gNa_heterogeneous = collect(range(119.0, 121.0, length=top.N)) #Generate a heterogeneous sodium conductance array matching the topology size
+    #Let's make the sodium conductance heterogeneous across the population
+    gNa_heterogeneous = collect(range(119.0, 121.0, length=top.N)) 
     
     @named cap = Capacitor(topology=top, C=1.0)
     @named na  = GenericChannel(topology=top, g=gNa_heterogeneous, E_rev=50.0,  gates=sodium_gates)
@@ -76,8 +78,8 @@ W_II = 1.0 .* rand(N_I, N_I)   #I -> I
 # ------------------------------------------------------------------------------
 # 4. Build Synapse Blocks
 # ------------------------------------------------------------------------------
-# `build_synapse_block` automatically sets up the vectorized synapse matrices 
-# and creates the SynapseSpecs for the network builder.
+# `build_synapse_block` sets up the vectorized synapse matrices and creates the 
+# SynapseSpecs for the network builder.
 
 syn_EE = build_synapse_block(pop_E, pop_E, W_EE; name=:syn_EE, E_rev=0.0)
 syn_EI = build_synapse_block(pop_E, pop_I, W_EI; name=:syn_EI, E_rev=0.0)
@@ -90,23 +92,28 @@ synapse_specs = [syn_EE, syn_EI, syn_IE, syn_II]
 # 5. Driving Stimuli & Network Assembly
 # ------------------------------------------------------------------------------
 # Give the excitatory population a constant current kick to start the activity
-drivers = [(1, 15.0)]
+drivers = [(1, 25.0)]
 
 net = build_acausal_network([pop_E, pop_I]; synapse_specs=synapse_specs, drivers=drivers)
 
 println("Compiling vectorized network...")
 sys = mtkcompile(net.sys)
 
-# Vectorized systems generate large Jacobians, but because the equations are 
-# array-based, the Jacobian is highly sparse (most neurons only affect their own 
-# gating variables, with off-diagonal elements coming only from the synapse blocks).
-# Passing `jac=true, sparse=true` tells the solver to compute an analytical Jacobian 
-# and use fast sparse linear algebra, drastically speeding up the simulation.
+# Because the underlying equations are array-based, the Jacobian of this system 
+# is highly sparse: most neurons only affect their own gating variables, with 
+# off-diagonal elements coming only from the synapse blocks.
+# 
+# Passing `jac=true, sparse=true` tells the solver to compute an analytical 
+# Jacobian and leverage sparse linear algebra. This speeds simulation, 
+# as the solver only computes non-zero derivatives instead of a dense matrix. 
+# Sparse Jacobians are also essential for fast automatic differentiation (AD), 
+# which we will need later for parameter estimation.
+
 prob = ODEProblem(sys, [], (0.0, 100.0), jac=true, sparse=true)
 
-# We can visualize the sparsity pattern of the Jacobian using Plots.spy.
-# You'll see a heavy block-diagonal structure (intrinsic dynamics) with off-diagonal 
-# bands representing the synaptic couplings between the E and I populations.
+# Let's visualize the sparsity pattern using Plots.spy. You'll see a heavy 
+# block-diagonal structure (intrinsic dynamics) with off-diagonal bands 
+# representing the synaptic couplings between the E and I populations.
 println("Plotting Jacobian sparsity pattern...")
 p_jac = spy(prob.f.jac_prototype, 
             title="Jacobian Sparsity Pattern", 
@@ -118,9 +125,7 @@ sol = solve(prob, Rosenbrock23())
 # ------------------------------------------------------------------------------
 # 6. Plot the Results
 # ------------------------------------------------------------------------------
-# We splat the voltage array (...) to plot all individual elements in the population.
-# Notice we use `cap` here since that is what we named the Capacitor in step 2.
-
+# We splat the voltage array (...) to plot all individual elements in the population. Couldn't find a way to add numberings with MTK but I assume it exists...?
 p1 = plot(sol, idxs=[sys.pop_E.cap.v...], 
           title="Excitatory Population", legend=false, ylabel="V (mV)")
 p2 = plot(sol, idxs=[sys.pop_I.cap.v...], 
@@ -128,4 +133,3 @@ p2 = plot(sol, idxs=[sys.pop_I.cap.v...],
 
 # Combine the simulation plots with the sparsity plot
 plot(p1, p2, p_jac, layout=(3,1), size=(800, 800))
-
