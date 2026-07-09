@@ -1,8 +1,9 @@
 # MTKNeuralToolkit
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://Dhruva2.github.io/MTKNeuralToolkit.jl/stable/)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://Dhruva2.github.io/MTKNeuralToolkit.jl/dev/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://vraman-lab.github.io/MTKNeuralToolkit.jl/dev/)
 [![Build Status](https://github.com/Dhruva2/MTKNeuralToolkit.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Dhruva2/MTKNeuralToolkit.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Julia](https://img.shields.io/badge/julia-1.10%2B-blue)](https://julialang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
 # Building Your Own Neurons & Components in MTKNeuralToolkit

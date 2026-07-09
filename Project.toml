@@ -1,6 +1,6 @@
 name = "MTKNeuralToolkit"
 uuid = "88376828-b154-4662-bcd7-a3562b4741f6"
-version = "0.0.1-DEV"
+version = "0.1.0"
 authors = ["Dhruva V. Raman", "Elouan Simonneau", "Ella Bennison"]
 
 [deps]
