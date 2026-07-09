@@ -10,9 +10,58 @@
 
 MTKNeuralToolkit is a framework for wiring up your own custom biophysical components using acausal modeling. The pre-built stuff like `GenericChannel` and `GateSpec` is there to save you time, but everything is just an MTK `System`. If a pre-built component doesn't fit your e.g. custom strange ion channel, you are fully empowered to build your own from scratch.
 
-The examples repository has an ordered set of tutorials. Go through them to learn by example.
+The [examples repository](https://vraman-lab.github.io/MTKNeuralToolkit.jl/dev/) has an ordered set of tutorials. Go through them to learn by example.
 
-Here’s how the plumbing works, and a few traps to watch out for along the way.
+*Note 1: I'm happy with the core functionality but there is much to add and I'm keen for any interested parties to help out! This is a side project where I'm interested in using the simulator for my own purposes, but not in independently turning this into a new version of NEURON. *
+
+*Note 2: If you see any architectural issues with the core functionality please let me know! I'd like to build a really solid base for students and others to then add lots of sugar to. *
+
+## The context
+
+You could divide the space of neuron simulators into
+1. clock-driven packages designed for huge groups of integrate and fire neurons (eg Brian2, NEST). They have a fixed timestep, and are optimised to update huge numbers of voltage reset events each timestep
+2. biophysical simulators designed to simulate entire voltage spikes along geometries, using differential equations to model ion channels, compartments, and synapses (e.g. NEURON, Jaxley).
+
+`MTKNeuralToolkit` belongs to the second category. But it's built on ModelingToolkit which gives it important differences. If we compare first to NEURON:
+
+- Doesn't maintain an entire ecosystem of ODE solvers and autodiff engines, since that's all passed to the rest of the SciML ecosystem .
+- Acausal, so the codebase is tiny and configurable: you just make your own ion channel / synapse / etc as a ModelingToolkit `@component`. The package is just for hooking ion channels to compartments, and compartments to networks.
+- Differentiable, so gradient descent etc is possible (not from this package, just the general SciML stack)
+- Presumably much faster, since we neuroscientists are not as good at numerical analysis as numerical analysts?
+
+You could say all these advantages exist in the recent package [Jaxley](https://github.com/jaxleyverse/jaxley), which is another differentiable neural simulator written in Python/Jax/Diffrax and is much more mature than this package. However there are tradeoffs between using Diffrax/Jax and SciML as your AD-friendly ODE solving stack. For biophysical neural circuits, I feel the long-term advantages are in favour of SciML. For instance in this package you can:
+
+- Use adaptive timestep ODE solvers, and differentiate through them. Much better for simulation speed I hypothesise. Jaxley is restricted to (`fwd_euler`, `bwd_euler`, `crank_nicolson`, `exp_euler`), presumably to maintain differentiability.
+- Take advantage of sparse jacobians for simulation and AD for free, by just going `ODEProblem(mtk_sys, ...; jac=true, sparse=true)`. Jaxley have made their own [tridiax](https://github.com/jaxleyverse/tridiax) for tridiagonal systems, but this presumably won't include e.g. non-local couplings. Increasing coverage would be a massive maintenance cost for them, whereas we get generic MTK sparsity detection for free.
+- Differentiate through a more flexible set of models, such as those with synaptic dynamics, calcium tracking with nernst potentials, or continuous stdp rules. Or whatever you want really, as long as `@mtkcompile` produces a ModelingToolkit system
+- Not have to maintain
+ 
+- Differentiable using adaptive timestep simulations (unlike Jaxley). You can use all the DifferentialEquations.jl tricks like automatically finding and exploiting jacobians and sparsity for faster simulation and autodiff.
+
+And then pragmatically, building on MTK gives a much much smaller codebase to maintain, and it's much much easier to build functionality. I'm far from a top level coder, but I programmed this version from scratch (taking full advantage of useful and well programmed existing attempts by my excellent students Elouan Simmoneau and Ella Bennison, who had little previous knowledge of biophysics, neuroscience or circuit theory) in about a week and a bit of solid work. With help and occasional hindrance from GLM5.2. That would be completely impossible in another framework I think. 
+
+### The context (Julia ecosystem)
+
+*please let me know if i missed anything out!*
+
+- [SpikingNeuralNetworks.jl](https://juliasnn.github.io/SpikingNeuralNetworks.jl/dev/) looks very cool, much more mature, and I can't comment much on it as I just found it. Big difference is it's not using the SciML stack for simulation it seems?
+
+
+- I had a go at doing this previously with students Andrea Hincapie and Pavel Piekarz doing some heroic coding: [neuronbuilder.jl](https://discourse.julialang.org/t/ann-neuronbuilder-jl-a-differentiable-neuronal-simulator/78743). I stopped as it was built on an earlier version of MTK and we had to make our own hacky implementations for connecting and extending components, so got more complicated than it was worth. The current codebase is much cleaner and feels more easily extendable.
+
+- Wiktor Phillips and the Julia lab were building [conductor](https://github.com/wsphillips/Conductor.jl/tree/main), but feels like work stopped...?
+
+- 
+
+### Lessons learnt / cons
+
+*(might be relevant if you use or develop MTK. Or maybe you could point me to functionality that already does this stuff in MTK)*
+
+- `@mtkcompile` doesn't scale for large systems. So I had to use a ...hack? Made my own vectorised versions of Pin, OnePort, TwoPort etc in the MTK standard library. Then you can make a vector of components (eg Hodgkin huxley neurons) with little compile overhead. **Unfortunately** you need to define your components twice to make use of this: scalar and vectorised case (i guess you could do vectorised with N=1 too). I tried to make a macro that builds a vectorised component out of a scalar one, and even got it to work a bit, but ditched it as it was getting ugly and felt fragile. **But I'd love it if MTK developers made something like this for me!!**. Right now you have to define components twice: scalar and vector. Which is ugly.
+
+- I wanted to be very correct originally, and eg build electric ion channels as a battery (reversal) in series with a nonlinear resistor (ion channel gates). It just feels elegant and correct. But then each neuron has too many pins and connecting equations and `@mtkcompile` isn't happy. **It would be great to have a functionality that 'simplifies out' the pins and observed variables from components** so I could build properly and then have a final result with low algebraic burden.
+
+# Rough outline of how it works
 
 ---
 
