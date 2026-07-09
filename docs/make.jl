@@ -54,6 +54,7 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/Dhruva2/MTKNeuralToolkit.jl",
+    repo="github.com/VRaman-Lab/MTKNeuralToolkit.jl",
     devbranch="main",
 )
+
