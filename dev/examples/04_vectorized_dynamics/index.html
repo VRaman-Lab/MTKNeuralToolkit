@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>04 vectorized dynamics · MTKNeuralToolkit.jl</title><meta name="title" content="04 vectorized dynamics · MTKNeuralToolkit.jl"/><meta property="og:title" content="04 vectorized dynamics · MTKNeuralToolkit.jl"/><meta property="twitter:title" content="04 vectorized dynamics · MTKNeuralToolkit.jl"/><meta name="description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="twitter:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/04_vectorized_dynamics/"/><meta property="twitter:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/04_vectorized_dynamics/"/><link rel="canonical" href="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/04_vectorized_dynamics/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">MTKNeuralToolkit.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../01_single_compartment_HH/">01 single compartment HH</a></li><li><a class="tocitem" href="../01b_first_principles_HH/">01b first principles HH</a></li><li><a class="tocitem" href="../02_directed_synaptic_connection/">02 directed synaptic connection</a></li><li><a class="tocitem" href="../03_acausal_coupling/">03 acausal coupling</a></li><li class="is-active"><a class="tocitem" href>04 vectorized dynamics</a><ul class="internal"><li><a class="tocitem" href="#1.-Define-Shared-Gating-Dynamics"><span>1. Define Shared Gating Dynamics</span></a></li><li><a class="tocitem" href="#2.-Define-Topologies-and-Build-Populations"><span>2. Define Topologies and Build Populations</span></a></li><li><a class="tocitem" href="#3.-Define-Connectivity-Matrices"><span>3. Define Connectivity Matrices</span></a></li><li><a class="tocitem" href="#4.-Build-Synapse-Blocks"><span>4. Build Synapse Blocks</span></a></li><li><a class="tocitem" href="#5.-Driving-Stimuli-and-Network-Assembly"><span>5. Driving Stimuli &amp; Network Assembly</span></a></li><li><a class="tocitem" href="#6.-Plot-the-Results"><span>6. Plot the Results</span></a></li></ul></li><li><a class="tocitem" href="../05_mixed_topologies/">05 mixed topologies</a></li><li><a class="tocitem" href="../06_stdp/">06 stdp</a></li><li><a class="tocitem" href="../07_calcium_gates/">07 calcium gates</a></li><li><a class="tocitem" href="../08_stg_network/">08 stg network</a></li><li><a class="tocitem" href="../09_parameter_estimation_conductance/">09 parameter estimation conductance</a></li><li><a class="tocitem" href="../10_param_estimation_weight/">10 param estimation weight</a></li><li><a class="tocitem" href="../11_reversediff_network/">11 reversediff network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>04 vectorized dynamics</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>04 vectorized dynamics</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl/blob/main/docs/examples/04_vectorized_dynamics.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Example-4:-Vectorized-Populations-(E/I-Network)"><a class="docs-heading-anchor" href="#Example-4:-Vectorized-Populations-(E/I-Network)">Example 4: Vectorized Populations (E/I Network)</a><a id="Example-4:-Vectorized-Populations-(E/I-Network)-1"></a><a class="docs-heading-anchor-permalink" href="#Example-4:-Vectorized-Populations-(E/I-Network)" title="Permalink"></a></h1><p>Let&#39;s scale up to population-level models. Instead of building thousands of individual scalar systems, we can use the <code>Vectorized</code> topology. A single <code>GenericChannel</code> with a vectorized topology expands to N elements. We wire dense excitatory/inhibitory populations together using a weight matrix and the <code>build_synapse_block</code> helper.</p><p>The main benefit of the <code>Vectorized</code> topology is that it saves compile time. Compiling 1,000 scalar systems requires MTK to process 1,000 separate symbolic graphs. Using <code>Vectorized(1000)</code> collapses the entire population into a single system that uses array operations.</p><div class="admonition is-info" id="Note-80c8aff7944109e7"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-80c8aff7944109e7" title="Permalink"></a></header><div class="admonition-body"><p>An annoyance is the need to build both scalar and vector definitions for the components. It would be nice (and maybe exists?) for MTK to have some automatic way of turning a scalar component into a vectorised one? I spent some time attempting this with postwalk, and got it running. But it was messy and dependeng on the MTK internal API so decided to demand a separate set of equations for a vectorised component.</p></div></div><pre><code class="language-julia hljs">using MTKNeuralToolkit
+using ModelingToolkit: mtkcompile, @named
+using OrdinaryDiffEq
+using Plots</code></pre><h2 id="1.-Define-Shared-Gating-Dynamics"><a class="docs-heading-anchor" href="#1.-Define-Shared-Gating-Dynamics">1. Define Shared Gating Dynamics</a><a id="1.-Define-Shared-Gating-Dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#1.-Define-Shared-Gating-Dynamics" title="Permalink"></a></h2><p>These functions use broadcasting (.) so they work identically for both scalar and vectorized topologies.</p><pre><code class="language-julia hljs">hh_na_m = v -&gt; (
+    0.182 .* (v .+ 35.0) ./ (1.0 .- exp.(-(v .+ 35.0) ./ 9.0)),
+    -0.124 .* (v .+ 35.0) ./ (1.0 .- exp.((v .+ 35.0) ./ 9.0))
+)
+hh_na_h = v -&gt; (
+    0.25 .* exp.(-(v .+ 90.0) ./ 12.0),
+    0.25 .* (exp.((v .+ 62.0) ./ 6.0)) ./ exp.(-(v .+ 90.0) ./ 12.0)
+)
+sodium_gates = [GateSpec(:m, 3, 0.0, hh_na_m), GateSpec(:h, 1, 0.0, hh_na_h)]
+
+hh_k_n = v -&gt; (
+    0.02 .* (v .- 25.0) ./ (1.0 .- exp.(-(v .- 25.0) ./ 9.0)),
+    -0.002 .* (v .- 25.0) ./ (1.0 .- exp.((v .- 25.0) ./ 9.0))
+)
+potassium_gates = [GateSpec(:n, 4, 0.0, hh_k_n)]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{GateSpec{Int64, Float64, Main.var&quot;#8#9&quot;}}:
+ GateSpec{Int64, Float64, Main.var&quot;#8#9&quot;}(:n, 4, 0.0, Main.var&quot;#8#9&quot;())</code></pre><h2 id="2.-Define-Topologies-and-Build-Populations"><a class="docs-heading-anchor" href="#2.-Define-Topologies-and-Build-Populations">2. Define Topologies and Build Populations</a><a id="2.-Define-Topologies-and-Build-Populations-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Define-Topologies-and-Build-Populations" title="Permalink"></a></h2><pre><code class="language-julia hljs">N_E = 15
+N_I = 5
+top_E = Vectorized(N_E)
+top_I = Vectorized(N_I)
+
+function build_population(name::Symbol, top)
+    #Let&#39;s make the sodium conductance heterogeneous across the population
+    gNa_heterogeneous = collect(range(119.0, 121.0, length=top.N))
+
+    @named cap = Capacitor(topology=top, C=1.0)
+    @named na  = GenericChannel(topology=top, g=gNa_heterogeneous, E_rev=50.0,  gates=sodium_gates)
+    @named k   = GenericChannel(topology=top, g=36.0,  E_rev=-77.0, gates=potassium_gates)
+    @named leak= GenericChannel(topology=top, g=0.3,   E_rev=-54.4, gates=GateSpec[])
+
+    return build_compartment(cap, [na, k, leak]; name=name, V_init=-65.0, topology=top)
+end
+
+pop_E = build_population(:pop_E, top_E)
+pop_I = build_population(:pop_I, top_I)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model pop_I:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(pop_I)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (76):</span>
+  60 standard: see equations(pop_I)
+  16 connecting: see equations(expand_connections(pop_I))
+<span class="sgr1">Unknowns (51):</span> see unknowns(pop_I)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(pop_I)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = (pop_I₊cap₊v(t))[1:5], p_pin = <span class="sgr1">Model pop_I₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_I₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_I₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model pop_I₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_I₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_I₊n)
+  v(t)
+  i(t), I_ext = (pop_I₊injector₊I₊u(t))[1:5], I_syn = (pop_I₊syn_injector₊I₊u(t))[1:5], cap_name = :cap), -65.0, Vectorized(5), NoGeometry(), NoMorphology())</code></pre><h2 id="3.-Define-Connectivity-Matrices"><a class="docs-heading-anchor" href="#3.-Define-Connectivity-Matrices">3. Define Connectivity Matrices</a><a id="3.-Define-Connectivity-Matrices-1"></a><a class="docs-heading-anchor-permalink" href="#3.-Define-Connectivity-Matrices" title="Permalink"></a></h2><p>The weight matrix W maps presynaptic populations to postsynaptic populations. Dimensions must be (N<em>post, N</em>pre).</p><pre><code class="language-julia hljs">W_EE = 0.5 .* rand(N_E, N_E)   #E -&gt; E
+W_EI = 1.0 .* rand(N_I, N_E)   #E -&gt; I
+W_IE = 2.0 .* rand(N_E, N_I)   #I -&gt; E
+W_II = 1.0 .* rand(N_I, N_I)   #I -&gt; I</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">5×5 Matrix{Float64}:
+ 0.524785  0.089223  0.228377  0.393636  0.894783
+ 0.190057  0.259941  0.214053  0.698123  0.691834
+ 0.770091  0.851553  0.404614  0.227764  0.61479
+ 0.567525  0.211206  0.790452  0.824562  0.161249
+ 0.155576  0.324183  0.58039   0.199499  0.261116</code></pre><h2 id="4.-Build-Synapse-Blocks"><a class="docs-heading-anchor" href="#4.-Build-Synapse-Blocks">4. Build Synapse Blocks</a><a id="4.-Build-Synapse-Blocks-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Build-Synapse-Blocks" title="Permalink"></a></h2><p><code>build_synapse_block</code> sets up the vectorized synapse matrices and creates the SynapseSpecs for the network builder.</p><pre><code class="language-julia hljs">syn_EE = build_synapse_block(pop_E, pop_E, W_EE; name=:syn_EE, E_rev=0.0)
+syn_EI = build_synapse_block(pop_E, pop_I, W_EI; name=:syn_EI, E_rev=0.0)
+syn_IE = build_synapse_block(pop_I, pop_E, W_IE; name=:syn_IE, E_rev=-80.0)
+syn_II = build_synapse_block(pop_I, pop_I, W_II; name=:syn_II, E_rev=-80.0)
+
+synapse_specs = [syn_EE, syn_EI, syn_IE, syn_II]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">4-element Vector{SynapseSpec}:
+ SynapseSpec((pop_E₊cap₊v(t))[1:15], (pop_E₊cap₊v(t))[1:15], (pop_E₊syn_injector₊I₊u(t))[1:15], <span class="sgr1">Model syn_EE:</span>
+<span class="sgr1">Equations (2):</span>
+  2 standard: see equations(syn_EE)
+<span class="sgr1">Unknowns (4):</span> see unknowns(syn_EE)
+  s(t)
+  I_syn(t)
+  V_pre(t)
+  V_post(t)
+<span class="sgr1">Parameters (6):</span> see parameters(syn_EE)
+  g_max
+  τ
+  E_rev
+  V_th
+  ⋮, Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model pop_E:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(pop_E)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (136):</span>
+  120 standard: see equations(pop_E)
+  16 connecting: see equations(expand_connections(pop_E))
+<span class="sgr1">Unknowns (51):</span> see unknowns(pop_E)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(pop_E)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = (pop_E₊cap₊v(t))[1:15], p_pin = <span class="sgr1">Model pop_E₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_E₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_E₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model pop_E₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_E₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_E₊n)
+  v(t)
+  i(t), I_ext = (pop_E₊injector₊I₊u(t))[1:15], I_syn = (pop_E₊syn_injector₊I₊u(t))[1:15], cap_name = :cap), -65.0, Vectorized(15), NoGeometry(), NoMorphology()))
+ SynapseSpec((pop_E₊cap₊v(t))[1:15], (pop_I₊cap₊v(t))[1:5], (pop_I₊syn_injector₊I₊u(t))[1:5], <span class="sgr1">Model syn_EI:</span>
+<span class="sgr1">Equations (2):</span>
+  2 standard: see equations(syn_EI)
+<span class="sgr1">Unknowns (4):</span> see unknowns(syn_EI)
+  s(t)
+  I_syn(t)
+  V_pre(t)
+  V_post(t)
+<span class="sgr1">Parameters (6):</span> see parameters(syn_EI)
+  g_max
+  τ
+  E_rev
+  V_th
+  ⋮, Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model pop_I:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(pop_I)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (76):</span>
+  60 standard: see equations(pop_I)
+  16 connecting: see equations(expand_connections(pop_I))
+<span class="sgr1">Unknowns (51):</span> see unknowns(pop_I)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(pop_I)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = (pop_I₊cap₊v(t))[1:5], p_pin = <span class="sgr1">Model pop_I₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_I₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_I₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model pop_I₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_I₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_I₊n)
+  v(t)
+  i(t), I_ext = (pop_I₊injector₊I₊u(t))[1:5], I_syn = (pop_I₊syn_injector₊I₊u(t))[1:5], cap_name = :cap), -65.0, Vectorized(5), NoGeometry(), NoMorphology()))
+ SynapseSpec((pop_I₊cap₊v(t))[1:5], (pop_E₊cap₊v(t))[1:15], (pop_E₊syn_injector₊I₊u(t))[1:15], <span class="sgr1">Model syn_IE:</span>
+<span class="sgr1">Equations (2):</span>
+  2 standard: see equations(syn_IE)
+<span class="sgr1">Unknowns (4):</span> see unknowns(syn_IE)
+  s(t)
+  I_syn(t)
+  V_pre(t)
+  V_post(t)
+<span class="sgr1">Parameters (6):</span> see parameters(syn_IE)
+  g_max
+  τ
+  E_rev
+  V_th
+  ⋮, Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model pop_E:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(pop_E)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (136):</span>
+  120 standard: see equations(pop_E)
+  16 connecting: see equations(expand_connections(pop_E))
+<span class="sgr1">Unknowns (51):</span> see unknowns(pop_E)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(pop_E)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = (pop_E₊cap₊v(t))[1:15], p_pin = <span class="sgr1">Model pop_E₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_E₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_E₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model pop_E₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_E₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_E₊n)
+  v(t)
+  i(t), I_ext = (pop_E₊injector₊I₊u(t))[1:15], I_syn = (pop_E₊syn_injector₊I₊u(t))[1:15], cap_name = :cap), -65.0, Vectorized(15), NoGeometry(), NoMorphology()))
+ SynapseSpec((pop_I₊cap₊v(t))[1:5], (pop_I₊cap₊v(t))[1:5], (pop_I₊syn_injector₊I₊u(t))[1:5], <span class="sgr1">Model syn_II:</span>
+<span class="sgr1">Equations (2):</span>
+  2 standard: see equations(syn_II)
+<span class="sgr1">Unknowns (4):</span> see unknowns(syn_II)
+  s(t)
+  I_syn(t)
+  V_pre(t)
+  V_post(t)
+<span class="sgr1">Parameters (6):</span> see parameters(syn_II)
+  g_max
+  τ
+  E_rev
+  V_th
+  ⋮, Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model pop_I:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(pop_I)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (76):</span>
+  60 standard: see equations(pop_I)
+  16 connecting: see equations(expand_connections(pop_I))
+<span class="sgr1">Unknowns (51):</span> see unknowns(pop_I)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(pop_I)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = (pop_I₊cap₊v(t))[1:5], p_pin = <span class="sgr1">Model pop_I₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_I₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_I₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model pop_I₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_I₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_I₊n)
+  v(t)
+  i(t), I_ext = (pop_I₊injector₊I₊u(t))[1:5], I_syn = (pop_I₊syn_injector₊I₊u(t))[1:5], cap_name = :cap), -65.0, Vectorized(5), NoGeometry(), NoMorphology()))</code></pre><h2 id="5.-Driving-Stimuli-and-Network-Assembly"><a class="docs-heading-anchor" href="#5.-Driving-Stimuli-and-Network-Assembly">5. Driving Stimuli &amp; Network Assembly</a><a id="5.-Driving-Stimuli-and-Network-Assembly-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Driving-Stimuli-and-Network-Assembly" title="Permalink"></a></h2><p>Give the excitatory population a constant current kick to start the activity</p><pre><code class="language-julia hljs">drivers = [(1, 25.0)]
+
+net = build_acausal_network([pop_E, pop_I]; synapse_specs=synapse_specs, drivers=drivers)
+
+println(&quot;Compiling vectorized network...&quot;)
+sys = mtkcompile(net.sys)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr1">Model network:</span>
+<span class="sgr1">Equations (120):</span>
+  120 standard: see equations(network)
+<span class="sgr1">Unknowns (120):</span> see unknowns(network)
+  (syn_II₊s(t))[<span class="sgr34">5</span>]
+  (syn_II₊s(t))[<span class="sgr34">4</span>]
+  (syn_II₊s(t))[<span class="sgr34">3</span>]
+  (syn_II₊s(t))[<span class="sgr34">2</span>]
+  ⋮
+<span class="sgr1">Parameters (38):</span> see parameters(network)
+  pop_E₊cap₊C
+  pop_E₊na₊g
+  pop_E₊na₊E_rev
+  pop_E₊k₊g
+  ⋮
+<span class="sgr1">Observed (1210):</span> see observed(network)</code></pre><p>Because the underlying equations are array-based, the Jacobian of this system is highly sparse: most neurons only affect their own gating variables, with off-diagonal elements coming only from the synapse blocks.</p><p>Passing <code>jac=true, sparse=true</code> tells the solver to compute an analytical Jacobian and leverage sparse linear algebra. This speeds simulation, as the solver only computes non-zero derivatives instead of a dense matrix. Sparse Jacobians are also essential for fast automatic differentiation (AD), which we will need later for parameter estimation.</p><pre><code class="language-julia hljs">prob = ODEProblem(sys, [], (0.0, 100.0), jac=true, sparse=true)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr38_2" style="color:#56b6c2">ODEProblem</span> with uType <span class="sgr38_2" style="color:#56b6c2">Vector{Float64}</span> and tType <span class="sgr38_2" style="color:#56b6c2">Float64</span>. In-place: <span class="sgr38_2" style="color:#56b6c2">true</span>
+Initialization status: <span class="sgr38_2" style="color:#56b6c2">FULLY_DETERMINED</span>
+Non-trivial mass matrix: <span class="sgr38_2" style="color:#56b6c2">false</span>
+timespan: (0.0, 100.0)
+u0: 120-element Vector{Float64}:
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   ⋮
+ -65.0
+ -65.0
+ -65.0
+ -65.0
+ -65.0
+ -65.0
+ -65.0
+ -65.0
+ -65.0</code></pre><p>Let&#39;s visualize the sparsity pattern using Plots.spy. You&#39;ll see a heavy block-diagonal structure (intrinsic dynamics) with off-diagonal bands representing the synaptic couplings between the E and I populations.</p><pre><code class="language-julia hljs">println(&quot;Plotting Jacobian sparsity pattern...&quot;)
+p_jac = spy(prob.f.jac_prototype,
+            title=&quot;Jacobian Sparsity Pattern&quot;,
+            legend=false)
+
+println(&quot;Solving...&quot;)
+sol = solve(prob, Rosenbrock23())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: specialized 2nd order &quot;free&quot; stiffness-aware interpolation
+t: 252-element Vector{Float64}:
+   0.0
+   0.00022109928137169384
+   0.006322968558070122
+   0.012908472245188929
+   0.027592911075486504
+   0.04340941923912327
+   0.06852261961711464
+   0.09473710411660585
+   0.12858911267378498
+   0.1628765472243065
+   ⋮
+  91.77925943486183
+  92.75718732213203
+  93.82910509055068
+  94.9345269137297
+  96.03994873690871
+  97.14537056008773
+  98.31708316565167
+  99.56687287550115
+ 100.0
+u: 252-element Vector{Vector{Float64}}:
+ [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  -65.0, -65.0, -65.0, -65.0, -65.0, -65.0, -65.0, -65.0, -65.0, -65.0]
+ [3.741348999327893e-14, 3.741348999327893e-14, 3.741348999327893e-14, 3.741348999327893e-14, 3.741348999327893e-14, 3.741348999327893e-14, 3.741348999327893e-14, 3.741348999327893e-14, 3.741348999327893e-14, 3.741348999327893e-14  …  -64.99376962888171, -64.99376962888171, -64.99376962888171, -64.99376962888171, -64.99376962888171, -64.99376962888171, -64.99376962888171, -64.99376962888171, -64.99376962888171, -64.99376962888171]
+ [1.0744902781609069e-12, 1.0744902781608768e-12, 1.0744902781608645e-12, 1.0744902781608207e-12, 1.0744902781608505e-12, 1.0744902781609069e-12, 1.0744902781608768e-12, 1.0744902781608645e-12, 1.0744902781608207e-12, 1.0744902781608505e-12  …  -64.82198761113378, -64.82198761113395, -64.82198761113372, -64.82198761113358, -64.82198761113355, -64.82198761113355, -64.82198761113375, -64.82198761113375, -64.82198761113357, -64.82198761113368]
+ [2.2036710858449435e-12, 2.2036710858445816e-12, 2.2036710858443134e-12, 2.2036710858437924e-12, 2.203671085843873e-12, 2.2036710858449435e-12, 2.2036710858445816e-12, 2.2036710858443134e-12, 2.2036710858437924e-12, 2.203671085843873e-12  …  -64.63694263054661, -64.63694263054755, -64.63694263054678, -64.63694263054639, -64.6369426305465, -64.63694263054671, -64.63694263054778, -64.63694263054798, -64.63694263054744, -64.63694263054815]
+ [4.758936717302389e-12, 4.758936717284194e-12, 4.758936717266791e-12, 4.758936717246777e-12, 4.7589367172329865e-12, 4.758936717302389e-12, 4.758936717284194e-12, 4.758936717266791e-12, 4.758936717246777e-12, 4.7589367172329865e-12  …  -64.22564082713156, -64.22564082714455, -64.22564082714939, -64.22564082715601, -64.22564082716504, -64.22564082717474, -64.22564082718837, -64.22564082719776, -64.22564082720388, -64.22564082721587]
+ [7.56995767199497e-12, 7.569957671750453e-12, 7.569957671509036e-12, 7.569957671256635e-12, 7.569957671030074e-12, 7.56995767199497e-12, 7.569957671750453e-12, 7.569957671509036e-12, 7.569957671256635e-12, 7.569957671030074e-12  …  -63.78465250878542, -63.78465250889329, -63.784652508979896, -63.78465250907123, -63.78465250916874, -63.784652509268405, -63.784652509378034, -63.78465250947635, -63.78465250956669, -63.78465250967214]
+ [1.2161204179564208e-11, 1.2161204176074848e-11, 1.216120417259839e-11, 1.2161204169071588e-11, 1.2161204165660875e-11, 1.2161204179564208e-11, 1.2161204176074848e-11, 1.216120417259839e-11, 1.2161204169071588e-11, 1.2161204165660875e-11  …  -63.088741399367954, -63.08874140029206, -63.08874140115821, -63.08874140203758, -63.08874140293346, -63.08874140383698, -63.08874140476637, -63.088741405663775, -63.08874140654203, -63.08874140746046]
+ [1.7126294725193663e-11, 1.7126294703070407e-11, 1.712629468098335e-11, 1.71262946587408e-11, 1.7126294636850725e-11, 1.7126294725193663e-11, 1.7126294703070407e-11, 1.712629468098335e-11, 1.71262946587408e-11, 1.7126294636850725e-11  …  -62.36788160199547, -62.36788160634039, -62.367881610563, -62.367881614814294, -62.3678816190997, -62.367881623405225, -62.36788162776236, -62.367881632049475, -62.36788163630204, -62.36788164063707]
+ [2.3807608331211824e-11, 2.380760820608278e-11, 2.3807608081052713e-11, 2.380760795554056e-11, 2.3807607831098833e-11, 2.3807608331211824e-11, 2.380760820608278e-11, 2.3807608081052713e-11, 2.380760795554056e-11, 2.3807607831098833e-11  …  -61.44533984053697, -61.44533985843756, -61.44533987607926, -61.445339893783945, -61.44533991155873, -61.44533992938788, -61.44533994731748, -61.44533996509143, -61.445339982809514, -61.44534000069535]
+ [3.089726603492274e-11, 3.089726556964467e-11, 3.089726510458856e-11, 3.0897264638306956e-11, 3.089726417469638e-11, 3.089726603492274e-11, 3.089726556964467e-11, 3.089726510458856e-11, 3.0897264638306956e-11, 3.089726417469638e-11  …  -60.52041596599168, -60.520416018288024, -60.52041607010065, -60.520416122035435, -60.52041617409708, -60.52041622628333, -60.52041627864005, -60.52041633069137, -60.5204163826722, -60.52041643495308]
+ ⋮
+ [0.28392482537852026, 1.1567333341924262e-5, 2.2603035743293756, 0.3312051108891205, 0.4470158850142086, 0.28392482537852026, 1.1567333341924262e-5, 2.2603035743293756, 0.3312051108891205, 0.4470158850142086  …  -22.451550430884282, -40.09862784443313, -47.36990628133592, -48.7849562159687, -33.19171437969147, -20.43352807780858, -48.852807197254975, -61.249945167193644, -47.077917335724656, -28.26137261221681]
+ [0.29312327530002613, 1.4908931179001984e-5, 2.1733351959908163, 0.4392070441976246, 0.4648726378584752, 0.29312327530002613, 1.4908931179001984e-5, 2.1733351959908163, 0.4392070441976246, 0.4648726378584752  …  -22.485134452055537, -41.89663892849161, -46.720940922222134, -48.87346484423495, -33.58889868351496, -20.829545448787783, -48.77382176251922, -61.366067610816586, -46.83302929984389, -28.39328521685493]
+ [0.31270725354144396, 2.1027345932251127e-5, 2.041847301803949, 0.5436892798509116, 0.47941373670397597, 0.31270725354144396, 2.1027345932251127e-5, 2.041847301803949, 0.5436892798509116, 0.47941373670397597  …  -22.544545742937828, -43.994798206831796, -46.151730922783635, -48.7750362525986, -33.95890856485151, -21.388436085644223, -48.60336631130595, -61.46998987881721, -46.38047872116218, -28.61191836517591]
+ [0.34305494666286696, 2.9341633588905105e-5, 1.8934106004547566, 0.6132845013263318, 0.48696932368633655, 0.34305494666286696, 2.9341633588905105e-5, 1.8934106004547566, 0.6132845013263318, 0.48696932368633655  …  -22.678459069238052, -45.897193080635404, -45.84505488558549, -48.457390924608866, -34.194918608692234, -22.031937651343288, -48.3396839750216, -61.52237200988414, -45.75424032787464, -28.932179352887687]
+ [0.381779824575048, 3.77684455699298e-5, 1.7559063194691398, 0.6336701770923742, 0.4845925588078732, 0.381779824575048, 3.77684455699298e-5, 1.7559063194691398, 0.6336701770923742, 0.4845925588078732  …  -22.912135073992868, -47.36979448404671, -45.92054791653484, -47.949036745503655, -34.26629071449842, -22.692037538504955, -47.9979114279235, -61.50670771344209, -45.03294736854564, -29.30999213680577]
+ [0.42463596511378365, 4.3926431426107376e-5, 1.646304120805577, 0.6086261816019003, 0.47124181099737483, 0.42463596511378365, 4.3926431426107376e-5, 1.646304120805577, 0.6086261816019003, 0.47124181099737483  …  -23.232413583523883, -48.38947813455597, -46.39838527128482, -47.31660073076752, -34.206206222008284, -23.32765541034943, -47.60941846665752, -61.432540647122615, -44.310391016537785, -29.674587020893647]
+ [0.4671086187047954, 4.6239118369855e-5, 1.571581730835368, 0.5477943660089414, 0.44668551624264197, 0.4671086187047954, 4.6239118369855e-5, 1.571581730835368, 0.5477943660089414, 0.44668551624264197  …  -23.607670382130383, -49.02247859123207, -47.26037579223399, -46.63331431214788, -34.07190675065442, -23.9235655860892, -47.21765942497231, -61.32567192053083, -43.678910913509895, -29.96407986316308]
+ [0.4987523543800357, 4.395383890344252e-5, 1.5434197241944727, 0.4656749595319593, 0.413474613911218, 0.4987523543800357, 4.395383890344252e-5, 1.5434197241944727, 0.4656749595319593, 0.413474613911218  …  -23.939448564092938, -49.25677835162025, -48.37941881133466, -46.055487958599564, -33.928729662915245, -24.384577470837815, -46.928038477168, -61.2292919313509, -43.31485155014333, -30.083448926503404]
+ [0.5048389340021143, 4.235309013693919e-5, 1.5460164800153462, 0.43663929050453515, 0.4013582589466031, 0.5048389340021143, 4.235309013693919e-5, 1.5460164800153462, 0.43663929050453515, 0.4013582589466031  …  -24.017590684097453, -49.23935949854256, -48.77403568318716, -45.9195349184846, -33.889369494505566, -24.485260980599893, -46.877724912673344, -61.20824071721771, -43.28740953954735, -30.068984322359604]</code></pre><h2 id="6.-Plot-the-Results"><a class="docs-heading-anchor" href="#6.-Plot-the-Results">6. Plot the Results</a><a id="6.-Plot-the-Results-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Plot-the-Results" title="Permalink"></a></h2><p>We splat the voltage array (...) to plot all individual elements in the population. Couldn&#39;t find a way to add numberings with MTK but I assume it exists...?</p><pre><code class="language-julia hljs">p1 = plot(sol, idxs=[sys.pop_E.cap.v...],
+          title=&quot;Excitatory Population&quot;, legend=false, ylabel=&quot;V (mV)&quot;)
+p2 = plot(sol, idxs=[sys.pop_I.cap.v...],
+          title=&quot;Inhibitory Population&quot;, legend=false, ylabel=&quot;V (mV)&quot;, xlabel=&quot;Time (ms)&quot;)</code></pre><img src="7e4cc5fb.svg" alt="Example block output"/><p>Combine the simulation plots with the sparsity plot</p><pre><code class="language-julia hljs">plot(p1, p2, p_jac, layout=(3,1), size=(800, 800))</code></pre><img src="26fdf89d.svg" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../03_acausal_coupling/">« 03 acausal coupling</a><a class="docs-footer-nextpage" href="../05_mixed_topologies/">05 mixed topologies »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 9 July 2026 15:01">Thursday 9 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

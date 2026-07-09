@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>08 stg network · MTKNeuralToolkit.jl</title><meta name="title" content="08 stg network · MTKNeuralToolkit.jl"/><meta property="og:title" content="08 stg network · MTKNeuralToolkit.jl"/><meta property="twitter:title" content="08 stg network · MTKNeuralToolkit.jl"/><meta name="description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="twitter:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/08_stg_network/"/><meta property="twitter:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/08_stg_network/"/><link rel="canonical" href="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/08_stg_network/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">MTKNeuralToolkit.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../01_single_compartment_HH/">01 single compartment HH</a></li><li><a class="tocitem" href="../01b_first_principles_HH/">01b first principles HH</a></li><li><a class="tocitem" href="../02_directed_synaptic_connection/">02 directed synaptic connection</a></li><li><a class="tocitem" href="../03_acausal_coupling/">03 acausal coupling</a></li><li><a class="tocitem" href="../04_vectorized_dynamics/">04 vectorized dynamics</a></li><li><a class="tocitem" href="../05_mixed_topologies/">05 mixed topologies</a></li><li><a class="tocitem" href="../06_stdp/">06 stdp</a></li><li><a class="tocitem" href="../07_calcium_gates/">07 calcium gates</a></li><li class="is-active"><a class="tocitem" href>08 stg network</a><ul class="internal"><li><a class="tocitem" href="#Network-Parameters-and-Geometry"><span>Network Parameters &amp; Geometry</span></a></li><li><a class="tocitem" href="#Local-Channel-Builders"><span>Local Channel Builders</span></a></li><li><a class="tocitem" href="#Build-Neurons"><span>Build Neurons</span></a></li><li><a class="tocitem" href="#Define-Synapses-and-Network"><span>Define Synapses &amp; Network</span></a></li><li><a class="tocitem" href="#Simulate-and-Plot"><span>Simulate &amp; Plot</span></a></li></ul></li><li><a class="tocitem" href="../09_parameter_estimation_conductance/">09 parameter estimation conductance</a></li><li><a class="tocitem" href="../10_param_estimation_weight/">10 param estimation weight</a></li><li><a class="tocitem" href="../11_reversediff_network/">11 reversediff network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>08 stg network</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>08 stg network</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl/blob/main/docs/examples/08_stg_network.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Example-8:-Stomatogastric-Ganglion-(STG)-Network"><a class="docs-heading-anchor" href="#Example-8:-Stomatogastric-Ganglion-(STG)-Network">Example 8: Stomatogastric Ganglion (STG) Network</a><a id="Example-8:-Stomatogastric-Ganglion-(STG)-Network-1"></a><a class="docs-heading-anchor-permalink" href="#Example-8:-Stomatogastric-Ganglion-(STG)-Network" title="Permalink"></a></h1><p>This example reconstructs a simplified 3-neuron network (AB, LP, PY) based on the classic stomatogastric ganglion models (e.g., Prinz et al., 2004). It demonstrates the use of Calcium channels, Calcium trackers, custom geometries, and multiple synapse types (Cholinergic and Glutamatergic) in a single network.</p><pre><code class="language-julia hljs">using MTKNeuralToolkit
+using MTKNeuralToolkit.PrinzNeuron
+using ModelingToolkit: mtkcompile, @named
+using OrdinaryDiffEq, Plots</code></pre><h2 id="Network-Parameters-and-Geometry"><a class="docs-heading-anchor" href="#Network-Parameters-and-Geometry">Network Parameters &amp; Geometry</a><a id="Network-Parameters-and-Geometry-1"></a><a class="docs-heading-anchor-permalink" href="#Network-Parameters-and-Geometry" title="Permalink"></a></h2><p>Prinz uses a custom geometry to scale capacitance, conductances, and calcium flow. We instantiate it here and define shared Calcium parameters. Note that the custom geometry occupies &lt; 10 lines of code in the src/library/PrinzCalciumNeuron.jl file. Geometries are easy to make.</p><pre><code class="language-julia hljs">const geom = PrinzGeometry(area=0.0628, C_m=10.0)
+const tauCa = 200.0
+const Ca_inf = 0.05
+const prinz_ion_config = CalciumTracker(decay=ca -&gt; (Ca_inf .- ca) ./ tauCa, Ca_init=Ca_inf)
+const nernst_factor = 500.0 * 8.6174e-5 * 283.15</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">12.20008405</code></pre><h2 id="Local-Channel-Builders"><a class="docs-heading-anchor" href="#Local-Channel-Builders">Local Channel Builders</a><a id="Local-Channel-Builders-1"></a><a class="docs-heading-anchor-permalink" href="#Local-Channel-Builders" title="Permalink"></a></h2><p>We use closures to neatly attach the geometry, reversal potentials, and tauCa to the pre-built Prinz gate definitions. This keeps the neuron builder clean.</p><pre><code class="language-julia hljs">NaCh(g; name)   = GenericChannel(name=name, g=g, E_rev=50.0, gates=PrinzNeuron.na_gates, geometry=geom)
+CaSCh(g; name)  = CaVChannel(name=name, g=g, gates=PrinzNeuron.cas_gates, Ca_out=3000.0,
+                             nernst_factor=nernst_factor, geometry=geom, tauCa=tauCa)
+CaTCh(g; name)  = CaVChannel(name=name, g=g, gates=PrinzNeuron.cat_gates, Ca_out=3000.0,
+                             nernst_factor=nernst_factor, geometry=geom, tauCa=tauCa)
+HCh(g; name)    = GenericChannel(name=name, g=g, E_rev=-20.0, gates=PrinzNeuron.h_gates, geometry=geom)
+KaCh(g; name)   = GenericChannel(name=name, g=g, E_rev=-80.0, gates=PrinzNeuron.ka_gates, geometry=geom)
+KCaCh(g; name)  = KCaChannel(name=name, g=g, E_rev=-80.0, gates=PrinzNeuron.kca_gates, geometry=geom)
+KdrCh(g; name)  = GenericChannel(name=name, g=g, E_rev=-80.0, gates=PrinzNeuron.kdr_gates, geometry=geom)
+LeakCh(g; name) = GenericChannel(name=name, g=g, E_rev=-50.0, gates=GateSpec[], geometry=geom)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">LeakCh (generic function with 1 method)</code></pre><h2 id="Build-Neurons"><a class="docs-heading-anchor" href="#Build-Neurons">Build Neurons</a><a id="Build-Neurons-1"></a><a class="docs-heading-anchor-permalink" href="#Build-Neurons" title="Permalink"></a></h2><pre><code class="language-julia hljs">function build_AB()
+    @named cap  = Capacitor(geometry=geom)
+    @named na   = NaCh(100.0); @named cas  = CaSCh(6.0);  @named cat = CaTCh(2.5)
+    @named h    = HCh(0.01);   @named ka   = KaCh(50.0);  @named kca = KCaCh(5.0)
+    @named kdr  = KdrCh(100.0)
+    return build_compartment(cap, [na, cas, cat, h, ka, kca, kdr];
+                             name=:AB, V_init=-60.0, ion_config=prinz_ion_config)
+end
+
+function build_PY()
+    @named cap  = Capacitor(geometry=geom)
+    @named na   = NaCh(100.0); @named cas  = CaSCh(2.0);  @named cat = CaTCh(2.4)
+    @named h    = HCh(0.05);   @named ka   = KaCh(50.0);  @named kdr = KdrCh(125.0)
+    @named leak = LeakCh(0.01)
+    return build_compartment(cap, [na, cas, cat, h, ka, kdr, leak];
+                             name=:PY, V_init=-55.0, ion_config=prinz_ion_config)
+end
+
+function build_LP()
+    @named cap  = Capacitor(geometry=geom)
+    @named na   = NaCh(100.0); @named cas  = CaSCh(4.0)
+    @named h    = HCh(0.05);   @named ka   = KaCh(20.0);  @named kdr = KdrCh(25.0)
+    @named leak = LeakCh(0.03)
+    return build_compartment(cap, [na, cas, h, ka, kdr, leak];
+                             name=:LP, V_init=-65.0, ion_config=prinz_ion_config)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">build_LP (generic function with 1 method)</code></pre><p>Assign to variables so STG_synapses() can reference them in the global scope</p><pre><code class="language-julia hljs">AB = build_AB()
+PY = build_PY()
+LP = build_LP()
+
+neurons = [AB, PY, LP]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element Vector{Compartment{NoMorphology, NoGeometry, Float64}}:
+ Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model AB:</span>
+<span class="sgr1">Subsystems (13):</span> see hierarchy(AB)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (110):</span>
+  82 standard: see equations(AB)
+  28 connecting: see equations(expand_connections(AB))
+<span class="sgr1">Unknowns (108):</span> see unknowns(AB)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (19):</span> see parameters(AB)
+  cap₊C
+  na₊g
+  na₊E_rev
+  cas₊g
+  ⋮, (V = AB₊cap₊v(t), p_pin = <span class="sgr1">Model AB₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(AB₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(AB₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model AB₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(AB₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(AB₊n)
+  v(t)
+  i(t), I_ext = AB₊injector₊I₊u(t), I_syn = AB₊syn_injector₊I₊u(t), cap_name = :cap), -60.0, Scalar(), NoGeometry(), NoMorphology())
+ Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model PY:</span>
+<span class="sgr1">Subsystems (13):</span> see hierarchy(PY)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (105):</span>
+  78 standard: see equations(PY)
+  27 connecting: see equations(expand_connections(PY))
+<span class="sgr1">Unknowns (103):</span> see unknowns(PY)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (19):</span> see parameters(PY)
+  cap₊C
+  na₊g
+  na₊E_rev
+  cas₊g
+  ⋮, (V = PY₊cap₊v(t), p_pin = <span class="sgr1">Model PY₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(PY₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(PY₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model PY₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(PY₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(PY₊n)
+  v(t)
+  i(t), I_ext = PY₊injector₊I₊u(t), I_syn = PY₊syn_injector₊I₊u(t), cap_name = :cap), -55.0, Scalar(), NoGeometry(), NoMorphology())
+ Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model LP:</span>
+<span class="sgr1">Subsystems (12):</span> see hierarchy(LP)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (91):</span>
+  67 standard: see equations(LP)
+  24 connecting: see equations(expand_connections(LP))
+<span class="sgr1">Unknowns (89):</span> see unknowns(LP)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (15):</span> see parameters(LP)
+  cap₊C
+  na₊g
+  na₊E_rev
+  cas₊g
+  ⋮, (V = LP₊cap₊v(t), p_pin = <span class="sgr1">Model LP₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(LP₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(LP₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model LP₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(LP₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(LP₊n)
+  v(t)
+  i(t), I_ext = LP₊injector₊I₊u(t), I_syn = LP₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())</code></pre><h2 id="Define-Synapses-and-Network"><a class="docs-heading-anchor" href="#Define-Synapses-and-Network">Define Synapses &amp; Network</a><a id="Define-Synapses-and-Network-1"></a><a class="docs-heading-anchor-permalink" href="#Define-Synapses-and-Network" title="Permalink"></a></h2><pre><code class="language-julia hljs">function STG_synapses()
+    @named ABLP_chol = CholSynapse(g_max=30.0, geometry=geom)
+    @named ABPY_chol = CholSynapse(g_max=3.0 , geometry=geom)
+    @named ABLP_glut = GlutSynapse(g_max=30.0, geometry=geom)
+    @named ABPY_glut = GlutSynapse(g_max=10.0, geometry=geom)
+    @named LPAB_glut = GlutSynapse(g_max=30.0, geometry=geom)
+    @named LPPY_glut = GlutSynapse(g_max=1.0 , geometry=geom)
+    @named PYLP_glut = GlutSynapse(g_max=30.0, geometry=geom)
+
+    return [
+        SynapseSpec(LP.interfaces.V, AB.interfaces.V, AB.interfaces.I_syn, LPAB_glut),
+        SynapseSpec(AB.interfaces.V, PY.interfaces.V, PY.interfaces.I_syn, ABPY_chol),
+        SynapseSpec(AB.interfaces.V, PY.interfaces.V, PY.interfaces.I_syn, ABPY_glut),
+        SynapseSpec(LP.interfaces.V, PY.interfaces.V, PY.interfaces.I_syn, LPPY_glut),
+        SynapseSpec(AB.interfaces.V, LP.interfaces.V, LP.interfaces.I_syn, ABLP_chol),
+        SynapseSpec(AB.interfaces.V, LP.interfaces.V, LP.interfaces.I_syn, ABLP_glut),
+        SynapseSpec(PY.interfaces.V, LP.interfaces.V, LP.interfaces.I_syn, PYLP_glut)
+    ]
+end
+
+net = build_acausal_network(neurons; synapse_specs=STG_synapses(), name=:stg)
+println(&quot;Compiling STG network...&quot;)
+sys = mtkcompile(net.sys)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr1">Model stg:</span>
+<span class="sgr1">Equations (42):</span>
+  42 standard: see equations(stg)
+<span class="sgr1">Unknowns (42):</span> see unknowns(stg)
+  PY₊na₊mNa(t)
+  PY₊na₊hNa(t)
+  PY₊kdr₊mKdr(t)
+  PY₊ka₊mKa(t)
+  ⋮
+<span class="sgr1">Parameters (88):</span> see parameters(stg)
+  AB₊cap₊C
+  AB₊na₊g
+  AB₊na₊E_rev
+  AB₊cas₊g
+  ⋮
+<span class="sgr1">Observed (292):</span> see observed(stg)</code></pre><h2 id="Simulate-and-Plot"><a class="docs-heading-anchor" href="#Simulate-and-Plot">Simulate &amp; Plot</a><a id="Simulate-and-Plot-1"></a><a class="docs-heading-anchor-permalink" href="#Simulate-and-Plot" title="Permalink"></a></h2><p>STG networks often need a few seconds to settle into their characteristic alternating rhythm (pyloric rhythm). We simulate for 3000 ms.</p><pre><code class="language-julia hljs">tspan = (0.0, 10000.0)
+prob = ODEProblem(sys, [], tspan, jac=true, sparse=true)
+
+println(&quot;Solving STG network...&quot;)
+sol = solve(prob, Rosenbrock23())
+
+p1 = plot(sol, idxs=[sys.AB.cap.v], title=&quot;AB Neuron&quot;, legend=false, ylabel=&quot;V (mV)&quot;)
+p2 = plot(sol, idxs=[sys.LP.cap.v], title=&quot;LP Neuron&quot;, legend=false, ylabel=&quot;V (mV)&quot;)
+p3 = plot(sol, idxs=[sys.PY.cap.v], title=&quot;PY Neuron&quot;, legend=false, ylabel=&quot;V (mV)&quot;, xlabel=&quot;Time (ms)&quot;)
+
+plot(p1, p2, p3, layout=(3,1), size=(800,600))</code></pre><img src="2aae500c.svg" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../07_calcium_gates/">« 07 calcium gates</a><a class="docs-footer-nextpage" href="../09_parameter_estimation_conductance/">09 parameter estimation conductance »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 9 July 2026 15:02">Thursday 9 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

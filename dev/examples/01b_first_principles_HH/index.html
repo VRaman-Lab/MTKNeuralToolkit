@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>01b first principles HH · MTKNeuralToolkit.jl</title><meta name="title" content="01b first principles HH · MTKNeuralToolkit.jl"/><meta property="og:title" content="01b first principles HH · MTKNeuralToolkit.jl"/><meta property="twitter:title" content="01b first principles HH · MTKNeuralToolkit.jl"/><meta name="description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="twitter:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/01b_first_principles_HH/"/><meta property="twitter:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/01b_first_principles_HH/"/><link rel="canonical" href="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/01b_first_principles_HH/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">MTKNeuralToolkit.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../01_single_compartment_HH/">01 single compartment HH</a></li><li class="is-active"><a class="tocitem" href>01b first principles HH</a><ul class="internal"><li><a class="tocitem" href="#1.-A-Custom-Leak-Channel"><span>1. A Custom Leak Channel</span></a></li><li><a class="tocitem" href="#2.-A-Custom-Persistent-Sodium-Channel-(NaP)"><span>2. A Custom Persistent Sodium Channel (NaP)</span></a></li><li><a class="tocitem" href="#3.-Assemble-the-Compartment"><span>3. Assemble the Compartment</span></a></li><li><a class="tocitem" href="#4.-Build-and-Simulate"><span>4. Build and Simulate</span></a></li><li><a class="tocitem" href="#5.-Plot-the-Results"><span>5. Plot the Results</span></a></li></ul></li><li><a class="tocitem" href="../02_directed_synaptic_connection/">02 directed synaptic connection</a></li><li><a class="tocitem" href="../03_acausal_coupling/">03 acausal coupling</a></li><li><a class="tocitem" href="../04_vectorized_dynamics/">04 vectorized dynamics</a></li><li><a class="tocitem" href="../05_mixed_topologies/">05 mixed topologies</a></li><li><a class="tocitem" href="../06_stdp/">06 stdp</a></li><li><a class="tocitem" href="../07_calcium_gates/">07 calcium gates</a></li><li><a class="tocitem" href="../08_stg_network/">08 stg network</a></li><li><a class="tocitem" href="../09_parameter_estimation_conductance/">09 parameter estimation conductance</a></li><li><a class="tocitem" href="../10_param_estimation_weight/">10 param estimation weight</a></li><li><a class="tocitem" href="../11_reversediff_network/">11 reversediff network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>01b first principles HH</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>01b first principles HH</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl/blob/main/docs/examples/01b_first_principles_HH.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Building-Custom-Ion-Channels-from-Scratch"><a class="docs-heading-anchor" href="#Building-Custom-Ion-Channels-from-Scratch">Building Custom Ion Channels from Scratch</a><a id="Building-Custom-Ion-Channels-from-Scratch-1"></a><a class="docs-heading-anchor-permalink" href="#Building-Custom-Ion-Channels-from-Scratch" title="Permalink"></a></h1><p>In Example 1, we used <code>GateSpec</code> and <code>GenericChannel</code> to build a Hodgkin-Huxley neuron in just a few lines of code. But what if you need a channel that doesn&#39;t fit the standard alpha/beta gating paradigm? What if you want to implement a complex Markov chain model, or non-standard biophysics?</p><p><code>GenericChannel</code> isn&#39;t a black box—it&#39;s just a convenience wrapper around standard ModelingToolkit components.</p><p>The only rule for an ion channel in this toolkit is that it must be an MTK system that extends a standard electrical <code>OnePort</code>. Let&#39;s prove it by building a custom leak channel and a custom persistent sodium channel (NaP) from first principles.</p><div class="admonition is-info" id="Extending-Synapses-8d1df234eae31e18"><header class="admonition-header">Extending Synapses<a class="admonition-anchor" href="#Extending-Synapses-8d1df234eae31e18" title="Permalink"></a></header><div class="admonition-body"><p>Synapses are very similar. You can look at the source code for e.g., exponential synapses and extend them similarly.</p></div></div><hr/><pre><code class="language-julia hljs">using MTKNeuralToolkit
+using ModelingToolkit: mtkcompile, @named, @variables, @parameters, t_nounits as t, D_nounits as D, extend, @component, @unpack, System
+using ModelingToolkitStandardLibrary.Electrical: OnePort
+using OrdinaryDiffEq
+using Plots</code></pre><h2 id="1.-A-Custom-Leak-Channel"><a class="docs-heading-anchor" href="#1.-A-Custom-Leak-Channel">1. A Custom Leak Channel</a><a id="1.-A-Custom-Leak-Channel-1"></a><a class="docs-heading-anchor-permalink" href="#1.-A-Custom-Leak-Channel" title="Permalink"></a></h2><p>A leak channel has no states; it simply follows Ohm&#39;s law:</p><p class="math-container">\[I = g(V - E)\]</p><p>We define it as an MTK <code>@component</code> that wraps an <code>OnePort</code>. The steps are:</p><ol><li>Instantiate the OnePort to get the voltage <code>v</code> and current <code>i</code>.</li><li>Define parameters <code>g</code> and <code>E_rev</code>.</li><li>Write the governing equation.</li><li>Extend the OnePort with our equations. This tells MTK that our component behaves as an electrical OnePort, which is exactly what <code>build_compartment</code> expects.</li></ol><pre><code class="language-julia hljs">@component function CustomLeakChannel(; name, g=0.3, E_rev=-54.4)
+    @named oneport = OnePort()
+    @unpack v, i = oneport
+    @parameters g=g E_rev=E_rev
+    eqs = [i ~ g * (v - E_rev)]
+    return extend(System(eqs, t, [], [g, E_rev]; name=name), oneport)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CustomLeakChannel (generic function with 1 method)</code></pre><hr/><h2 id="2.-A-Custom-Persistent-Sodium-Channel-(NaP)"><a class="docs-heading-anchor" href="#2.-A-Custom-Persistent-Sodium-Channel-(NaP)">2. A Custom Persistent Sodium Channel (NaP)</a><a id="2.-A-Custom-Persistent-Sodium-Channel-(NaP)-1"></a><a class="docs-heading-anchor-permalink" href="#2.-A-Custom-Persistent-Sodium-Channel-(NaP)" title="Permalink"></a></h2><p>Let&#39;s build a channel with a single gating variable, <code>m</code>, that does not inactivate (persistent). We&#39;ll use a custom steady-state function and a time constant, writing out the ODE manually.</p><p>The gating ODE is:</p><p class="math-container">\[\frac{dm}{dt} = \frac{m_{\infty} - m}{\tau}\]</p><p>And the current equation is:</p><p class="math-container">\[I = g \cdot m^p \cdot (V - E)\]</p><p>Let&#39;s use <span>$p=1$</span> for NaP. We initialize the state variable <code>m</code> based on <code>V_init</code>.</p><pre><code class="language-julia hljs">@component function CustomNaPChannel(; name, g=10.0, E_rev=50.0, V_init=-65.0)
+    @named oneport = OnePort()
+    @unpack v, i = oneport
+
+    @parameters g=g E_rev=E_rev
+    @variables m(t) = 1.0 / (1.0 + exp(-(V_init + 50.0) / 5.0))
+
+    m_inf(V) = 1.0 / (1.0 + exp(-(V + 50.0) / 5.0))
+    tau_m = 5.0
+
+    eqs = [
+        D(m) ~ (m_inf(v) - m) / tau_m,
+        i ~ g * m * (v - E_rev)
+    ]
+
+    return extend(System(eqs, t, [m], [g, E_rev]; name=name), oneport)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CustomNaPChannel (generic function with 1 method)</code></pre><hr/><h2 id="3.-Assemble-the-Compartment"><a class="docs-heading-anchor" href="#3.-Assemble-the-Compartment">3. Assemble the Compartment</a><a id="3.-Assemble-the-Compartment-1"></a><a class="docs-heading-anchor-permalink" href="#3.-Assemble-the-Compartment" title="Permalink"></a></h2><p>We instantiate our custom channels and a standard Capacitor. Note that <code>build_compartment</code> doesn&#39;t know or care that these are custom; it just connects their positive pins to the membrane voltage and grounds the negative pins.</p><pre><code class="language-julia hljs">top = Scalar() # Define a scalar topology
+
+@named cap = Capacitor(topology=top, C=1.0)
+@named leak = CustomLeakChannel()
+@named nap = CustomNaPChannel()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr1">Model nap:</span>
+<span class="sgr1">Subsystems (2):</span> see hierarchy(nap)
+  p
+  n
+<span class="sgr1">Equations (7):</span>
+  5 standard: see equations(nap)
+  2 connecting: see equations(expand_connections(nap))
+<span class="sgr1">Unknowns (7):</span> see unknowns(nap)
+  v(t)
+  i(t)
+  m(t)
+  p₊v(t)
+  ⋮
+<span class="sgr1">Parameters (2):</span> see parameters(nap)
+  g
+  E_rev</code></pre><p><code>build_compartment</code> handles the wiring just like in Example 1.</p><pre><code class="language-julia hljs">channels = [leak, nap]
+soma = build_compartment(cap, channels; name=:soma, V_init=-65.0, topology=top)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model soma:</span>
+<span class="sgr1">Subsystems (7):</span> see hierarchy(soma)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (38):</span>
+  24 standard: see equations(soma)
+  14 connecting: see equations(expand_connections(soma))
+<span class="sgr1">Unknowns (37):</span> see unknowns(soma)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (5):</span> see parameters(soma)
+  cap₊C
+  leak₊g
+  leak₊E_rev
+  nap₊g
+  ⋮, (V = soma₊cap₊v(t), p_pin = <span class="sgr1">Model soma₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(soma₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(soma₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model soma₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(soma₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(soma₊n)
+  v(t)
+  i(t), I_ext = soma₊injector₊I₊u(t), I_syn = soma₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())</code></pre><hr/><h2 id="4.-Build-and-Simulate"><a class="docs-heading-anchor" href="#4.-Build-and-Simulate">4. Build and Simulate</a><a id="4.-Build-and-Simulate-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Build-and-Simulate" title="Permalink"></a></h2><p>We&#39;ll inject a small current to see how the persistent sodium channel interacts with the leak channel to create a steady depolarized state.</p><pre><code class="language-julia hljs">drivers = [(1, 2.0)]
+net = build_acausal_network([soma]; drivers=drivers, name=:custom_neuron)
+
+println(&quot;Compiling custom channel neuron...&quot;)
+sys = mtkcompile(net.sys)
+prob = ODEProblem(sys, [], (0.0, 100.0))
+
+println(&quot;Solving...&quot;)
+sol = solve(prob, Rosenbrock23(), reltol=1e-4, abstol=1e-4)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: specialized 2nd order &quot;free&quot; stiffness-aware interpolation
+t: 88-element Vector{Float64}:
+   0.0
+   0.0012501739956439345
+   0.0206097032318029
+   0.039969232467961864
+   0.07556096691783404
+   0.1111527013677062
+   0.1566873295232779
+   0.2022219576788496
+   0.2504812464902859
+   0.29874053530172223
+   ⋮
+  24.037970853133118
+  27.101561326850348
+  30.79717890558891
+  35.40393491713189
+  41.42992427012772
+  49.92628954411219
+  63.581814207884044
+  92.89418038495506
+ 100.0
+u: 88-element Vector{Vector{Float64}}:
+ [0.04742587317756678, -65.0]
+ [0.04742595775449338, -64.9253759854762]
+ [0.04744999458832616, -63.77872780373131]
+ [0.047523430450827145, -62.648088859189684]
+ [0.0478182385814619, -60.60622915203647]
+ [0.04838558103120771, -58.60357151857695]
+ [0.049644871828944365, -56.078102419476274]
+ [0.05169733952103672, -53.56458037326817]
+ [0.05495463633770272, -50.87155271266383]
+ [0.059474246020049276, -48.10165443439661]
+ ⋮
+ [0.991920007130865, 47.13043887694605]
+ [0.9956658744873588, 47.14112828735096]
+ [0.9979678705076583, 47.147658057687764]
+ [0.9992207322125657, 47.151199540938194]
+ [0.9997868150979198, 47.152796913319534]
+ [0.9999718520633931, 47.153318693587146]
+ [1.0000011366539605, 47.15340126116649]
+ [0.9999997757415475, 47.153397426401874]
+ [0.9999999511145985, 47.153397920671985]</code></pre><hr/><h2 id="5.-Plot-the-Results"><a class="docs-heading-anchor" href="#5.-Plot-the-Results">5. Plot the Results</a><a id="5.-Plot-the-Results-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Plot-the-Results" title="Permalink"></a></h2><p>We can access the variables of our custom components exactly as we would with the pre-built channels, reaching into the compiled system&#39;s namespace.</p><pre><code class="language-julia hljs">p1 = plot(sol, idxs=[sys.soma.cap.v],
+          title=&quot;Example 0: Custom Channel Voltage&quot;,
+          ylabel=&quot;V (mV)&quot;, legend=false)</code></pre><img src="4f3641a3.svg" alt="Example block output"/><p>Look at the gating variable <code>m</code> of our custom NaP channel!</p><pre><code class="language-julia hljs">p2 = plot(sol, idxs=[sys.soma.nap.m],
+          title=&quot;Custom NaP Gating Variable (m)&quot;,
+          ylabel=&quot;Fraction open&quot;, xlabel=&quot;Time (ms)&quot;, legend=false)
+
+plot(p1, p2, layout=(2,1), size=(800, 600))</code></pre><img src="12cae211.svg" alt="Example block output"/><blockquote><p>OK... nobody said it was going to be an interesting channel!</p></blockquote><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../01_single_compartment_HH/">« 01 single compartment HH</a><a class="docs-footer-nextpage" href="../02_directed_synaptic_connection/">02 directed synaptic connection »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 9 July 2026 15:00">Thursday 9 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

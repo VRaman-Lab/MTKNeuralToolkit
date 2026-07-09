@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>02 directed synaptic connection · MTKNeuralToolkit.jl</title><meta name="title" content="02 directed synaptic connection · MTKNeuralToolkit.jl"/><meta property="og:title" content="02 directed synaptic connection · MTKNeuralToolkit.jl"/><meta property="twitter:title" content="02 directed synaptic connection · MTKNeuralToolkit.jl"/><meta name="description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="twitter:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/02_directed_synaptic_connection/"/><meta property="twitter:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/02_directed_synaptic_connection/"/><link rel="canonical" href="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/02_directed_synaptic_connection/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">MTKNeuralToolkit.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../01_single_compartment_HH/">01 single compartment HH</a></li><li><a class="tocitem" href="../01b_first_principles_HH/">01b first principles HH</a></li><li class="is-active"><a class="tocitem" href>02 directed synaptic connection</a><ul class="internal"><li><a class="tocitem" href="#1.-Build-Two-Neurons-using-the-Standard-Library"><span>1. Build Two Neurons using the Standard Library</span></a></li><li><a class="tocitem" href="#2.-Define-the-Synapse"><span>2. Define the Synapse</span></a></li><li><a class="tocitem" href="#3.-Wire-the-Network-using-SynapseSpec"><span>3. Wire the Network using SynapseSpec</span></a></li><li><a class="tocitem" href="#4.-Driving-Stimuli"><span>4. Driving Stimuli</span></a></li><li><a class="tocitem" href="#5.-Build-and-Simulate-the-Network"><span>5. Build and Simulate the Network</span></a></li><li><a class="tocitem" href="#6.-Plot-the-Results"><span>6. Plot the Results</span></a></li></ul></li><li><a class="tocitem" href="../03_acausal_coupling/">03 acausal coupling</a></li><li><a class="tocitem" href="../04_vectorized_dynamics/">04 vectorized dynamics</a></li><li><a class="tocitem" href="../05_mixed_topologies/">05 mixed topologies</a></li><li><a class="tocitem" href="../06_stdp/">06 stdp</a></li><li><a class="tocitem" href="../07_calcium_gates/">07 calcium gates</a></li><li><a class="tocitem" href="../08_stg_network/">08 stg network</a></li><li><a class="tocitem" href="../09_parameter_estimation_conductance/">09 parameter estimation conductance</a></li><li><a class="tocitem" href="../10_param_estimation_weight/">10 param estimation weight</a></li><li><a class="tocitem" href="../11_reversediff_network/">11 reversediff network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>02 directed synaptic connection</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>02 directed synaptic connection</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl/blob/main/docs/examples/02_directed_synaptic_connection.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Example-2:-Directed-Synaptic-Connection-(Two-Neurons)"><a class="docs-heading-anchor" href="#Example-2:-Directed-Synaptic-Connection-(Two-Neurons)">Example 2: Directed Synaptic Connection (Two Neurons)</a><a id="Example-2:-Directed-Synaptic-Connection-(Two-Neurons)-1"></a><a class="docs-heading-anchor-permalink" href="#Example-2:-Directed-Synaptic-Connection-(Two-Neurons)" title="Permalink"></a></h1><p>Now let&#39;s connect two neurons. This example introduces network assembly and chemical synapses by linking a presynaptic neuron to a postsynaptic one via an exponential synapse.</p><p>Instead of building the HH channels from scratch like we did in Example 1, we&#39;ll use the pre-built channels from the <code>MTKNeuralToolkit.HodgkinHuxley</code> standard library to show how quickly you can spin up standard models.</p><hr/><pre><code class="language-julia hljs">using MTKNeuralToolkit
+using MTKNeuralToolkit.HodgkinHuxley: SodiumChannel, PotassiumChannel, LeakChannel
+using ModelingToolkit: mtkcompile, @named
+using ModelingToolkitStandardLibrary.Blocks: Sine
+using OrdinaryDiffEq
+using Plots</code></pre><h2 id="1.-Build-Two-Neurons-using-the-Standard-Library"><a class="docs-heading-anchor" href="#1.-Build-Two-Neurons-using-the-Standard-Library">1. Build Two Neurons using the Standard Library</a><a id="1.-Build-Two-Neurons-using-the-Standard-Library-1"></a><a class="docs-heading-anchor-permalink" href="#1.-Build-Two-Neurons-using-the-Standard-Library" title="Permalink"></a></h2><pre><code class="language-julia hljs">top = Scalar()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Scalar()</code></pre><p>This helper function shows how to pass kwargs to the standard library channels. You can tweak maximal conductances (<code>g</code>) or reversal potentials (<code>E_rev</code>) without rewriting the gating dynamics from scratch.</p><pre><code class="language-julia hljs">function build_hh_neuron(name::Symbol; gNa=120.0, ENa=50.0, gK=36.0, EK=-77.0,
+                                       gleak=0.3, Eleak=-54.4)
+    @named cap  = Capacitor(topology=top, C=1.0)
+    @named na   = SodiumChannel(topology=top, g=gNa, E_rev=ENa)
+    @named k    = PotassiumChannel(topology=top, g=gK, E_rev=EK)
+    @named leak = LeakChannel(topology=top, g=gleak, E_rev=Eleak)
+
+    return build_compartment(cap, [na, k, leak]; name=name, V_init=-65.0, topology=top)
+end
+
+pre_neuron  = build_hh_neuron(:pre_neuron)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model pre_neuron:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(pre_neuron)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (52):</span>
+  36 standard: see equations(pre_neuron)
+  16 connecting: see equations(expand_connections(pre_neuron))
+<span class="sgr1">Unknowns (51):</span> see unknowns(pre_neuron)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(pre_neuron)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = pre_neuron₊cap₊v(t), p_pin = <span class="sgr1">Model pre_neuron₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pre_neuron₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pre_neuron₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model pre_neuron₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pre_neuron₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pre_neuron₊n)
+  v(t)
+  i(t), I_ext = pre_neuron₊injector₊I₊u(t), I_syn = pre_neuron₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())</code></pre><p>We&#39;ll give the postsynaptic neuron altered channel parameters (e.g., a lower sodium conductance and a different leak reversal) to make it distinct.</p><pre><code class="language-julia hljs">post_neuron = build_hh_neuron(:post_neuron; gNa=80.0, ENa=45.0, gleak=0.5)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model post_neuron:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(post_neuron)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (52):</span>
+  36 standard: see equations(post_neuron)
+  16 connecting: see equations(expand_connections(post_neuron))
+<span class="sgr1">Unknowns (51):</span> see unknowns(post_neuron)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(post_neuron)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = post_neuron₊cap₊v(t), p_pin = <span class="sgr1">Model post_neuron₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(post_neuron₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(post_neuron₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model post_neuron₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(post_neuron₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(post_neuron₊n)
+  v(t)
+  i(t), I_ext = post_neuron₊injector₊I₊u(t), I_syn = post_neuron₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())</code></pre><hr/><h2 id="2.-Define-the-Synapse"><a class="docs-heading-anchor" href="#2.-Define-the-Synapse">2. Define the Synapse</a><a id="2.-Define-the-Synapse-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Define-the-Synapse" title="Permalink"></a></h2><p><code>ExpSynapse</code> is a continuous, sigmoid-driven exponential synapse. When the presynaptic voltage crosses the threshold (<code>V_th</code>), the gating variable <code>s</code> increases, injecting current into the postsynaptic compartment.</p><pre><code class="language-julia hljs">@named excitatory_synapse = ExpSynapse(g_max=2.0, τ=5.0, E_rev=0.0, V_th=-20.0, slope=2.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr1">Model excitatory_synapse:</span>
+<span class="sgr1">Equations (2):</span>
+  2 standard: see equations(excitatory_synapse)
+<span class="sgr1">Unknowns (4):</span> see unknowns(excitatory_synapse)
+  s(t)
+  I_syn(t)
+  V_pre(t)
+  V_post(t)
+<span class="sgr1">Parameters (5):</span> see parameters(excitatory_synapse)
+  g_max
+  τ
+  E_rev
+  V_th
+  ⋮</code></pre><div class="admonition is-success" id="Making-an-Inhibitory-Synapse-3a27b2aa1e8f21ba"><header class="admonition-header">Making an Inhibitory Synapse<a class="admonition-anchor" href="#Making-an-Inhibitory-Synapse-3a27b2aa1e8f21ba" title="Permalink"></a></header><div class="admonition-body"><p>To make this synapse inhibitory, you just change <code>E_rev</code> to a value below the postsynaptic resting potential (e.g., <code>E_rev=-80.0</code>). No other code changes are needed.</p></div></div><pre><code class="language-julia hljs">@named inhibitory_synapse = ExpSynapse(g_max=2.0, τ=5.0, E_rev=-80.0, V_th=-20.0, slope=2.0)</code></pre><div class="admonition is-success" id="Custom-Synapses-652ea371aeadb000"><header class="admonition-header">Custom Synapses<a class="admonition-anchor" href="#Custom-Synapses-652ea371aeadb000" title="Permalink"></a></header><div class="admonition-body"><p>Look at the source code for <code>ExpSynapse</code>: it&#39;s pretty simple! You can modify the equations to make your own custom synapse. The interface is extremely flexible: you can have complicated multi-state synapses.</p></div></div><hr/><h2 id="3.-Wire-the-Network-using-SynapseSpec"><a class="docs-heading-anchor" href="#3.-Wire-the-Network-using-SynapseSpec">3. Wire the Network using SynapseSpec</a><a id="3.-Wire-the-Network-using-SynapseSpec-1"></a><a class="docs-heading-anchor-permalink" href="#3.-Wire-the-Network-using-SynapseSpec" title="Permalink"></a></h2><p>A <code>SynapseSpec</code> maps the pre- and post-synaptic voltages to the synapse block, and designates which current variable in the postsynaptic compartment will receive the injected current.</p><pre><code class="language-julia hljs">synapse_specs = [
+    SynapseSpec(
+        pre_neuron.interfaces.V,
+        post_neuron.interfaces.V,
+        post_neuron.interfaces.I_syn,
+        excitatory_synapse
+    )
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{SynapseSpec}:
+ SynapseSpec(pre_neuron₊cap₊v(t), post_neuron₊cap₊v(t), post_neuron₊syn_injector₊I₊u(t), <span class="sgr1">Model excitatory_synapse:</span>
+<span class="sgr1">Equations (2):</span>
+  2 standard: see equations(excitatory_synapse)
+<span class="sgr1">Unknowns (4):</span> see unknowns(excitatory_synapse)
+  s(t)
+  I_syn(t)
+  V_pre(t)
+  V_post(t)
+<span class="sgr1">Parameters (5):</span> see parameters(excitatory_synapse)
+  g_max
+  τ
+  E_rev
+  V_th
+  ⋮, nothing)</code></pre><hr/><h2 id="4.-Driving-Stimuli"><a class="docs-heading-anchor" href="#4.-Driving-Stimuli">4. Driving Stimuli</a><a id="4.-Driving-Stimuli-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Driving-Stimuli" title="Permalink"></a></h2><p>We&#39;ll drive the presynaptic neuron with a time-varying sinusoidal current so it spikes rhythmically. The postsynaptic neuron receives no external drive, so any spiking it does is purely from the synaptic connection.</p><pre><code class="language-julia hljs">@named current_driver = Sine(amplitude=8.0, frequency=0.05, offset=8.0)
+
+drivers = [(1, current_driver)]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{Tuple{Int64, ModelingToolkitBase.System}}:
+ (1, <span class="sgr1">Model current_driver:</span>
+<span class="sgr1">Subsystems (1):</span> see hierarchy(current_driver)
+  output
+<span class="sgr1">Equations (1):</span>
+  1 standard: see equations(current_driver)
+<span class="sgr1">Unknowns (1):</span> see unknowns(current_driver)
+  output₊u(t): Inner variable in RealOutput output
+<span class="sgr1">Parameters (5):</span> see parameters(current_driver)
+  offset
+  start_time
+  amplitude
+  frequency
+  ⋮)</code></pre><hr/><h2 id="5.-Build-and-Simulate-the-Network"><a class="docs-heading-anchor" href="#5.-Build-and-Simulate-the-Network">5. Build and Simulate the Network</a><a id="5.-Build-and-Simulate-the-Network-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Build-and-Simulate-the-Network" title="Permalink"></a></h2><pre><code class="language-julia hljs">net = build_acausal_network([pre_neuron, post_neuron];
+                            synapse_specs=synapse_specs,
+                            drivers=drivers,
+                            name=:two_neuron_net)
+
+println(&quot;Compiling 2-neuron network...&quot;)
+sys = mtkcompile(net.sys)
+prob = ODEProblem(sys, [], (0.0, 200.0))
+
+println(&quot;Solving...&quot;)
+sol = solve(prob, Rosenbrock23())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: specialized 2nd order &quot;free&quot; stiffness-aware interpolation
+t: 1187-element Vector{Float64}:
+   0.0
+   0.0028441329098396638
+   0.023402851148887564
+   0.04883765620089674
+   0.0967155574893538
+   0.1517830198672597
+   0.23376696901312427
+   0.32549291165022554
+   0.44478178072236385
+   0.575586949846314
+   ⋮
+ 197.0412809658115
+ 197.48733186679829
+ 197.93338276778508
+ 198.3216570909145
+ 198.70993141404392
+ 199.09820573717334
+ 199.44335011525348
+ 199.78849449333362
+ 200.0
+u: 1187-element Vector{Vector{Float64}}:
+ [0.052, 0.596, 0.317, -65.0, 0.052, 0.596, 0.317, -65.0, 0.0]
+ [0.05201197393390346, 0.5959999079166937, 0.3170004431524694, -64.97733100458217, 0.052011310674356555, 0.5960000125277367, 0.31700037161427824, -64.99524100644763, 4.837958161084901e-13]
+ [0.05214270262608501, 0.5959913796063655, 0.31700901230159945, -64.81406366600929, 0.05209926722561563, 0.595998461865484, 0.3170041737215372, -64.9611479610638, 4.138965202647466e-12]
+ [0.05240514650561069, 0.5959617190964291, 0.3170326271204084, -64.61341168812487, 0.05222198533938716, 0.5959926012227501, 0.31701155454496177, -64.91969878245249, 9.071134879998752e-12]
+ [0.0531631455381148, 0.5958486777189002, 0.3171158704818243, -64.23910311485588, 0.05248792905372833, 0.5959700480169079, 0.3170332502689718, -64.84376650311964, 1.9726948612825418e-11]
+ [0.0543986524954946, 0.5956261380993813, 0.3172739563457311, -63.8129378892877, 0.05283863418691935, 0.5959260952130038, 0.3170703582870639, -64.7596270253941, 3.4593071384084615e-11]
+ [0.05681493318680049, 0.5951107506616388, 0.3176321363083104, -63.18412819395425, 0.05342193084013241, 0.5958266638323487, 0.31714841490806267, -64.64022970201427, 6.318754053647166e-11]
+ [0.06017770183382949, 0.5942697023399302, 0.31820698494150124, -62.48404421696062, 0.05412767768908796, 0.5956698643508552, 0.3172661004557883, -64.51432587230158, 1.0746918697955692e-10]
+ [0.06538922867866917, 0.5927478869367057, 0.3192312733806339, -61.56987071943177, 0.055081614439731204, 0.595399163217436, 0.317463224181492, -64.36165729435602, 1.9313820318085277e-10]
+ [0.07207123709918736, 0.5904975266640927, 0.3207216736201252, -60.547560828919806, 0.05613144826658525, 0.5950225676970773, 0.317731402239033, -64.20739907445679, 3.448429477759249e-10]
+ ⋮
+ [0.04374871817942341, 0.561706238946157, 0.3229313167572238, -66.294466809959, 0.07275283194078794, 0.36767224429150086, 0.4110671795493701, -62.35874339023462, 0.07606423937286351]
+ [0.04762577836830096, 0.565019130994109, 0.32146471288321093, -65.47934003452578, 0.07140302719880924, 0.3749318127803584, 0.40675208880454256, -62.515837031757336, 0.06957039343126675]
+ [0.052959372491563364, 0.5665666546002122, 0.32119593977139554, -64.4617474051242, 0.07016287618821782, 0.3820737906407495, 0.40259955372587986, -62.66207781617816, 0.06363094779395075]
+ [0.05914812646110756, 0.5661989798594064, 0.3220953239794458, -63.39432500444961, 0.06916782668873799, 0.3881865848361976, 0.3991167393364695, -62.781077249807716, 0.05887555677216907]
+ [0.06723298300381583, 0.5639208962203902, 0.32422278395517384, -62.13123864634825, 0.06824635689705687, 0.3941955200814665, 0.39575597042598487, -62.89239994512641, 0.054475554919847624]
+ [0.07799642419987238, 0.5593178031754328, 0.3278004344315167, -60.614225044891676, 0.06739477648759866, 0.40009454058051785, 0.3925164757642006, -62.99635632936573, 0.050404382713253794]
+ [0.09104127479309454, 0.5527474790386393, 0.3324759342275888, -58.94288372534156, 0.06669293687531698, 0.40524171151976923, 0.38973780033262967, -63.08287798116764, 0.04704176762850762]
+ [0.10972833284661457, 0.5429517208270765, 0.3390275306751991, -56.724849368765014, 0.06604000419615567, 0.4102943711581342, 0.38705326826901004, -63.16395690461024, 0.04390348312481254]
+ [0.12636325534205411, 0.5346128890788275, 0.34434710816333225, -54.83419151760655, 0.06566299351680879, 0.41334269356801306, 0.38545428751017263, -63.21113317179955, 0.04208492357965055]</code></pre><hr/><h2 id="6.-Plot-the-Results"><a class="docs-heading-anchor" href="#6.-Plot-the-Results">6. Plot the Results</a><a id="6.-Plot-the-Results-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Plot-the-Results" title="Permalink"></a></h2><pre><code class="language-julia hljs">p1 = plot(sol, idxs=[sys.pre_neuron.cap.v],
+          title=&quot;Presynaptic Neuron (Driven)&quot;, ylabel=&quot;V (mV)&quot;, legend=false)
+
+p2 = plot(sol, idxs=[sys.post_neuron.cap.v],
+          title=&quot;Postsynaptic Neuron (Synaptically Driven)&quot;, ylabel=&quot;V (mV)&quot;, legend=false)
+
+p3 = plot(sol, idxs=[sys.excitatory_synapse.I_syn],
+          title=&quot;Synaptic Current&quot;, ylabel=&quot;I_syn&quot;, xlabel=&quot;Time (ms)&quot;, legend=false)
+
+plot(p1, p2, p3, layout=(3,1), size=(800, 700))</code></pre><img src="8e7d98fe.svg" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../01b_first_principles_HH/">« 01b first principles HH</a><a class="docs-footer-nextpage" href="../03_acausal_coupling/">03 acausal coupling »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 9 July 2026 14:58">Thursday 9 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

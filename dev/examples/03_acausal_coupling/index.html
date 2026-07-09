@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>03 acausal coupling · MTKNeuralToolkit.jl</title><meta name="title" content="03 acausal coupling · MTKNeuralToolkit.jl"/><meta property="og:title" content="03 acausal coupling · MTKNeuralToolkit.jl"/><meta property="twitter:title" content="03 acausal coupling · MTKNeuralToolkit.jl"/><meta name="description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="twitter:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/03_acausal_coupling/"/><meta property="twitter:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/03_acausal_coupling/"/><link rel="canonical" href="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/03_acausal_coupling/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">MTKNeuralToolkit.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../01_single_compartment_HH/">01 single compartment HH</a></li><li><a class="tocitem" href="../01b_first_principles_HH/">01b first principles HH</a></li><li><a class="tocitem" href="../02_directed_synaptic_connection/">02 directed synaptic connection</a></li><li class="is-active"><a class="tocitem" href>03 acausal coupling</a><ul class="internal"><li><a class="tocitem" href="#1.-Build-Passive-Compartments-with-Heterogeneous-Geometries"><span>1. Build Passive Compartments with Heterogeneous Geometries</span></a></li><li><a class="tocitem" href="#2.-Connect-Compartments-with-Gap-Junctions"><span>2. Connect Compartments with Gap Junctions</span></a></li><li><a class="tocitem" href="#3.-Driving-Stimuli"><span>3. Driving Stimuli</span></a></li><li><a class="tocitem" href="#4.-Build-and-Simulate-the-Network"><span>4. Build and Simulate the Network</span></a></li><li><a class="tocitem" href="#5.-Plot-the-Results"><span>5. Plot the Results</span></a></li></ul></li><li><a class="tocitem" href="../04_vectorized_dynamics/">04 vectorized dynamics</a></li><li><a class="tocitem" href="../05_mixed_topologies/">05 mixed topologies</a></li><li><a class="tocitem" href="../06_stdp/">06 stdp</a></li><li><a class="tocitem" href="../07_calcium_gates/">07 calcium gates</a></li><li><a class="tocitem" href="../08_stg_network/">08 stg network</a></li><li><a class="tocitem" href="../09_parameter_estimation_conductance/">09 parameter estimation conductance</a></li><li><a class="tocitem" href="../10_param_estimation_weight/">10 param estimation weight</a></li><li><a class="tocitem" href="../11_reversediff_network/">11 reversediff network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>03 acausal coupling</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>03 acausal coupling</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl/blob/main/docs/examples/03_acausal_coupling.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Example-3:-Acausal-Coupling-(Tapered-Multi-Compartment-Cable)"><a class="docs-heading-anchor" href="#Example-3:-Acausal-Coupling-(Tapered-Multi-Compartment-Cable)">Example 3: Acausal Coupling (Tapered Multi-Compartment Cable)</a><a id="Example-3:-Acausal-Coupling-(Tapered-Multi-Compartment-Cable)-1"></a><a class="docs-heading-anchor-permalink" href="#Example-3:-Acausal-Coupling-(Tapered-Multi-Compartment-Cable)" title="Permalink"></a></h1><p>Let&#39;s look at the acausal side of ModelingToolkit. Unlike directed chemical synapses, gap junctions (electrical couplings) are bidirectional. We&#39;ll build a 5-compartment passive dendrite that tapers in size down its length, and inject current at the soma to observe classic cable-theory voltage attenuation.</p><hr/><pre><code class="language-julia hljs">using MTKNeuralToolkit
+using ModelingToolkit: mtkcompile, @named
+using ModelingToolkitStandardLibrary.Blocks: Sine
+using OrdinaryDiffEq
+using Plots</code></pre><h2 id="1.-Build-Passive-Compartments-with-Heterogeneous-Geometries"><a class="docs-heading-anchor" href="#1.-Build-Passive-Compartments-with-Heterogeneous-Geometries">1. Build Passive Compartments with Heterogeneous Geometries</a><a id="1.-Build-Passive-Compartments-with-Heterogeneous-Geometries-1"></a><a class="docs-heading-anchor-permalink" href="#1.-Build-Passive-Compartments-with-Heterogeneous-Geometries" title="Permalink"></a></h2><pre><code class="language-julia hljs">top = Scalar()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Scalar()</code></pre><p>Define a tapering geometry: the soma is large, and distal dendrites are small. We&#39;ll keep standard membrane capacitance (<span>$1.0 \text{ \mu F/cm}^2$</span>) and just change the area.</p><pre><code class="language-julia hljs">areas = [0.0628, 0.0314, 0.0157, 0.0078, 0.0039] #cm^2
+
+function build_passive_compartment(name::Symbol, area::Float64)
+    geom = Geometry(area=area, C_m=1.0) #Geometry struct handles biophysical scaling
+    @named cap  = Capacitor(topology=top, C=1.0, geometry=geom)
+    @named leak = GenericChannel(topology=top, g=0.3, E_rev=-65.0, gates=GateSpec[], geometry=geom)
+
+    return build_compartment(cap, [leak]; name=name, V_init=-65.0, topology=top)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">build_passive_compartment (generic function with 1 method)</code></pre><p>Create a chain of compartments with decreasing area</p><pre><code class="language-julia hljs">N = 5
+cable = [build_passive_compartment(Symbol(:comp, i), areas[i]) for i in 1:N]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">5-element Vector{Compartment{NoMorphology, NoGeometry, Float64}}:
+ Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model comp1:</span>
+<span class="sgr1">Subsystems (6):</span> see hierarchy(comp1)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (31):</span>
+  19 standard: see equations(comp1)
+  12 connecting: see equations(expand_connections(comp1))
+<span class="sgr1">Unknowns (30):</span> see unknowns(comp1)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (3):</span> see parameters(comp1)
+  cap₊C
+  leak₊g
+  leak₊E_rev, (V = comp1₊cap₊v(t), p_pin = <span class="sgr1">Model comp1₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(comp1₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(comp1₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model comp1₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(comp1₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(comp1₊n)
+  v(t)
+  i(t), I_ext = comp1₊injector₊I₊u(t), I_syn = comp1₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())
+ Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model comp2:</span>
+<span class="sgr1">Subsystems (6):</span> see hierarchy(comp2)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (31):</span>
+  19 standard: see equations(comp2)
+  12 connecting: see equations(expand_connections(comp2))
+<span class="sgr1">Unknowns (30):</span> see unknowns(comp2)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (3):</span> see parameters(comp2)
+  cap₊C
+  leak₊g
+  leak₊E_rev, (V = comp2₊cap₊v(t), p_pin = <span class="sgr1">Model comp2₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(comp2₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(comp2₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model comp2₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(comp2₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(comp2₊n)
+  v(t)
+  i(t), I_ext = comp2₊injector₊I₊u(t), I_syn = comp2₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())
+ Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model comp3:</span>
+<span class="sgr1">Subsystems (6):</span> see hierarchy(comp3)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (31):</span>
+  19 standard: see equations(comp3)
+  12 connecting: see equations(expand_connections(comp3))
+<span class="sgr1">Unknowns (30):</span> see unknowns(comp3)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (3):</span> see parameters(comp3)
+  cap₊C
+  leak₊g
+  leak₊E_rev, (V = comp3₊cap₊v(t), p_pin = <span class="sgr1">Model comp3₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(comp3₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(comp3₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model comp3₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(comp3₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(comp3₊n)
+  v(t)
+  i(t), I_ext = comp3₊injector₊I₊u(t), I_syn = comp3₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())
+ Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model comp4:</span>
+<span class="sgr1">Subsystems (6):</span> see hierarchy(comp4)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (31):</span>
+  19 standard: see equations(comp4)
+  12 connecting: see equations(expand_connections(comp4))
+<span class="sgr1">Unknowns (30):</span> see unknowns(comp4)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (3):</span> see parameters(comp4)
+  cap₊C
+  leak₊g
+  leak₊E_rev, (V = comp4₊cap₊v(t), p_pin = <span class="sgr1">Model comp4₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(comp4₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(comp4₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model comp4₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(comp4₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(comp4₊n)
+  v(t)
+  i(t), I_ext = comp4₊injector₊I₊u(t), I_syn = comp4₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())
+ Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model comp5:</span>
+<span class="sgr1">Subsystems (6):</span> see hierarchy(comp5)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (31):</span>
+  19 standard: see equations(comp5)
+  12 connecting: see equations(expand_connections(comp5))
+<span class="sgr1">Unknowns (30):</span> see unknowns(comp5)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (3):</span> see parameters(comp5)
+  cap₊C
+  leak₊g
+  leak₊E_rev, (V = comp5₊cap₊v(t), p_pin = <span class="sgr1">Model comp5₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(comp5₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(comp5₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model comp5₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(comp5₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(comp5₊n)
+  v(t)
+  i(t), I_ext = comp5₊injector₊I₊u(t), I_syn = comp5₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())</code></pre><hr/><h2 id="2.-Connect-Compartments-with-Gap-Junctions"><a class="docs-heading-anchor" href="#2.-Connect-Compartments-with-Gap-Junctions">2. Connect Compartments with Gap Junctions</a><a id="2.-Connect-Compartments-with-Gap-Junctions-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Connect-Compartments-with-Gap-Junctions" title="Permalink"></a></h2><p>The axial resistance between two compartments is given by:</p><p class="math-container">\[R = \frac{R_i \cdot L}{A}\]</p><p>For simplicity, let&#39;s say internal resistivity <span>$R_i$</span> multiplied by length <span>$L$</span> is <span>$1.0$</span>. Smaller areas mean higher axial resistance, which causes more voltage attenuation. We&#39;ll calculate <span>$R$</span> based on the average area of the two connected compartments.</p><div class="admonition is-info" id="Naming-Systems-in-Loops-1bfdaa616cc194e0"><header class="admonition-header">Naming Systems in Loops<a class="admonition-anchor" href="#Naming-Systems-in-Loops-1bfdaa616cc194e0" title="Permalink"></a></header><div class="admonition-body"><p>You must give unique names to systems created in a loop.</p></div></div><pre><code class="language-julia hljs">coupling_specs = CouplingSpec[]
+for i in 1:(N-1)
+    avg_area = (areas[i] + areas[i+1]) / 2.0
+    R_axial = 1.0 / avg_area
+    gj = GapJunction(R=R_axial; name=Symbol(:gj_, i))
+    push!(coupling_specs, CouplingSpec(cable[i], cable[i+1], gj))
+end</code></pre><hr/><h2 id="3.-Driving-Stimuli"><a class="docs-heading-anchor" href="#3.-Driving-Stimuli">3. Driving Stimuli</a><a id="3.-Driving-Stimuli-1"></a><a class="docs-heading-anchor-permalink" href="#3.-Driving-Stimuli" title="Permalink"></a></h2><p>Inject a slow sinusoidal current only into the first compartment (the soma)</p><pre><code class="language-julia hljs">@named current_driver = Sine(amplitude=5.0, frequency=0.05, offset=5.0)
+
+drivers = [(1, current_driver)]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{Tuple{Int64, ModelingToolkitBase.System}}:
+ (1, <span class="sgr1">Model current_driver:</span>
+<span class="sgr1">Subsystems (1):</span> see hierarchy(current_driver)
+  output
+<span class="sgr1">Equations (1):</span>
+  1 standard: see equations(current_driver)
+<span class="sgr1">Unknowns (1):</span> see unknowns(current_driver)
+  output₊u(t): Inner variable in RealOutput output
+<span class="sgr1">Parameters (5):</span> see parameters(current_driver)
+  offset
+  start_time
+  amplitude
+  frequency
+  ⋮)</code></pre><hr/><h2 id="4.-Build-and-Simulate-the-Network"><a class="docs-heading-anchor" href="#4.-Build-and-Simulate-the-Network">4. Build and Simulate the Network</a><a id="4.-Build-and-Simulate-the-Network-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Build-and-Simulate-the-Network" title="Permalink"></a></h2><pre><code class="language-julia hljs">net = build_acausal_network(cable;
+                            coupling_specs=coupling_specs,
+                            drivers=drivers,
+                            name=:cable_net)
+
+println(&quot;Compiling acausal cable network...&quot;)
+sys = mtkcompile(net.sys)
+prob = ODEProblem(sys, [], (0.0, 200.0))
+
+println(&quot;Solving...&quot;)
+sol = solve(prob, Rosenbrock23())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: specialized 2nd order &quot;free&quot; stiffness-aware interpolation
+t: 1221-element Vector{Float64}:
+   0.0
+   0.003305516484020153
+   0.012294144986027869
+   0.026539214464755795
+   0.050889110050485103
+   0.08525255688756438
+   0.13218707141087518
+   0.19090767762555824
+   0.26121121134990544
+   0.34114983743604366
+   ⋮
+ 199.49770768458913
+ 199.55322642793675
+ 199.61239328389468
+ 199.6753129920448
+ 199.74209162579825
+ 199.81283689087047
+ 199.88765800354713
+ 199.96666411994028
+ 200.0
+u: 1221-element Vector{Vector{Float64}}:
+ [-65.0, -65.0, -65.0, -65.0, -65.0]
+ [-64.99999999999555, -64.99999999749826, -64.99999866973045, -64.9993504680873, -64.73714087850377]
+ [-64.999999998213, -64.99999965758062, -64.99994034046551, -64.99110643589161, -64.02554346113456]
+ [-64.99999993931712, -64.99999375958834, -64.99944019954815, -64.95919011382529, -62.90715502938977]
+ [-64.99999863776836, -64.99992291243294, -64.99624607201228, -64.85385515397907, -61.02088837128904]
+ [-64.9999843514392, -64.99944725850176, -64.98337115676485, -64.6044081129877, -58.41034264949808]
+ [-64.99987673735365, -64.99710708396104, -64.94231356580099, -64.09353566629365, -54.93388391669197]
+ [-64.99932270895283, -64.98872697930416, -64.84028769388398, -63.21577718703974, -50.71380416577911]
+ [-64.99717691272102, -64.96499363273736, -64.62831640111587, -61.87487978563122, -45.82592626898418]
+ [-64.99072883524774, -64.91052453471946, -64.25403961262245, -60.04107363024291, -40.45396254563202]
+ ⋮
+ [-41.97571835368326, -38.11912953652399, -30.02388841039412, -15.124855040394738, 11.124195998388915]
+ [-42.03205333716371, -38.04311539734407, -29.692797708469975, -14.378505883175194, 12.502456261416514]
+ [-42.07891639801357, -37.94609879441178, -29.31968212868555, -13.558038682909535, 14.000726339664638]
+ [-42.113821253460834, -37.8248444440385, -28.900096984145627, -12.657455174285895, 15.626794567392588]
+ [-42.13401811994038, -37.67581602305342, -28.42924749243748, -11.67036843148853, 17.38883939108509]
+ [-42.13647908496614, -37.49516226616046, -27.90197745480526, -10.58999787011784, 19.29542178370538]
+ [-42.117883591478495, -37.27870491830261, -27.31276307843791, -9.409174623946047, 21.355459496205636]
+ [-42.07460584865579, -37.02193344025506, -26.655722524390598, -8.120376669958306, 23.578151036370794]
+ [-42.04906531658116, -36.90493364972521, -26.367834388789372, -7.56383548655647, 24.53030849945701]</code></pre><hr/><h2 id="5.-Plot-the-Results"><a class="docs-heading-anchor" href="#5.-Plot-the-Results">5. Plot the Results</a><a id="5.-Plot-the-Results-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Plot-the-Results" title="Permalink"></a></h2><pre><code class="language-julia hljs">p = plot(title=&quot;Example 3: Tapered Multi-Compartment Cable&quot;,
+         xlabel=&quot;Time (ms)&quot;, ylabel=&quot;V (mV)&quot;)
+
+for i in 1:N
+    comp_sys = getproperty(sys, Symbol(:comp, i))
+    plot!(p, sol, idxs=[getproperty(comp_sys, :cap).v], label=&quot;Comp $i (A=$(areas[i]))&quot;)
+end
+p</code></pre><img src="673277b7.svg" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../02_directed_synaptic_connection/">« 02 directed synaptic connection</a><a class="docs-footer-nextpage" href="../04_vectorized_dynamics/">04 vectorized dynamics »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 9 July 2026 14:58">Thursday 9 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

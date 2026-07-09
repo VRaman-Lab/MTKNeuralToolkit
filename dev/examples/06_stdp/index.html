@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>06 stdp · MTKNeuralToolkit.jl</title><meta name="title" content="06 stdp · MTKNeuralToolkit.jl"/><meta property="og:title" content="06 stdp · MTKNeuralToolkit.jl"/><meta property="twitter:title" content="06 stdp · MTKNeuralToolkit.jl"/><meta name="description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="twitter:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/06_stdp/"/><meta property="twitter:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/06_stdp/"/><link rel="canonical" href="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/06_stdp/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">MTKNeuralToolkit.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../01_single_compartment_HH/">01 single compartment HH</a></li><li><a class="tocitem" href="../01b_first_principles_HH/">01b first principles HH</a></li><li><a class="tocitem" href="../02_directed_synaptic_connection/">02 directed synaptic connection</a></li><li><a class="tocitem" href="../03_acausal_coupling/">03 acausal coupling</a></li><li><a class="tocitem" href="../04_vectorized_dynamics/">04 vectorized dynamics</a></li><li><a class="tocitem" href="../05_mixed_topologies/">05 mixed topologies</a></li><li class="is-active"><a class="tocitem" href>06 stdp</a><ul class="internal"><li><a class="tocitem" href="#Define-the-STDP-Synapse"><span>Define the STDP Synapse</span></a></li><li><a class="tocitem" href="#Driving-Stimuli-(Phase-Shifted-Sine-Waves)"><span>Driving Stimuli (Phase-Shifted Sine Waves)</span></a></li><li><a class="tocitem" href="#Build-and-Simulate"><span>Build and Simulate</span></a></li><li><a class="tocitem" href="#Plot-the-Results"><span>Plot the Results</span></a></li></ul></li><li><a class="tocitem" href="../07_calcium_gates/">07 calcium gates</a></li><li><a class="tocitem" href="../08_stg_network/">08 stg network</a></li><li><a class="tocitem" href="../09_parameter_estimation_conductance/">09 parameter estimation conductance</a></li><li><a class="tocitem" href="../10_param_estimation_weight/">10 param estimation weight</a></li><li><a class="tocitem" href="../11_reversediff_network/">11 reversediff network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>06 stdp</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>06 stdp</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl/blob/main/docs/examples/06_stdp.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Example-6:-Spike-Timing-Dependent-Plasticity-(STDP)"><a class="docs-heading-anchor" href="#Example-6:-Spike-Timing-Dependent-Plasticity-(STDP)">Example 6: Spike-Timing-Dependent Plasticity (STDP)</a><a id="Example-6:-Spike-Timing-Dependent-Plasticity-(STDP)-1"></a><a class="docs-heading-anchor-permalink" href="#Example-6:-Spike-Timing-Dependent-Plasticity-(STDP)" title="Permalink"></a></h1><p>This example introduces learning and plasticity. We connect two neurons using the <code>STDPSynapse</code>, a continuous, smooth approximation of STDP.</p><p>We drive the presynaptic neuron with a constant current, and the postsynaptic neuron with a slightly different constant current so they spike at different frequencies. The STDP rule will continuously strengthen or weaken the synaptic weight based on their relative spike times. We will plot the dynamic weight variable <code>w</code> to watch learning happen in real-time!</p><pre><code class="language-julia hljs">using MTKNeuralToolkit
+using MTKNeuralToolkit.HodgkinHuxley: SodiumChannel, PotassiumChannel, LeakChannel
+using ModelingToolkit: mtkcompile, @named
+using OrdinaryDiffEq
+using Plots</code></pre><p>##. Build Two Neurons</p><pre><code class="language-julia hljs">top = Scalar()
+
+function build_neuron(name::Symbol)
+    @named cap  = Capacitor(topology=top, C=1.0)
+    @named na   = SodiumChannel(topology=top)
+    @named k    = PotassiumChannel(topology=top)
+    @named leak = LeakChannel(topology=top)
+    return build_compartment(cap, [na, k, leak]; name=name, V_init=-65.0, topology=top)
+end
+
+pre_neuron  = build_neuron(:pre_neuron)
+post_neuron = build_neuron(:post_neuron)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model post_neuron:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(post_neuron)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (52):</span>
+  36 standard: see equations(post_neuron)
+  16 connecting: see equations(expand_connections(post_neuron))
+<span class="sgr1">Unknowns (51):</span> see unknowns(post_neuron)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(post_neuron)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = post_neuron₊cap₊v(t), p_pin = <span class="sgr1">Model post_neuron₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(post_neuron₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(post_neuron₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model post_neuron₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(post_neuron₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(post_neuron₊n)
+  v(t)
+  i(t), I_ext = post_neuron₊injector₊I₊u(t), I_syn = post_neuron₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())</code></pre><h2 id="Define-the-STDP-Synapse"><a class="docs-heading-anchor" href="#Define-the-STDP-Synapse">Define the STDP Synapse</a><a id="Define-the-STDP-Synapse-1"></a><a class="docs-heading-anchor-permalink" href="#Define-the-STDP-Synapse" title="Permalink"></a></h2><p>The STDPSynapse continuously updates its weight <code>w</code> based on the traces <code>x</code> (pre) and <code>y</code> (post).</p><ul><li>If pre spikes before post, x is high when y spikes -&gt; LTP (weight increases)</li><li>If post spikes before pre, y is high when x spikes -&gt; LTD (weight decreases)</li></ul><pre><code class="language-julia hljs">@named stdp_syn = STDPSynapse(g_max=2.0, E_rev=0.0, V_th=0.0, slope=2.0,
+                              τ_s=5.0, τ_plus=20.0, τ_minus=20.0,
+                              A_plus=0.1, A_minus=0.1, w_init=0.5, w_max=1.0, w_min=0.0)
+
+synapse_specs = [
+    SynapseSpec(
+        pre_neuron.interfaces.V,
+        post_neuron.interfaces.V,
+        post_neuron.interfaces.I_syn,
+        stdp_syn
+    )
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{SynapseSpec}:
+ SynapseSpec(pre_neuron₊cap₊v(t), post_neuron₊cap₊v(t), post_neuron₊syn_injector₊I₊u(t), <span class="sgr1">Model stdp_syn:</span>
+<span class="sgr1">Equations (5):</span>
+  5 standard: see equations(stdp_syn)
+<span class="sgr1">Unknowns (7):</span> see unknowns(stdp_syn)
+  s(t)
+  w(t)
+  x(t)
+  y(t)
+  ⋮
+<span class="sgr1">Parameters (11):</span> see parameters(stdp_syn)
+  g_max
+  τ_s
+  τ_plus
+  τ_minus
+  ⋮, nothing)</code></pre><h2 id="Driving-Stimuli-(Phase-Shifted-Sine-Waves)"><a class="docs-heading-anchor" href="#Driving-Stimuli-(Phase-Shifted-Sine-Waves)">Driving Stimuli (Phase-Shifted Sine Waves)</a><a id="Driving-Stimuli-(Phase-Shifted-Sine-Waves)-1"></a><a class="docs-heading-anchor-permalink" href="#Driving-Stimuli-(Phase-Shifted-Sine-Waves)" title="Permalink"></a></h2><p>To demonstrate BOTH potentiation and depression, we drive both neurons with the same frequency, but shift the phase. Swap the driver with a higher phase to see either LTP or LTD</p><pre><code class="language-julia hljs">using ModelingToolkitStandardLibrary.Blocks: Sine</code></pre><p>Pre fires ~10ms before Post (Phase offset of 1 radian)</p><pre><code class="language-julia hljs">@named pre_driver  = Sine(amplitude=8.0, frequency=0.2, offset=8.0, phase=1.0)
+@named post_driver = Sine(amplitude=8.0, frequency=0.2, offset=8.0, phase=0.0)
+
+drivers = [
+    (1, pre_driver),  # Pre fires second
+    (2, post_driver)  # Post fires first -&gt; causes LTD
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{Tuple{Int64, ModelingToolkitBase.System}}:
+ (1, <span class="sgr1">Model pre_driver:</span>
+<span class="sgr1">Subsystems (1):</span> see hierarchy(pre_driver)
+  output
+<span class="sgr1">Equations (1):</span>
+  1 standard: see equations(pre_driver)
+<span class="sgr1">Unknowns (1):</span> see unknowns(pre_driver)
+  output₊u(t): Inner variable in RealOutput output
+<span class="sgr1">Parameters (5):</span> see parameters(pre_driver)
+  offset
+  start_time
+  amplitude
+  frequency
+  ⋮)
+ (2, <span class="sgr1">Model post_driver:</span>
+<span class="sgr1">Subsystems (1):</span> see hierarchy(post_driver)
+  output
+<span class="sgr1">Equations (1):</span>
+  1 standard: see equations(post_driver)
+<span class="sgr1">Unknowns (1):</span> see unknowns(post_driver)
+  output₊u(t): Inner variable in RealOutput output
+<span class="sgr1">Parameters (5):</span> see parameters(post_driver)
+  offset
+  start_time
+  amplitude
+  frequency
+  ⋮)</code></pre><h2 id="Build-and-Simulate"><a class="docs-heading-anchor" href="#Build-and-Simulate">Build and Simulate</a><a id="Build-and-Simulate-1"></a><a class="docs-heading-anchor-permalink" href="#Build-and-Simulate" title="Permalink"></a></h2><pre><code class="language-julia hljs">net = build_acausal_network([pre_neuron, post_neuron];
+                            synapse_specs=synapse_specs,
+                            drivers=drivers,
+                            name=:stdp_net)
+
+println(&quot;Compiling STDP network...&quot;)
+sys = mtkcompile(net.sys)
+prob = ODEProblem(sys, [], (0.0, 500.0), jac=true, sparse=true)
+
+println(&quot;Solving...&quot;)
+sol = solve(prob, Rosenbrock23(), reltol=1e-4, abstol=1e-4)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: specialized 2nd order &quot;free&quot; stiffness-aware interpolation
+t: 7995-element Vector{Float64}:
+   0.0
+   0.002893114846611352
+   0.008829242592298848
+   0.01896847733888128
+   0.034855942072418426
+   0.05740747299190596
+   0.087434087710729
+   0.12514630534363663
+   0.17053256489091745
+   0.22324463261734082
+   ⋮
+ 499.6161828496841
+ 499.6700056976823
+ 499.72382854568053
+ 499.77765139367875
+ 499.831474241677
+ 499.8852970896752
+ 499.9391199376734
+ 499.99294278567163
+ 500.0
+u: 7995-element Vector{Vector{Float64}}:
+ [0.0, 0.0, 0.5, 0.0, 0.052, 0.596, 0.317, -65.0, 0.052, 0.596, 0.317, -65.0]
+ [2.2349627521889976e-17, 2.245853576014826e-17, 0.5, 2.2453672638795856e-17, 0.05201292703461028, 0.5959997882886603, 0.31700053149976487, -64.95747173816885, 0.05201219459646022, 0.5959999038565976, 0.31700045247461317, -64.97690924988831]
+ [6.901310457204732e-17, 7.004748951418226e-17, 0.5, 7.000154883749462e-17, 0.05204892805074109, 0.595997770330704, 0.3170027037263184, -64.8703206146502, 0.05204217738993674, 0.5959988455542649, 0.3170019688435469, -64.92940110022968]
+ [1.5129805871055e-16, 1.5623335009379267e-16, 0.5, 1.5601600924133225e-16, 0.05213910269008907, 0.5959893922832651, 0.31700977850526413, -64.72179313218808, 0.05210849424492114, 0.5959943458066783, 0.3170063957654718, -64.84784541345317]
+ [2.871122031222918e-16, 3.046738337457775e-16, 0.5, 3.0391057234871303e-16, 0.052349992106445906, 0.5959637237860609, 0.31702940298819776, -64.48987392677607, 0.05224941241660008, 0.5959804025734794, 0.3170180287718263, -64.71899951055983]
+ [4.954569122307232e-16, 5.468359826352734e-16, 0.5, 5.446448217383877e-16, 0.052786062704842984, 0.5959008899376282, 0.3170751743023435, -64.16230076831522, 0.05252319577387247, 0.5959459562049402, 0.31704450487680935, -64.53385391016991]
+ [8.044613889486188e-16, 9.365013652927842e-16, 0.5, 9.310089006760626e-16, 0.05359500101953108, 0.5957688431588444, 0.317168789011358, -63.72893333869959, 0.0530133960034179, 0.5958728563290904, 0.31709821532706123, -64.28313244160809]
+ [1.2517322463325767e-15, 1.560213705096528e-15, 0.5, 1.5477676444427228e-15, 0.0549433567459485, 0.5955239673362855, 0.3173393418066993, -63.188825459179014, 0.0538168285543435, 0.5957357552860524, 0.31719623188775786, -63.96125551612892]
+ [1.8953113880890367e-15, 2.568710884380669e-15, 0.5, 2.542480030679201e-15, 0.05700157264380797, 0.5951110514064736, 0.3176230435644306, -62.54444715422939, 0.05503788190648683, 0.5955015068798041, 0.3173606389783952, -63.56331787249344]
+ [2.8243610307153937e-15, 4.223807653330196e-15, 0.5, 4.1713457622318265e-15, 0.0599194777827596, 0.5944665642774342, 0.3180605179728477, -61.80289421648331, 0.056776016177501096, 0.5951303314652179, 0.317617545700887, -63.086336815251975]
+ ⋮
+ [1.5189736186085252, 1.6958985001676352, 0.6840784890826908, 0.6636813372563515, 0.025794649282151125, 0.13352865236569558, 0.6848585686079179, -74.84318190774667, 0.6845365934195154, 0.06419288359502504, 0.7387481765887064, -46.42170247181388]
+ [1.5148913385678309, 1.6913407300276393, 0.684078489082819, 0.6565753749087314, 0.022629263178202175, 0.13871001431586577, 0.6802090480315028, -74.77648135715685, 0.6420535516948124, 0.06491075553711885, 0.7367432324862814, -48.91744534050865]
+ [1.5108200297563465, 1.6867952090102452, 0.6840784890828552, 0.6495454953105443, 0.020518949617924262, 0.14383370938651627, 0.6756101499221989, -74.6932366539164, 0.5953252521772688, 0.06595797898962943, 0.7344227850111781, -51.4743279476606]
+ [1.5067596626898425, 1.6822619041956262, 0.6840784890828652, 0.6425908838522443, 0.01913570296061986, 0.1488966524871843, 0.6710627853082327, -74.59915259371658, 0.544545881854167, 0.06734656645326768, 0.7317925420557432, -54.06065241650421]
+ [1.5027102079624566, 1.677740782752428, 0.684078489082868, 0.6357107346462193, 0.018253529444389446, 0.15389711847287774, 0.6665673992672829, -74.49788056492146, 0.49033161502725686, 0.0690882616377398, 0.7288642315815405, -56.62030068286512]
+ [1.4986716362470995, 1.6732318119375316, 0.6840784890828687, 0.6289042504334065, 0.017717144597412297, 0.1588342534212001, 0.6621241367305422, -74.39182425953895, 0.43385247027064766, 0.07119060459042546, 0.7256577842367586, -59.07336673698253]
+ [1.4946439182954279, 1.6687349590958158, 0.684078489082869, 0.6221706424909071, 0.017419930298213135, 0.1637077763763247, 0.6577329434009384, -74.2826267210835, 0.37685756180150887, 0.07365135588997174, 0.7222024551990379, -61.325904874476784]
+ [1.4906270249376843, 1.6642501916599213, 0.6840784890828691, 0.6155091305405911, 0.01728863006769731, 0.16851779632525354, 0.6533936274228829, -74.1714651899382, 0.3215008160293049, 0.07645286356017564, 0.7185361077892682, -63.28927527361712]
+ [1.4901011340036865, 1.663663046738317, 0.6840784890828691, 0.6146409873109907, 0.017281067140864675, 0.16914379236522828, 0.6528284940949416, -74.15679034788597, 0.3144856603993208, 0.07684419393461812, 0.7180418043035744, -63.520175678635646]</code></pre><h2 id="Plot-the-Results"><a class="docs-heading-anchor" href="#Plot-the-Results">Plot the Results</a><a id="Plot-the-Results-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-the-Results" title="Permalink"></a></h2><pre><code class="language-julia hljs">p1 = plot(sol, idxs=[sys.pre_neuron.cap.v, sys.post_neuron.cap.v],
+          title=&quot;Neuron Voltages&quot;, ylabel=&quot;V (mV)&quot;,
+          labels=[&quot;Pre&quot; &quot;Post&quot;], legend=:right)</code></pre><img src="8203d55b.svg" alt="Example block output"/><p>Plot the plastic weight variable! We reach into the synapse namespace to get <code>w</code>.</p><pre><code class="language-julia hljs">p2 = plot(sol, idxs=[sys.stdp_syn.w],
+          title=&quot;STDP Synaptic Weight (w)&quot;,
+          ylabel=&quot;Weight&quot;, xlabel=&quot;Time (ms)&quot;, legend=false)</code></pre><img src="8ef838a9.svg" alt="Example block output"/><p>Plot the pre and post synaptic traces (x and y) which drive the weight update</p><pre><code class="language-julia hljs">p3 = plot(sol, idxs=[sys.stdp_syn.x, sys.stdp_syn.y],
+          title=&quot;STDP Activity Traces&quot;,
+          labels=[&quot;x (Pre)&quot; &quot;y (Post)&quot;], legend=:right)
+
+plot(p1, p2, p3, layout=(3,1), size=(800, 800))</code></pre><img src="7e9f0e4d.svg" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../05_mixed_topologies/">« 05 mixed topologies</a><a class="docs-footer-nextpage" href="../07_calcium_gates/">07 calcium gates »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 9 July 2026 15:00">Thursday 9 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

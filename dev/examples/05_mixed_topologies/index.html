@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>05 mixed topologies · MTKNeuralToolkit.jl</title><meta name="title" content="05 mixed topologies · MTKNeuralToolkit.jl"/><meta property="og:title" content="05 mixed topologies · MTKNeuralToolkit.jl"/><meta property="twitter:title" content="05 mixed topologies · MTKNeuralToolkit.jl"/><meta name="description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="twitter:description" content="Documentation for MTKNeuralToolkit.jl."/><meta property="og:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/05_mixed_topologies/"/><meta property="twitter:url" content="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/05_mixed_topologies/"/><link rel="canonical" href="https://Dhruva2.github.io/MTKNeuralToolkit.jl/examples/05_mixed_topologies/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">MTKNeuralToolkit.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../01_single_compartment_HH/">01 single compartment HH</a></li><li><a class="tocitem" href="../01b_first_principles_HH/">01b first principles HH</a></li><li><a class="tocitem" href="../02_directed_synaptic_connection/">02 directed synaptic connection</a></li><li><a class="tocitem" href="../03_acausal_coupling/">03 acausal coupling</a></li><li><a class="tocitem" href="../04_vectorized_dynamics/">04 vectorized dynamics</a></li><li class="is-active"><a class="tocitem" href>05 mixed topologies</a><ul class="internal"><li><a class="tocitem" href="#1.-Build-the-Scalar-&quot;Hub&quot;-Neuron"><span>1. Build the Scalar &quot;Hub&quot; Neuron</span></a></li><li><a class="tocitem" href="#2.-Build-the-Vectorized-Populations-(E-and-I)"><span>2. Build the Vectorized Populations (E and I)</span></a></li><li><a class="tocitem" href="#3.-Wire-Synapses"><span>3. Wire Synapses</span></a></li><li><a class="tocitem" href="#4.-Driving-Stimuli-and-Network-Assembly"><span>4. Driving Stimuli &amp; Network Assembly</span></a></li><li><a class="tocitem" href="#5.-Plot-the-Results"><span>5. Plot the Results</span></a></li></ul></li><li><a class="tocitem" href="../06_stdp/">06 stdp</a></li><li><a class="tocitem" href="../07_calcium_gates/">07 calcium gates</a></li><li><a class="tocitem" href="../08_stg_network/">08 stg network</a></li><li><a class="tocitem" href="../09_parameter_estimation_conductance/">09 parameter estimation conductance</a></li><li><a class="tocitem" href="../10_param_estimation_weight/">10 param estimation weight</a></li><li><a class="tocitem" href="../11_reversediff_network/">11 reversediff network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>05 mixed topologies</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>05 mixed topologies</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/VRaman-Lab/MTKNeuralToolkit.jl/blob/main/docs/examples/05_mixed_topologies.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Example-5:-Mixed-Topologies-(Scalar-Hub-and-Vectorized-Populations)"><a class="docs-heading-anchor" href="#Example-5:-Mixed-Topologies-(Scalar-Hub-and-Vectorized-Populations)">Example 5: Mixed Topologies (Scalar Hub and Vectorized Populations)</a><a id="Example-5:-Mixed-Topologies-(Scalar-Hub-and-Vectorized-Populations)-1"></a><a class="docs-heading-anchor-permalink" href="#Example-5:-Mixed-Topologies-(Scalar-Hub-and-Vectorized-Populations)" title="Permalink"></a></h1><p>This example demonstrates the flexibility of MTKNeuralToolkit&#39;s symbolic interfaces. You can seamlessly mix <code>Scalar</code> and <code>Vectorized</code> topologies in the same network. Because vectorized compartments expose their states as symbolic arrays, you can directly index into them (e.g., <code>pop.interfaces.V[1]</code>) to wire up standard scalar synapses to specific elements of a population.</p><p>We create a &quot;hub&quot; neuron (Scalar) that interacts with an E/I population pair (Vectorized). The hub excites the first neuron of the E-pop, which inhibits the hub. The E-pop also projects densely to the I-pop using a weight matrix.</p><hr/><pre><code class="language-julia hljs">using MTKNeuralToolkit
+using MTKNeuralToolkit.HodgkinHuxley: SodiumChannel, PotassiumChannel, LeakChannel
+using ModelingToolkit: mtkcompile, @named
+using ModelingToolkitStandardLibrary.Blocks: Sine
+using OrdinaryDiffEq
+using Plots</code></pre><h2 id="1.-Build-the-Scalar-&quot;Hub&quot;-Neuron"><a class="docs-heading-anchor" href="#1.-Build-the-Scalar-&quot;Hub&quot;-Neuron">1. Build the Scalar &quot;Hub&quot; Neuron</a><a id="1.-Build-the-Scalar-&quot;Hub&quot;-Neuron-1"></a><a class="docs-heading-anchor-permalink" href="#1.-Build-the-Scalar-&quot;Hub&quot;-Neuron" title="Permalink"></a></h2><pre><code class="language-julia hljs">top_scalar = Scalar()
+
+function build_hh_neuron(name::Symbol)
+    @named cap  = Capacitor(topology=top_scalar, C=1.0)
+    @named na   = SodiumChannel(topology=top_scalar)
+    @named k    = PotassiumChannel(topology=top_scalar)
+    @named leak = LeakChannel(topology=top_scalar)
+    return build_compartment(cap, [na, k, leak]; name=name, V_init=-65.0, topology=top_scalar)
+end
+
+hub_neuron = build_hh_neuron(:hub_neuron)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model hub_neuron:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(hub_neuron)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (52):</span>
+  36 standard: see equations(hub_neuron)
+  16 connecting: see equations(expand_connections(hub_neuron))
+<span class="sgr1">Unknowns (51):</span> see unknowns(hub_neuron)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(hub_neuron)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = hub_neuron₊cap₊v(t), p_pin = <span class="sgr1">Model hub_neuron₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(hub_neuron₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(hub_neuron₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model hub_neuron₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(hub_neuron₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(hub_neuron₊n)
+  v(t)
+  i(t), I_ext = hub_neuron₊injector₊I₊u(t), I_syn = hub_neuron₊syn_injector₊I₊u(t), cap_name = :cap), -65.0, Scalar(), NoGeometry(), NoMorphology())</code></pre><hr/><h2 id="2.-Build-the-Vectorized-Populations-(E-and-I)"><a class="docs-heading-anchor" href="#2.-Build-the-Vectorized-Populations-(E-and-I)">2. Build the Vectorized Populations (E and I)</a><a id="2.-Build-the-Vectorized-Populations-(E-and-I)-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Build-the-Vectorized-Populations-(E-and-I)" title="Permalink"></a></h2><pre><code class="language-julia hljs">N_E = 5
+N_I = 3
+top_E = Vectorized(N_E)
+top_I = Vectorized(N_I)
+
+function build_vector_pop(name::Symbol, top)
+    @named cap  = Capacitor(topology=top, C=1.0)
+    @named na   = SodiumChannel(topology=top)
+    @named k    = PotassiumChannel(topology=top)
+    @named leak = LeakChannel(topology=top)
+    return build_compartment(cap, [na, k, leak]; name=name, V_init=-65.0, topology=top)
+end
+
+pop_E = build_vector_pop(:pop_E, top_E)
+pop_I = build_vector_pop(:pop_I, top_I)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model pop_I:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(pop_I)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (64):</span>
+  48 standard: see equations(pop_I)
+  16 connecting: see equations(expand_connections(pop_I))
+<span class="sgr1">Unknowns (51):</span> see unknowns(pop_I)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(pop_I)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = (pop_I₊cap₊v(t))[1:3], p_pin = <span class="sgr1">Model pop_I₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_I₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_I₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model pop_I₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_I₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_I₊n)
+  v(t)
+  i(t), I_ext = (pop_I₊injector₊I₊u(t))[1:3], I_syn = (pop_I₊syn_injector₊I₊u(t))[1:3], cap_name = :cap), -65.0, Vectorized(3), NoGeometry(), NoMorphology())</code></pre><hr/><h2 id="3.-Wire-Synapses"><a class="docs-heading-anchor" href="#3.-Wire-Synapses">3. Wire Synapses</a><a id="3.-Wire-Synapses-1"></a><a class="docs-heading-anchor-permalink" href="#3.-Wire-Synapses" title="Permalink"></a></h2><h3 id="A.-Mixed-Topology-(Scalar-Vectorized)"><a class="docs-heading-anchor" href="#A.-Mixed-Topology-(Scalar-Vectorized)">A. Mixed Topology (Scalar &lt;-&gt; Vectorized)</a><a id="A.-Mixed-Topology-(Scalar-Vectorized)-1"></a><a class="docs-heading-anchor-permalink" href="#A.-Mixed-Topology-(Scalar-Vectorized)" title="Permalink"></a></h3><p>The scalar hub excites the FIRST neuron in pop<em>E, and pop</em>E[1] inhibits the hub.</p><pre><code class="language-julia hljs">@named syn_hub_to_E = ExpSynapse(g_max=3.0, τ=5.0, E_rev=0.0, V_th=-20.0, slope=2.0)
+@named syn_E_to_hub = ExpSynapse(g_max=5.0, τ=5.0, E_rev=-80.0, V_th=-20.0, slope=2.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr1">Model syn_E_to_hub:</span>
+<span class="sgr1">Equations (2):</span>
+  2 standard: see equations(syn_E_to_hub)
+<span class="sgr1">Unknowns (4):</span> see unknowns(syn_E_to_hub)
+  s(t)
+  I_syn(t)
+  V_pre(t)
+  V_post(t)
+<span class="sgr1">Parameters (5):</span> see parameters(syn_E_to_hub)
+  g_max
+  τ
+  E_rev
+  V_th
+  ⋮</code></pre><h3 id="B.-Vectorized-Vectorized"><a class="docs-heading-anchor" href="#B.-Vectorized-Vectorized">B. Vectorized &lt;-&gt; Vectorized</a><a id="B.-Vectorized-Vectorized-1"></a><a class="docs-heading-anchor-permalink" href="#B.-Vectorized-Vectorized" title="Permalink"></a></h3><p>pop<em>E projects densely to pop</em>I using a weight matrix</p><pre><code class="language-julia hljs">W_EI = 0.5 .* rand(N_I, N_E)
+syn_EI = build_synapse_block(pop_E, pop_I, W_EI; name=:syn_EI, E_rev=0.0)
+
+synapse_specs = [
+    #Hub -&gt; pop_E[1]
+    SynapseSpec(hub_neuron.interfaces.V, pop_E.interfaces.V[1], pop_E.interfaces.I_syn[1], syn_hub_to_E),
+    # pop_E[1] -&gt; Hub
+    SynapseSpec(pop_E.interfaces.V[1], hub_neuron.interfaces.V, hub_neuron.interfaces.I_syn, syn_E_to_hub),
+    #pop_E -&gt; pop_I (Vectorized block)
+    syn_EI
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element Vector{SynapseSpec}:
+ SynapseSpec(hub_neuron₊cap₊v(t), (pop_E₊cap₊v(t))[<span class="sgr34">1</span>], (pop_E₊syn_injector₊I₊u(t))[<span class="sgr34">1</span>], <span class="sgr1">Model syn_hub_to_E:</span>
+<span class="sgr1">Equations (2):</span>
+  2 standard: see equations(syn_hub_to_E)
+<span class="sgr1">Unknowns (4):</span> see unknowns(syn_hub_to_E)
+  s(t)
+  I_syn(t)
+  V_pre(t)
+  V_post(t)
+<span class="sgr1">Parameters (5):</span> see parameters(syn_hub_to_E)
+  g_max
+  τ
+  E_rev
+  V_th
+  ⋮, nothing)
+ SynapseSpec((pop_E₊cap₊v(t))[<span class="sgr34">1</span>], hub_neuron₊cap₊v(t), hub_neuron₊syn_injector₊I₊u(t), <span class="sgr1">Model syn_E_to_hub:</span>
+<span class="sgr1">Equations (2):</span>
+  2 standard: see equations(syn_E_to_hub)
+<span class="sgr1">Unknowns (4):</span> see unknowns(syn_E_to_hub)
+  s(t)
+  I_syn(t)
+  V_pre(t)
+  V_post(t)
+<span class="sgr1">Parameters (5):</span> see parameters(syn_E_to_hub)
+  g_max
+  τ
+  E_rev
+  V_th
+  ⋮, nothing)
+ SynapseSpec((pop_E₊cap₊v(t))[1:5], (pop_I₊cap₊v(t))[1:3], (pop_I₊syn_injector₊I₊u(t))[1:3], <span class="sgr1">Model syn_EI:</span>
+<span class="sgr1">Equations (2):</span>
+  2 standard: see equations(syn_EI)
+<span class="sgr1">Unknowns (4):</span> see unknowns(syn_EI)
+  s(t)
+  I_syn(t)
+  V_pre(t)
+  V_post(t)
+<span class="sgr1">Parameters (6):</span> see parameters(syn_EI)
+  g_max
+  τ
+  E_rev
+  V_th
+  ⋮, Compartment{NoMorphology, NoGeometry, Float64}(<span class="sgr1">Model pop_I:</span>
+<span class="sgr1">Subsystems (8):</span> see hierarchy(pop_I)
+  cap
+  injector
+  syn_injector
+  p
+  ⋮
+<span class="sgr1">Equations (64):</span>
+  48 standard: see equations(pop_I)
+  16 connecting: see equations(expand_connections(pop_I))
+<span class="sgr1">Unknowns (51):</span> see unknowns(pop_I)
+  cap₊v(t)
+  cap₊i(t)
+  cap₊p₊v(t)
+  cap₊p₊i(t)
+  ⋮
+<span class="sgr1">Parameters (7):</span> see parameters(pop_I)
+  cap₊C
+  na₊g
+  na₊E_rev
+  k₊g
+  ⋮, (V = (pop_I₊cap₊v(t))[1:3], p_pin = <span class="sgr1">Model pop_I₊p:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_I₊p))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_I₊p)
+  v(t)
+  i(t), n_pin = <span class="sgr1">Model pop_I₊n:</span>
+<span class="sgr1">Equations (2):</span>
+  2 connecting: see equations(expand_connections(pop_I₊n))
+<span class="sgr1">Unknowns (2):</span> see unknowns(pop_I₊n)
+  v(t)
+  i(t), I_ext = (pop_I₊injector₊I₊u(t))[1:3], I_syn = (pop_I₊syn_injector₊I₊u(t))[1:3], cap_name = :cap), -65.0, Vectorized(3), NoGeometry(), NoMorphology()))</code></pre><hr/><h2 id="4.-Driving-Stimuli-and-Network-Assembly"><a class="docs-heading-anchor" href="#4.-Driving-Stimuli-and-Network-Assembly">4. Driving Stimuli &amp; Network Assembly</a><a id="4.-Driving-Stimuli-and-Network-Assembly-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Driving-Stimuli-and-Network-Assembly" title="Permalink"></a></h2><p>Drive the hub neuron with a steady current to keep it spiking</p><pre><code class="language-julia hljs">@named current_driver = Sine(amplitude=8.0, frequency=0.05, offset=8.0)
+drivers = [(1, current_driver)]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{Tuple{Int64, ModelingToolkitBase.System}}:
+ (1, <span class="sgr1">Model current_driver:</span>
+<span class="sgr1">Subsystems (1):</span> see hierarchy(current_driver)
+  output
+<span class="sgr1">Equations (1):</span>
+  1 standard: see equations(current_driver)
+<span class="sgr1">Unknowns (1):</span> see unknowns(current_driver)
+  output₊u(t): Inner variable in RealOutput output
+<span class="sgr1">Parameters (5):</span> see parameters(current_driver)
+  offset
+  start_time
+  amplitude
+  frequency
+  ⋮)</code></pre><div class="admonition is-info" id="Automatic-Grounding-455749a1ae36e816"><header class="admonition-header">Automatic Grounding<a class="admonition-anchor" href="#Automatic-Grounding-455749a1ae36e816" title="Permalink"></a></header><div class="admonition-body"><p>The network builder handles all grounding implicitly. Undriven elements in pop<em>E and pop</em>I will be grounded automatically.</p></div></div><pre><code class="language-julia hljs">net = build_acausal_network([hub_neuron, pop_E, pop_I];
+                            synapse_specs=synapse_specs,
+                            drivers=drivers,
+                            name=:mixed_net)
+
+println(&quot;Compiling mixed-topology network...&quot;)
+sys = mtkcompile(net.sys)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr1">Model mixed_net:</span>
+<span class="sgr1">Equations (43):</span>
+  43 standard: see equations(mixed_net)
+<span class="sgr1">Unknowns (43):</span> see unknowns(mixed_net)
+  syn_hub_to_E₊s(t)
+  syn_E_to_hub₊s(t)
+  (syn_EI₊s(t))[<span class="sgr34">5</span>]
+  (syn_EI₊s(t))[<span class="sgr34">4</span>]
+  ⋮
+<span class="sgr1">Parameters (42):</span> see parameters(mixed_net)
+  hub_neuron₊cap₊C
+  hub_neuron₊na₊g
+  hub_neuron₊na₊E_rev
+  hub_neuron₊k₊g
+  ⋮
+<span class="sgr1">Observed (560):</span> see observed(mixed_net)</code></pre><p>Mixed systems generate block-diagonal Jacobians, so sparse solvers excel here.</p><pre><code class="language-julia hljs">prob = ODEProblem(sys, [], (0.0, 200.0), jac=true, sparse=true)
+
+println(&quot;Solving...&quot;)
+sol = solve(prob, Rosenbrock23())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: specialized 2nd order &quot;free&quot; stiffness-aware interpolation
+t: 1712-element Vector{Float64}:
+   0.0
+   0.004151497658199146
+   0.033465923871105786
+   0.06681070233882655
+   0.13339904295393468
+   0.20698292714549474
+   0.32143095284397893
+   0.4475346744252118
+   0.615658019267008
+   0.7978569217349997
+   ⋮
+ 196.24221272901187
+ 196.91658056422526
+ 197.47452054678917
+ 198.03246052935307
+ 198.50695277065358
+ 198.9814450119541
+ 199.4559372532546
+ 199.87579348141296
+ 200.0
+u: 1712-element Vector{Vector{Float64}}:
+ [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.052, 0.052, 0.052  …  0.317, -65.0, -65.0, -65.0, -65.0, -65.0, 0.052, 0.596, 0.317, -65.0]
+ [7.07931474957574e-13, 7.020810092988047e-13, 7.020810092987625e-13, 7.020810092987625e-13, 7.020810092987625e-13, 7.020810092987625e-13, 7.020810092988047e-13, 0.052016202304240935, 0.052016202304240935, 0.052016202304240935  …  0.3170005140127964, -65.00010510490591, -65.00010510490591, -65.00010510490591, -65.00010510490591, -65.00010510490563, 0.05201799239933115, 0.5959997767806697, 0.31700070751311876, -64.96691768807783]
+ [6.032653711705081e-12, 5.642129272287716e-12, 5.642129272266742e-12, 5.642129272266742e-12, 5.642129272266742e-12, 5.642129272266742e-12, 5.642129272287716e-12, 0.052122661978543455, 0.05212266197854275, 0.05212266197854222  …  0.3170041020566747, -65.000722015743, -65.000722015743, -65.000722015743, -65.000722015743, -65.00072201572375, 0.052233439405473904, 0.5959821805016563, 0.3170166308056937, -64.73450455640281]
+ [1.2849045990016856e-11, 1.1224759728148291e-11, 1.1224759727994088e-11, 1.1224759727994088e-11, 1.1224759727994088e-11, 1.1224759727994088e-11, 1.1224759728148291e-11, 0.052228339469770554, 0.05222833946976564, 0.052228339469761936  …  0.31700810972153937, -65.00118131994385, -65.00118131994385, -65.00118131994385, -65.00118131994385, -65.00118131986449, 0.05265137043691068, 0.5959280499523424, 0.3170579444512221, -64.47241526075794]
+ [2.926700677947609e-11, 2.226011473244419e-11, 2.2260114731162166e-11, 2.2260114731162166e-11, 2.2260114731162166e-11, 2.2260114731162166e-11, 2.226011473244419e-11, 0.052399375524066566, 0.05239937552403106, 0.052399375524004164  …  0.31701596603952875, -65.00147553586197, -65.00147553586197, -65.00147553586197, -65.00147553586197, -65.00147553551984, 0.0539445922455985, 0.5957115524098755, 0.3172137212154369, -63.95474763876272]
+ [5.285538823023796e-11, 3.4285501991774186e-11, 3.428550198675701e-11, 3.428550198675701e-11, 3.428550198675701e-11, 3.428550198675701e-11, 3.4285501991774186e-11, 0.052540127170201616, 0.05254012717008118, 0.052540127169990014  …  0.3170245503200039, -65.00106115462009, -65.00106115462009, -65.00106115462009, -65.00106115462009, -65.00106115371952, 0.05595605927155691, 0.5953035565919363, 0.3174989196843248, -63.38900678119804]
+ [1.0498813363859462e-10, 5.265086849785271e-11, 5.2650868476962536e-11, 5.2650868476962536e-11, 5.2650868476962536e-11, 5.2650868476962536e-11, 5.265086849785271e-11, 0.052691104214300115, 0.05269110421390371, 0.05269110421360367  …  0.3170379976101585, -64.99941883257983, -64.99941883257983, -64.99941883257983, -64.99941883257983, -64.9994188300485, 0.060006658773802214, 0.5943134190494646, 0.3181773376348078, -62.51503838684603]
+ [1.9532434788868732e-10, 7.242850165068151e-11, 7.242850158679399e-11, 7.242850158679399e-11, 7.242850158679399e-11, 7.242850158679399e-11, 7.242850165068151e-11, 0.05279671798373761, 0.05279671798279927, 0.05279671798208915  …  0.3170532451708352, -64.99679081354843, -64.99679081354843, -64.99679081354843, -64.99679081354843, -64.99679080765422, 0.06551100315555326, 0.5927075647024895, 0.31925826386324474, -61.54873646472346]
+ [4.072633703271963e-10, 9.807992767347765e-11, 9.807992747113812e-11, 9.807992747113812e-11, 9.807992747113812e-11, 9.807992747113812e-11, 9.807992767347765e-11, 0.05288402671272685, 0.05288402671064568, 0.05288402670907082  …  0.31707459639492674, -64.99272376175328, -64.99272376175328, -64.99272376175328, -64.99272376175328, -64.99272374706273, 0.07429265816782976, 0.5896821204652167, 0.32125638298528714, -60.22784662925505]
+ [8.731969932384638e-10, 1.249881031310612e-10, 1.2498810257047773e-10, 1.2498810257047773e-10, 1.2498810257047773e-10, 1.2498810257047773e-10, 1.249881031310612e-10, 0.05294356751357968, 0.05294356750971522, 0.05294356750679096  …  0.31709918431099626, -64.98816708650033, -64.98816708650033, -64.98816708650033, -64.98816708650033, -64.98816705184163, 0.08576757908003746, 0.5851469169192266, 0.32418496767920724, -58.70098535555639]
+ ⋮
+ [0.10322773421458595, 0.11941625768605063, 8.460663727585089e-10, 8.460663727585089e-10, 8.460663727585089e-10, 8.460663727585089e-10, 0.11941625768605063, 0.05269099004135787, 0.021882224630785086, 0.04953457164451757  …  0.45174922886243557, -64.99972243373459, -64.99972243373459, -64.99972243373459, -64.99972243373459, -60.93586294617213, 0.01997692836881189, 0.7066714532470176, 0.25563060789533065, -72.77597855417326]
+ [0.09019404498057668, 0.10433858181937009, 8.460663727585134e-10, 8.460663727585134e-10, 8.460663727585134e-10, 8.460663727585134e-10, 0.10433858181937009, 0.05355612657275955, 0.02406914279492408, 0.050889218894599623  …  0.4428017604151469, -64.99972243373459, -64.99972243373459, -64.99972243373459, -64.99972243373459, -61.35893597102745, 0.022322981036863598, 0.7151010538847574, 0.2510091580103309, -71.80613573256112]
+ [0.0806661141890631, 0.09331644902444135, 8.460663727585167e-10, 8.460663727585167e-10, 8.460663727585167e-10, 8.460663727585167e-10, 0.09331644902444135, 0.05403866270229044, 0.026053667266146843, 0.05178209599067068  …  0.43565456809596703, -64.99972243373459, -64.99972243373459, -64.99972243373459, -64.99972243373459, -61.689276026699794, 0.025251866609372314, 0.7198401128215594, 0.24880589657298233, -70.73279832903995]
+ [0.07214469625005904, 0.08345867371830078, 8.460663727585196e-10, 8.460663727585196e-10, 8.460663727585196e-10, 8.460663727585196e-10, 0.08345867371830078, 0.05433810292894213, 0.02815710262162726, 0.052481287971466194  …  0.4287432899195971, -64.99972243373459, -64.99972243373459, -64.99972243373459, -64.99972243373459, -61.99945729794268, 0.029398869420796697, 0.7221753067740941, 0.24831807890405208, -69.39840759143371]
+ [0.06561080802105422, 0.07590011914822896, 8.460663727585218e-10, 8.460663727585218e-10, 8.460663727585218e-10, 8.460663727585218e-10, 0.07590011914822896, 0.054469731311685046, 0.030027806636177948, 0.052936134625535466  …  0.42305401828016864, -64.99972243373459, -64.99972243373459, -64.99972243373459, -64.99972243373459, -62.249242420564705, 0.03428003519202998, 0.7219354967749302, 0.24946166456677243, -68.04101095368145]
+ [0.059668670795412, 0.06902611591359882, 8.460663727585239e-10, 8.460663727585239e-10, 8.460663727585239e-10, 8.460663727585239e-10, 0.06902611591359882, 0.05450752687286337, 0.03194614117848014, 0.05327502680860986  …  0.41753955416818234, -64.99972243373459, -64.99972243373459, -64.99972243373459, -64.99972243373459, -62.48546981736922, 0.040829567672289506, 0.7192660629781531, 0.252258777800487, -66.4666777080238]
+ [0.054264691812066425, 0.06277466664345599, 8.460663727585258e-10, 8.460663727585258e-10, 8.460663727585258e-10, 8.460663727585258e-10, 0.06277466664345599, 0.054469298664161364, 0.033895658684948635, 0.053511072962773396  …  0.4122013366541718, -64.99972243373459, -64.99972243373459, -64.99972243373459, -64.99972243373459, -62.70881858944794, 0.049736333353579104, 0.7136751322174073, 0.25696869581429027, -64.64491999453124]
+ [0.04989288403890556, 0.05771725705614077, 8.460663727585272e-10, 8.460663727585272e-10, 8.460663727585272e-10, 8.460663727585272e-10, 0.05771725705614077, 0.05438544565360625, 0.035633050105694467, 0.05364494990796499  …  0.4076251305010208, -64.99972243373459, -64.99972243373459, -64.99972243373459, -64.99972243373459, -62.89634871359475, 0.06055005675585964, 0.7057105718426911, 0.26301692435719576, -62.76369882132307]
+ [0.04866871711303776, 0.05630111205153127, 8.460663727585276e-10, 8.460663727585276e-10, 8.460663727585276e-10, 8.460663727585276e-10, 0.05630111205153127, 0.05435324306949938, 0.03614921476570519, 0.053672445465317936  …  0.40629780477536237, -64.99972243373459, -64.99972243373459, -64.99972243373459, -64.99972243373459, -62.95028800465439, 0.06454719441898286, 0.7026956238953779, 0.2651986115594984, -62.13846438023887]</code></pre><hr/><h2 id="5.-Plot-the-Results"><a class="docs-heading-anchor" href="#5.-Plot-the-Results">5. Plot the Results</a><a id="5.-Plot-the-Results-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Plot-the-Results" title="Permalink"></a></h2><pre><code class="language-julia hljs">p1 = plot(sol, idxs=[sys.hub_neuron.cap.v],
+          title=&quot;Scalar Hub Neuron&quot;, ylabel=&quot;V (mV)&quot;, legend=false)
+
+p2 = plot(sol, idxs=[sys.pop_E.cap.v...],
+          title=&quot;Excitatory Pop (Pop[1] synapsed)&quot;, ylabel=&quot;V (mV)&quot;, legend=false)
+
+p3 = plot(sol, idxs=[sys.pop_I.cap.v...],
+          title=&quot;Inhibitory Pop (Driven by E)&quot;, ylabel=&quot;V (mV)&quot;, xlabel=&quot;Time (ms)&quot;, legend=false)
+
+plot(p1, p2, p3, layout=(3,1), size=(800, 600))</code></pre><img src="e839de09.svg" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../04_vectorized_dynamics/">« 04 vectorized dynamics</a><a class="docs-footer-nextpage" href="../06_stdp/">06 stdp »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 9 July 2026 15:00">Thursday 9 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
