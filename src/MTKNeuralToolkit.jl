@@ -40,6 +40,10 @@ export AbstractGeometry, NoGeometry, Geometry
 export get_capacitance, get_conductance, get_ca_conversion_factor
 export Pin, OnePort, TwoPort, VectorizedPin, VectorizedOnePort
 
+include("training/pem.jl")
+export PEMObservationChannel
+
+
 # ==========================================
 # 2. Standard Model Library (Submodules)
 # ==========================================
