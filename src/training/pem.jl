@@ -1,40 +1,22 @@
-using ModelingToolkit
-using ModelingToolkit: t_nounits as t, D_nounits as D, @named, @parameters, @variables, @component, @unpack, Equation, System, extend
-using Symbolics: SymbolicT
-using DataInterpolations
-using ..MTKNeuralToolkit: OnePort, VectorizedOnePort, Scalar, Vectorized, get_conductance
-
-"""
-    PEMObservationChannel(; name, itp, K_init=1.0, topology=Scalar())
-
-An acausal channel that injects an observer current to drive the membrane voltage 
-towards a target interpolated dataset. Used for the Prediction Error Method (PEM).
-
-Equations:
-    i ~ K * (itp(t) - v)
-
-Where `itp` is a DataInterpolations object, `K` is the observer gain (optimized during PEM), 
-and `v` is the membrane voltage of the OnePort.
-"""
-@component function PEMObservationChannel(; name, itp, K_init=1.0, topology=Scalar())
+@component function PEMObservationChannel(; name, itps::AbstractVector, K_init=1.0, topology=Scalar())
+    N = length(itps)
+    
     if topology isa Scalar
         @named oneport = OnePort()
         @unpack v, i = oneport
         
         @parameters K = K_init
         params = SymbolicT[K]
-        
         vars = SymbolicT[]
         
-        # The observer correction current
+        # Explicitly use the first element of the array
         eqs = Equation[
-            i ~ K * (v - itp(t))
+            i ~ K * (v - itps[1](t))
         ]
         
         return extend(System(eqs, t, vars, params; systems=System[], name=name), oneport)
         
     else
-        N = topology.N
         @named oneport = VectorizedOnePort(N=N)
         @unpack v, i = oneport
         
@@ -44,12 +26,13 @@ and `v` is the membrane voltage of the OnePort.
             @parameters K = K_init
         end
         params = SymbolicT[K]
-        
         vars = SymbolicT[]
         
-        # Broadcast the interpolation over the vectorized states
+        # Clean, explicit unrolling to guarantee MTK shape inference
+        target_vec = SymbolicT[itps[j](t) for j in 1:N]
+        
         eqs = Equation[
-            i ~ K .* (v .- itp(t))
+            i ~ K .* (v .- target_vec)
         ]
         
         return extend(System(eqs, t, vars, params; systems=System[], name=name), oneport)

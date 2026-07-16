@@ -12,7 +12,7 @@
 # system that uses array operations.
 #
 # !!! note
-#     An annoyance is the need to build both scalar and vector definitions for the components. It would be nice (and maybe exists?) for MTK to have some automatic way of turning a scalar component into a vectorised one? I spent some time attempting this with postwalk, and got it running. But it was messy and dependeng on the MTK internal API so decided to demand a separate set of equations for a vectorised component.
+#     An annoyance is the need to build both scalar and vector definitions for the components. It would be nice (and maybe exists?) for MTK to have some automatic way of turning a scalar component into a vectorised one? I spent some time attempting this with postwalk, and got it running. But it was messy and dependent on the MTK internal API so decided to demand a separate set of equations for a vectorised component.
 
 using MTKNeuralToolkit, Random
 using ModelingToolkit: mtkcompile, @named
@@ -106,7 +106,12 @@ prob = ODEProblem(sys, [], (0.0, 100.0), jac=true, sparse=true)
 # block-diagonal structure (intrinsic dynamics) with off-diagonal bands 
 # representing the synaptic couplings between the E and I populations.
 println("Plotting Jacobian sparsity pattern...")
-prob.f.jac_prototype
+spy(prob.f.jac_prototype, 
+     title="Jacobian Sparsity Pattern", 
+     xlabel="Column (Equation Index)", 
+     ylabel="Row (Variable Index)", 
+     size=(600, 600))
+
 
 println("Solving...")
 sol = solve(prob, Rosenbrock23())
