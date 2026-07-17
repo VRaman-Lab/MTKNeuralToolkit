@@ -38,7 +38,7 @@ function _detect_fixed(t, V::AbstractVector{<:AbstractFloat}, threshold, refract
 end
 
 function _detect_fixed(t, V::AbstractVector{<:AbstractVector}, threshold, refractory_period, step_size, interpolate)
-    stack(V; dims=1)
+    Vmat = stack(V; dims=1)
     n_neurons = size(Vmat, 2)
     spikes = Vector{Vector{Float64}}(undef, n_neurons)
     @views for j in 1:n_neurons
