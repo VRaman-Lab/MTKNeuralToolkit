@@ -1,9 +1,5 @@
 # # **13.** Parameter Estimation: Hidden Neuron Chain
 #
-#md # [![](https://mybinder.org/badge_logo.svg)](@__BINDER_ROOT_URL__/generated/13_pem_hidden_chain.ipynb)
-#md # [![](https://img.shields.io/badge/show-nbviewer-579ACA.svg)](@__NBVIEWER_ROOT_URL__/generated/13_pem_hidden_chain.ipynb)
-
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
 # ## Introduction
 # In this example, we infer the parameters of a completely hidden neuron in a chain. 
 # We have a 3-neuron chain (A -> B -> C). Neuron A is driven by an 8.0 nA current. 
@@ -11,11 +7,10 @@
 # We must recover the conductances (gNa, gK, gleak) of B and the synaptic weights between A->B and B->C.
 # 
 # To make the optimization problem difficult, we provide initial guesses that prevent the hidden neuron B from spiking. 
-# We intentionally **do not use box bounds** to demonstrate a critical concept in system identification: **structural unidentifiability**. 
+# We intentionally **do not** constrain the parameters to demonstrate a critical concept in system identification: **unidentifiability**. 
 # Without physiological constraints, the optimizer can find "non-physical" parameter combinations (e.g., negative conductances) that still successfully drive the observed output (neuron C).
 
 
-#nb # %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 using MTKNeuralToolkit
 using SymbolicIndexingInterface: getu
 using MTKNeuralToolkit.HodgkinHuxley: SodiumChannel, PotassiumChannel, LeakChannel
@@ -31,10 +26,8 @@ using SciMLBase
 using Plots
 using Markdown
 
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
 # ## 1. Build the True System & Generate Data
 
-#nb # %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 top = Scalar()
 
 function build_hh_neuron(name::Symbol; gNa=120.0, gK=36.0, gleak=0.3, pem=false, itps=nothing, K=1.0)
@@ -80,14 +73,12 @@ V_data_A = true_sol[true_sys.A_true.cap.v]
 V_data_C = true_sol[true_sys.C_true.cap.v]
 
 itp_A = LinearInterpolation(V_data_A, timesteps)
-itp_C = LinearInterpolation(V_data_C, timesteps)
+itp_C = LinearInterpolation(V_data_C, timesteps);
 
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
 # ## 2. Setup the PEM Optimization Problem
 # A and C get PEM observers. B is completely hidden. 
 # We intentionally guess terrible parameters for B (including high gleak) and the synapses so the initial model fails to propagate the signal.
 
-#nb # %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 guess_gNa = 10.0
 guess_gK  = 100.0
 guess_gleak = 10.0
@@ -110,7 +101,6 @@ fit_net = build_acausal_network([A_fit, B_fit, C_fit]; synapse_specs=synapse_spe
 fit_sys = mtkcompile(fit_net.sys)
 fit_prob = ODEProblem(fit_sys, [], (0.0, 50.0), jac=true, sparse=true)
 
-#nb %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 params_to_fit = [
     fit_sys.B_fit.na.g, fit_sys.B_fit.k.g, fit_sys.B_fit.leak.g,
     fit_sys.syn_AB_fit.g_max, fit_sys.syn_BC_fit.g_max
@@ -122,20 +112,15 @@ diffcache = DiffCache(copy(canonicalize(Tunable(), parameter_values(fit_prob))[1
 v_getter_A = getu(fit_prob, fit_sys.A_fit.cap.v)
 v_getter_C = getu(fit_prob, fit_sys.C_fit.cap.v)
 
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
 # ## 3. Define Loss Function & Optimize
 
-#nb %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 function loss(x, p)
     prob, timesteps, V_data_A, V_data_C, setter, diffcache, v_getter_A, v_getter_C = p
     ps = parameter_values(prob)
     buffer = get_tmp(diffcache, x)
     copyto!(buffer, canonicalize(Tunable(), ps)[1])
     ps = replace(Tunable(), ps, buffer)
-    
-    # setter mutates ps in place
     setter(ps, x)
-    
     newprob = remake(prob; p=ps)
     sol = solve(newprob, Rosenbrock23(); saveat=timesteps)
     if !SciMLBase.successful_retcode(sol.retcode)
@@ -153,9 +138,7 @@ optfn = OptimizationFunction(loss, adtype)
 
 optprob = OptimizationProblem(optfn, [guess_gNa, guess_gK, guess_gleak, guess_g_syn, guess_g_syn], opt_params)
 
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
-# ## 4. Optimize and Plot Faithfully
-#nb %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
+# ## 4. Optimize and Plot
 println("Starting optimization...")
 res = solve(optprob, BFGS(); maxiters=1000)
 opt_gNa, opt_gK, opt_gleak, opt_g_syn_AB, opt_g_syn_BC = res.u
@@ -171,7 +154,7 @@ init_ps = replace(Tunable(), init_ps, init_buffer)
 setter(init_ps, [guess_gNa, guess_gK, guess_gleak, guess_g_syn, guess_g_syn])
 K_setter(init_ps, [0.0, 0.0]) # Disable PEM controllers
 init_prob_free = remake(fit_prob; p=init_ps)
-init_sol = solve(init_prob_free, Rosenbrock23(); saveat=timesteps)
+init_sol = solve(init_prob_free, Rosenbrock23(); saveat=timesteps);
 
 # --- Pure simulation for RECOVERED PARAMETERS (No PEM) ---
 fit_ps = parameter_values(fit_prob)
@@ -180,7 +163,7 @@ fit_ps = replace(Tunable(), fit_ps, fit_buffer)
 setter(fit_ps, res.u)
 K_setter(fit_ps, [0.0, 0.0]) # Disable PEM controllers
 fit_prob_free = remake(fit_prob; p=fit_ps)
-fit_eval_sol = solve(fit_prob_free, Rosenbrock23(); saveat=timesteps)
+fit_eval_sol = solve(fit_prob_free, Rosenbrock23(); saveat=timesteps);
 
 # --- Plotting the Free-Running Dynamics ---
 p1 = plot(timesteps, V_data_A, label="True A", lw=2, color=:black)
@@ -201,10 +184,8 @@ title!("Observed: C")
 p = plot(p1, p2, p3, layout=(3,1), size=(800, 800), legend=:outertop)
 xlabel!(p, "Time (ms)")
 ylabel!(p, "V (mV)")
+p
 
-display(p)
-
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
 # ## 5. Parameter Comparison & Unidentifiability
 # The free-running voltage of neuron C matches the true data quite well. However, if we look at the parameters of the hidden neuron B, we see that the optimizer found a non-physical solution. `gNa` became negative, and `gK` was severely reduced.
 # 
@@ -213,7 +194,6 @@ display(p)
 # Moral of the story: inferring the parameters, or even the behaviour, of a neuron whose voltage you can't see is a thankless task! Exercise for reader: play around with box constraints (easy to implement as charted [here](https://docs.sciml.ai/Optimization/stable/tutorials/constraints/)) to see if restricting to plausible values helps!
 
 
-#nb %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 Markdown.parse("""
 | Parameter | True Value | Initial Guess | Recovered Value |
 |-----------|------------|---------------|-----------------|

@@ -1,16 +1,11 @@
 # # **14.** Parameter Estimation: Heterogeneous Vectorized Population
 #
-#md # [![](https://mybinder.org/badge_logo.svg)](@__BINDER_ROOT_URL__/generated/14_pem_vectorized_population.ipynb)
-#md # [![](https://img.shields.io/badge/show-nbviewer-579ACA.svg)](@__NBVIEWER_ROOT_URL__/generated/14_pem_vectorized_population.ipynb)
-
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
 # ## Introduction
 # Here we fit the conductances of a larger, heterogeneous E/I microcircuit.
 # We have 10 Excitatory and 3 Inhibitory neurons. To make the dynamics asynchronous, we use random synaptic weight matrices.
 # We attempt a large-scale optimization: fitting the **heterogeneous** `gNa` arrays (13 parameters) 
 # alongside the **shared** `gK` and `gleak` scalars (4 parameters) for a total of 17 parameters.
 
-#nb # %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 using MTKNeuralToolkit
 using ModelingToolkit: t_nounits as t, D_nounits as D, connect, Pre
 using SymbolicIndexingInterface: getu
@@ -29,14 +24,12 @@ using Plots
 using Markdown
 using Random
 
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
 # ## 1. Build the True System & Generate Data
 
-#nb # %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 N_E = 10
 N_I = 3  
 top_E = Vectorized(N_E)
-top_I = Vectorized(N_I)
+top_I = Vectorized(N_I);
 
 # Heterogeneous true sodium conductances
 gNa_E_true = collect(range(110.0, 130.0, length=N_E))
@@ -86,14 +79,12 @@ V_data_E_mat = reduce(hcat, true_sol[true_sys.pop_E_true.cap.v])
 V_data_I_mat = reduce(hcat, true_sol[true_sys.pop_I_true.cap.v])
 
 itps_E = [LinearInterpolation(V_data_E_mat[i, :], timesteps) for i in 1:N_E]
-itps_I = [LinearInterpolation(V_data_I_mat[i, :], timesteps) for i in 1:N_I]
+itps_I = [LinearInterpolation(V_data_I_mat[i, :], timesteps) for i in 1:N_I];
 
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
 # ## 2. Setup the PEM Optimization Problem
 # We fit 17 parameters total: heterogeneous `gNa` arrays (length 10 and 3) and shared `gK`/`gleak` scalars.
 # We intentionally guess terrible values (`gNa=10.0`, `gK=100.0`, `gleak=10.0`) that abolish spiking entirely.
 
-#nb # %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 guess_gNa_E = fill(10.0, N_E)
 guess_gNa_I = fill(10.0, N_I)
 guess_gK = 100.0
@@ -111,9 +102,8 @@ synapse_specs_fit = [syn_EE_fit, syn_EI_fit, syn_IE_fit, syn_II_fit]
 
 fit_net = build_acausal_network([pop_E_fit, pop_I_fit]; synapse_specs=synapse_specs_fit, drivers=drivers, name=:fit_net)
 fit_sys = mtkcompile(fit_net.sys)
-fit_prob = ODEProblem(fit_sys, [], (0.0, 50.0), jac=true, sparse=true)
+fit_prob = ODEProblem(fit_sys, [], (0.0, 50.0), jac=true, sparse=true);
 
-#nb %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 # Extract symbols for the 17 parameters
 gNa_E_sym = fit_sys.pop_E_fit.na.g
 gK_E_sym  = fit_sys.pop_E_fit.k.g
@@ -128,10 +118,8 @@ diffcache = DiffCache(copy(canonicalize(Tunable(), parameter_values(fit_prob))[1
 v_getter_E = getu(fit_prob, fit_sys.pop_E_fit.cap.v)
 v_getter_I = getu(fit_prob, fit_sys.pop_I_fit.cap.v)
 
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
 # ## 3. Define Loss Function & Optimize
 
-#nb %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 function loss(x, p)
     prob, timesteps, V_data_E, V_data_I, setter, diffcache, v_getter_E, v_getter_I = p
     ps = parameter_values(prob)
@@ -139,19 +127,17 @@ function loss(x, p)
     copyto!(buffer, canonicalize(Tunable(), ps)[1])
     ps = replace(Tunable(), ps, buffer)
     
-    # Split the flat x vector into the 6 grouped chunks expected by the setter
+    #Split the flat x vector into the 6 grouped chunks expected by the setter
     vals = [
-        x[1:N_E],                      # gNa_E (array of 10)
-        x[N_E + 1],                    # gK_E (scalar)
-        x[N_E + 2],                    # gleak_E (scalar)
-        x[N_E + 3 : N_E + N_I + 2],    # gNa_I (array of 3)
-        x[N_E + N_I + 3],              # gK_I (scalar)
-        x[N_E + N_I + 4]               # gleak_I (scalar)
+        x[1:N_E],                      #gNa_E (array of 10)
+        x[N_E + 1],                    #gK_E (scalar)
+        x[N_E + 2],                    #gleak_E (scalar)
+        x[N_E + 3 : N_E + N_I + 2],    #gNa_I (array of 3)
+        x[N_E + N_I + 3],              #gK_I (scalar)
+        x[N_E + N_I + 4]               #gleak_I (scalar)
     ]
     
-    # setter mutates ps in place
     setter(ps, vals)
-    
     newprob = remake(prob; p=ps)
     sol = solve(newprob, Rosenbrock23(); saveat=timesteps)
     if !SciMLBase.successful_retcode(sol.retcode)
@@ -170,15 +156,10 @@ opt_params = (fit_prob, timesteps, V_data_E_mat, V_data_I_mat, setter, diffcache
 
 adtype = AutoForwardDiff()
 optfn = OptimizationFunction(loss, adtype)
+optprob = OptimizationProblem(optfn, x0, opt_params)
 
-# Use copy(x0) to prevent the optimizer from mutating the global initial guess array
-optprob = OptimizationProblem(optfn, copy(x0), opt_params)
+# ## 4. Optimize and Plot
 
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
-# ## 4. Optimize and Plot Faithfully
-# We build *new* models without the PEM observation channel using the initial guess and recovered parameters. This allows us to visualize the true free-running behavior of the E/I microcircuit.
-
-#nb %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 println("Starting optimization (17 parameters)...")
 res = solve(optprob, BFGS(); maxiters=100)
 
@@ -218,7 +199,7 @@ synapse_specs_eval = [syn_EE_eval, syn_EI_eval, syn_IE_eval, syn_II_eval]
 eval_net = build_acausal_network([pop_E_eval, pop_I_eval]; synapse_specs=synapse_specs_eval, drivers=drivers, name=:eval_net)
 eval_sys = mtkcompile(eval_net.sys)
 eval_prob = ODEProblem(eval_sys, [], (0.0, 50.0), jac=true, sparse=true)
-eval_sol = solve(eval_prob, Rosenbrock23(); saveat=timesteps)
+eval_sol = solve(eval_prob, Rosenbrock23(); saveat=timesteps);
 
 # --- Extract the free-running matrices for plotting ---
 V_init_E_mat = reduce(hcat, init_sol[init_sys.pop_E_init.cap.v])
@@ -263,10 +244,8 @@ ylabel!(p, "V (mV) / Conductance")
 
 p
 
-#nb # %% A slide [markdown] {"slideshow": {"slide_type": "slide"}}
-# ## 5. Parameter Comparison
+# ## 5. Comparison of scalar parameters
 
-#nb %% A slide [code] {"slideshow": {"slide_type": "fragment"}}
 Markdown.parse("""
 | Parameter | True Value | Initial Guess | Recovered Value |
 |-----------|------------|---------------|-----------------|

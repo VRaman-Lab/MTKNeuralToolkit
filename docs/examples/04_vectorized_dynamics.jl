@@ -45,8 +45,8 @@ N_I = 5
 top_E = Vectorized(N_E)
 top_I = Vectorized(N_I)
 
+# Let's make the sodium conductance heterogeneous across the population
 function build_population(name::Symbol, top)
-    #Let's make the sodium conductance heterogeneous across the population
     gNa_heterogeneous = collect(range(119.0, 121.0, length=top.N)) 
     
     @named cap = Capacitor(topology=top, C=1.0)
@@ -65,10 +65,10 @@ pop_I = build_population(:pop_I, top_I)
 # Dimensions must be (N_post, N_pre).
 
 Random.seed!(42) 
-W_EE = 0.5 .* rand(N_E, N_E)   #E -> E
-W_EI = 1.0 .* rand(N_I, N_E)   #E -> I
-W_IE = 2.0 .* rand(N_E, N_I)   #I -> E
-W_II = 1.0 .* rand(N_I, N_I)   #I -> I
+W_EE = 0.5 .* rand(N_E, N_E)
+W_EI = 1.0 .* rand(N_I, N_E)
+W_IE = 2.0 .* rand(N_E, N_I)
+W_II = 1.0 .* rand(N_I, N_I)
 
 # ## 4. Build Synapse Blocks
 # `build_synapse_block` sets up the vectorized synapse matrices and creates the 
